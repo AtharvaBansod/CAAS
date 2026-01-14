@@ -1,0 +1,106 @@
+# Vision
+
+- CAAS is `Chat-As-A-Service` product
+- CAAS is single source from where all the chat features are delivered to the end user 
+- CAAS gets integrated via API layer called by the end user application 
+- State of client application is completely managed by CAAS
+- CAAS has isolated environment for each client application
+- CAAS has its own UI for chat features
+- CAAS has its own backend for chat features
+- CAAS has its own database for chat features
+- CAAS has its own authentication and authorization for chat features
+- CAAS has its own security for chat features
+- CAAS has its own monitoring and logging for chat features
+- CAAS has its own analytics for chat features
+- CAAS has its own billing and pricing for chat features
+- CAAS chat features includes text, voice, video, file sharing, screen sharing, whiteboarding, callender, scheduler, collaboration, infinity scroll window (like reels/posts) etc. and provides quick access to this saved objects from another API call so that at Client side diffrent isolated areas can be made which seperately consumes this saved objects. (eg: chat, voice, video, file sharing, screen sharing, whiteboarding, collaboration, etc. all can be done in single chat window but also can be monitored and managed separately in websites sections such as file systems, task assigned, notifications, whiteboard work collaboration like google docs, etc.)
+
+
+# Cause
+
+- All SAAS applications struggle with this complex socket managements for inter user connectivity and content sharing
+- SAAS may focus on whole diffrent idea but core might be same i.e chat system
+- SAAS may not have enough resources to manage this complex socket managements for inter user connectivity and content sharing
+
+
+# Purpose
+
+- Make it easy for SAAS applications to integrate chat features and focus on their **Core Business Logic** (eg: Pets social media app may focus on providing connectivity between pet owner and integrate hospital service and pet products ecom, but they also need reels like feature and chating as to make it as social media, so they can use CAAS to provide chat features and focus on their core business logic, where reels, chats, maps pins shared, this will be features itself in our CAAS which user can perform and client app can handle this all data in their own way to shown in diffrent sections of website)
+
+# Developer side
+
+- CAAS needs its own written sdk which can be published on npm or other package manager for variable stack and can be used by the client application to integrate chat features
+    - for now we are focused on npm
+
+- Authentication
+   ---
+- CAAS client onboarding website
+    - Client will provide their IP so that CAAS can only receive requests from their IP to ensure that any end user trying to get into chat zone of this client application is trying to access from their own application (Client app is middleware to authenticate end user)
+- SAAS user onboarding via CAAS
+   -  End user will then be assigned JWT encodded with his/her details as well as parent client application chat zone details so that now it can directly communicate with CAAS (End user - CAAS direct communication so that end user joins in socket ocean of all users of this client application and can perform chat features)
+
+- SAAS integration with CAAS Components
+   ---
+-  Chat list
+    - as end user now has JWT we can populate UI with all it's connected users within client application 
+    - features like search, add, remove, block, unblock, mute, unmute, etc. can be performed by end user
+    - create group chat, add users to group, remove users from group, admins, etc.
+
+-  Chat window
+    - message history
+    - typing indicator
+    - read receipts
+    - file sharing
+    - screen sharing
+    - whiteboarding
+    - collaboration
+    - etc.
+
+-  Notifications
+    - push notifications
+    - email notifications
+    - in app notifications
+    - etc.
+
+-  Stand alone funtion
+    - Follow/Add user funtion that can be used anywhere in website to connect with any user by SAAS application (handled by CAAS by verifying JWT and client application details)
+    - Fetch shared files (public), tasks, etc. so that SAAS can disply them in dedicated section of website
+    - upload files/videos/images so that end user can upload things to share as public i.e posts, stories, close stories, reels, etc. so that SAAS can display them in dedicated section of website making it as social media but completely handled by CAAS internally
+
+
+- Security
+  ---
+ 
+- end to end encryption for chat messages, files/videos/images, screen sharing, whiteboarding, collaboration, notifications
+- SAAS sharing just user details enough for SAAS-endUser mapping on CAAS side for Authentication and Authorization + Security + Monitoring + Logging + Analytics + Billing + Pricing + etc. 
+
+- Components
+   ---
+- Chat list (infinite scroll, search, filters, sections, create group button and dialogue boxes respectively etc.)
+- Chat window (message history, typing indicator, read receipts, file sharing, screen sharing, whiteboarding, collaboration etc.)
+- Notifications (push notifications, email notifications, in app notifications etc.)
+- Stand alone funtion ( this will be just api calls endpoints and ui will be handled by saas application)
+- Display window (infinite scroll to display files to mimic reels, post, task and scheduled calender type screens for management work etc)
+
+
+# CAAS Orchestration
+
+- This is core architecture that will process all the requests and handle responses.
+- Publicly exposed gateway connection all incoming requests and routes them to appropriate services.
+- Services (docker setup)
+    - Authentication (SAAS setup with CAAS, end user connection with CAAS within boundaries of SAAS)
+    - Authorization (SAAS app limitation and access, end user limitations and access)
+    - Security (end to end encryption for chat messages, files/videos/images, screen sharing, whiteboarding, collaboration, notifications by private and public keys)
+    - Sockets (end user connection with CAAS within boundaries of SAAS)
+    - Monitoring (SAAS and end user insights)
+    - Logging (logs of SAAS and end user necessary activities)
+    - Analytics (SAAS and end user insights)
+    - Billing (SAAS and end user billing)
+    - Pricing (SAAS and end user pricing)
+    - Database (Managing SAAS and end user data, replication, sharding, regions, cdn, caching, etc.)
+    - SAAS client onboarding Frontend connected with backend logic
+    - UI and api deployed as npm package but maintained by CAAS as well
+- Socket
+   - Handles all socket connections of end user in isolated room dedicated to SAAS environment  
+   - various events as per our CAAS business logic
+
