@@ -134,36 +134,56 @@ async function checkPermission(
 
 ### 3. IP Security
 
-#### 3.1 IP Whitelist Enforcement
-```typescript
-// IP whitelist check
-async function checkIpWhitelist(
-  tenantId: string,
-  clientIp: string
-): Promise<boolean> {
-  const whitelist = await redis.smembers(`ip:whitelist:${tenantId}`);
-  
-  if (whitelist.length === 0) {
-    // No whitelist configured = allow all
-    return true;
-  }
-  
-  return whitelist.some(pattern => {
-    if (pattern.includes('/')) {
-      // CIDR range
-      return ipRangeCheck(clientIp, pattern);
-    }
-    return clientIp === pattern;
-  });
-}
-```
-- [ ] IP extraction (X-Forwarded-For handling)
-- [ ] Whitelist lookup per tenant
-- [ ] CIDR range matching
-- [ ] Whitelist caching
-- [ ] Whitelist bypass for emergencies
+#### 3.1 IP Whitelist Enforcement (Server-to-Server Only)
+ > **Note**: This applies only to administrative API calls from the Client's backend server (e.g., creating sessions, syncing users).
+ 
+ ```typescript
+ // IP whitelist check (Middleware for Admin Routes)
+ async function checkIpWhitelist(
+   tenantId: string,
+   clientIp: string
+ ): Promise<boolean> {
+   const whitelist = await redis.smembers(`ip:whitelist:${tenantId}`);
+   
+   if (whitelist.length === 0) {
+     return true; // No whitelist configured
+   }
+   
+   return whitelist.some(pattern => {
+     if (pattern.includes('/')) {
+       return ipRangeCheck(clientIp, pattern);
+     }
+     return clientIp === pattern;
+   });
+ }
+ ```
+ - [ ] IP extraction (X-Forwarded-For handling)
+ - [ ] Whitelist lookup per tenant
+ - [ ] CIDR range matching
+ - [ ] Whitelist caching
+ 
+ #### 3.2 Origin Validation (Client-Side / End-User)
+ > **Note**: End-user browser/mobile requests are validated by checking the `Origin` header against the Client's allowed domains.
+ 
+ ```typescript
+ // Origin check (Middleware for Client Routes)
+ async function checkOrigin(
+   tenantId: string,
+   origin: string
+ ): Promise<boolean> {
+   if (!origin) return false; // Browsers must send Origin
+   
+   const allowedOrigins = await redis.smembers(`origin:whitelist:${tenantId}`);
+   if (allowedOrigins.length === 0) return false; // Must whitelist domain
+   
+   return allowedOrigins.includes(origin);
+ }
+ ```
+ - [ ] Origin header validation
+ - [ ] Domain whitelisting support
+ - [ ] CORS configuration per tenant
 
-#### 3.2 IP Blacklist
+#### 3.3 IP Blacklist
 - [ ] Global blacklist (known bad actors)
 - [ ] Tenant-specific blacklist
 - [ ] Automatic blacklisting on abuse

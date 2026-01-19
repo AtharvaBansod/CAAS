@@ -46,6 +46,13 @@ const socket = io('wss://socket.caas.io', {
 io.use(async (socket, next) => {
   try {
     const token = socket.handshake.auth.token;
+    const origin = socket.handshake.headers.origin;
+    
+    // 1. Verify Origin
+    const isAllowedOrigin = await validateOrigin(origin, socket.handshake.query.tenantId);
+    if (!isAllowedOrigin) throw new Error('Origin not allowed');
+
+    // 2. Refresh Token
     const user = await validateJWT(token);
     
     socket.userId = user.id;

@@ -5,9 +5,11 @@
 ---
 
 ## Overview
-
+ 
 IP whitelisting and geo-blocking implementation for tenant security.
-
+ 
+> **CRITICAL NOTE**: IP Whitelisting is strictly for **Server-to-Server** communication (e.g., your backend calling CAAS APIs). End-users connecting from browsers/mobiles are authenticated via **JWT** and **Origin/Domain Whitelisting**, as their IPs are dynamic.
+ 
 ---
 
 ## 1. IP Whitelist Configuration
@@ -17,104 +19,80 @@ interface IPSecurityConfig {
   tenantId: string;
   enabled: boolean;
   
-  whitelist: {
-    ips: string[];           // Individual IPs
-    cidrs: string[];         // CIDR ranges
-    description?: string;
+  // Server-to-Server Security (Admin API)
+  serverWhitelist: {
+    ips: string[];           // Individual Backend IPs
+    cidrs: string[];         // VPC/Subnet Ranges
   };
   
+  // Client-Side Security (End-User Access)
+  clientSecurity: {
+    allowedOrigins: string[]; // Allowed Domains (e.g. app.client.com)
+    geoBlocking: {
+      enabled: boolean;
+      mode: 'allow' | 'deny';
+      countries: string[];
+    };
+  };
+
   blacklist: {
     ips: string[];
-    cidrs: string[];
     reason?: string;
   };
-  
-  geoBlocking: {
-    enabled: boolean;
-    mode: 'allow' | 'deny';
-    countries: string[];     // ISO country codes
-  };
-  
-  bypassTokens: string[];    // Emergency bypass
 }
 ```
 
 ---
 
-## 2. IP Validation Middleware
+## 2. Validation Middleware (Split)
 
+### 2.1 Server-Side Validation (Strict IP Check)
 ```typescript
-import { isInSubnet } from 'is-in-subnet';
-
-async function validateIP(req: Request, res: Response, next: NextFunction) {
+// Use this for Admin API routes (e.g. /api/admin/*)
+async function validateServerIP(req: Request, res: Response, next: NextFunction) {
   const clientIP = getClientIP(req);
-  const tenantId = req.tenantId;
+  const config = await getIPSecurityConfig(req.tenantId);
   
-  // Get security config
-  const config = await getIPSecurityConfig(tenantId);
-  
-  if (!config.enabled) {
-    return next();
+  if (!config.enabled) return next();
+
+  // Strict Whitelist Check for Servers
+  if (!isWhitelisted(clientIP, config.serverWhitelist)) {
+    return res.status(403).json({ error: 'SERVER_IP_NOT_AUTHORIZED' });
   }
-  
-  // Check bypass token
-  const bypassToken = req.headers['x-ip-bypass'];
-  if (bypassToken && config.bypassTokens.includes(bypassToken)) {
-    return next();
-  }
-  
-  // Check blacklist first (always deny)
+
+  next();
+}
+```
+
+### 2.2 Client-Side Validation (Origin + Geo + Blacklist)
+```typescript
+// Use this for Client API/Socket routes (e.g. /api/chat/*)
+async function validateClientAccess(req: Request, res: Response, next: NextFunction) {
+  const clientIP = getClientIP(req);
+  const origin = req.headers['origin'];
+  const config = await getIPSecurityConfig(req.tenantId);
+
+  // 1. Blacklist Check (Global)
   if (isBlacklisted(clientIP, config.blacklist)) {
-    return res.status(403).json({
-      error: 'IP_BLOCKED',
-      message: 'Your IP address is blocked'
-    });
+    return res.status(403).json({ error: 'IP_BLOCKED' });
   }
-  
-  // Check whitelist
-  if (config.whitelist.ips.length > 0 || config.whitelist.cidrs.length > 0) {
-    if (!isWhitelisted(clientIP, config.whitelist)) {
-      return res.status(403).json({
-        error: 'IP_NOT_WHITELISTED',
-        message: 'Your IP address is not in the allowed list'
-      });
+
+  // 2. Origin (Domain) Whitelist
+  if (config.clientSecurity.allowedOrigins.length > 0) {
+    if (!origin || !config.clientSecurity.allowedOrigins.includes(origin)) {
+       return res.status(403).json({ error: 'ORIGIN_NOT_ALLOWED' });
     }
   }
-  
-  // Check geo-blocking
-  if (config.geoBlocking.enabled) {
+
+  // 3. Geo Blocking (User Location)
+  if (config.clientSecurity.geoBlocking.enabled) {
     const country = await geoIP.lookup(clientIP);
-    const inList = config.geoBlocking.countries.includes(country);
-    
-    if (config.geoBlocking.mode === 'allow' && !inList) {
-      return res.status(403).json({
-        error: 'GEO_BLOCKED',
-        message: 'Access from your region is not allowed'
-      });
-    }
-    
-    if (config.geoBlocking.mode === 'deny' && inList) {
-      return res.status(403).json({
-        error: 'GEO_BLOCKED',
-        message: 'Access from your region is blocked'
-      });
-    }
+    // ... geo logic
   }
-  
+
   next();
 }
 
-function isWhitelisted(ip: string, whitelist: Whitelist): boolean {
-  // Check direct IP match
-  if (whitelist.ips.includes(ip)) return true;
-  
-  // Check CIDR ranges
-  for (const cidr of whitelist.cidrs) {
-    if (isInSubnet(ip, cidr)) return true;
-  }
-  
-  return false;
-}
 ```
 
 ---
