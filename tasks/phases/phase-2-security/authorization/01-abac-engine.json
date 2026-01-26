@@ -1,0 +1,362 @@
+{
+  "task_group": "abac-engine",
+  "description": "Attribute-Based Access Control policy engine implementation",
+  "priority": "critical",
+  "estimated_hours": 18,
+  "phase": 2,
+  "feature_area": "authorization",
+  "tasks": [
+    {
+      "id": "AUTHZ-001",
+      "task_name": "ABAC Policy Engine Core",
+      "feature_details": "Implement the core ABAC policy engine with policy definition, parsing, and evaluation capabilities.",
+      "feature_dependency": ["GATEWAY-005"],
+      "ai_prompt": "Create the ABAC policy engine core:\n\n1. Create services/auth-service/src/authorization/engine/policy-engine.ts:\n   ```typescript\n   export class PolicyEngine {\n     loadPolicies(policies: Policy[]): void;\n     evaluate(request: AccessRequest): Promise<PolicyDecision>;\n     getPoliciesForResource(resource: string): Policy[];\n     validatePolicy(policy: Policy): ValidationResult;\n   }\n   ```\n\n2. Policy definition structure:\n   ```typescript\n   interface Policy {\n     id: string;\n     name: string;\n     description: string;\n     effect: 'allow' | 'deny';\n     priority: number;\n     conditions: Condition[];\n     target: {\n       subjects: SubjectMatcher[];\n       resources: ResourceMatcher[];\n       actions: ActionMatcher[];\n       environment?: EnvironmentMatcher[];\n     };\n   }\n\n   interface AccessRequest {\n     subject: {\n       user_id: string;\n       tenant_id: string;\n       roles: string[];\n       attributes: Record<string, unknown>;\n     };\n     resource: {\n       type: string;\n       id: string;\n       tenant_id: string;\n       attributes: Record<string, unknown>;\n     };\n     action: string;\n     environment: {\n       ip_address: string;\n       time: Date;\n       device_type: string;\n     };\n   }\n   ```\n\n3. Create services/auth-service/src/authorization/engine/policy-parser.ts:\n   - Parse policy JSON/DSL\n   - Validate policy structure\n   - Compile conditions for efficient evaluation\n\n4. Create services/auth-service/src/authorization/engine/condition-evaluator.ts:\n   - Evaluate conditions:\n     * Equals, NotEquals\n     * Contains, NotContains\n     * StartsWith, EndsWith\n     * GreaterThan, LessThan\n     * Matches (regex)\n     * In, NotIn (array membership)\n     * And, Or, Not (logical)\n\n5. Create services/auth-service/src/authorization/engine/target-matcher.ts:\n   - Match subject attributes\n   - Match resource attributes\n   - Match action wildcards\n   - Match environment conditions\n\n6. Decision logic:\n   - Find all applicable policies\n   - Evaluate conditions for each\n   - Apply combining algorithm (deny-overrides)\n   - Return decision with reason",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test policy parsing",
+          "Test condition evaluation",
+          "Test target matching",
+          "Test decision logic"
+        ],
+        "integration_tests": [
+          "Test complete policy evaluation",
+          "Test multiple policies",
+          "Test deny-overrides"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Policies are parsed correctly",
+        "Conditions are evaluated accurately",
+        "Target matching works with wildcards",
+        "Deny-overrides combining works",
+        "Performance: <10ms per evaluation"
+      ],
+      "files_to_create": [
+        "services/auth-service/src/authorization/engine/policy-engine.ts",
+        "services/auth-service/src/authorization/engine/policy-parser.ts",
+        "services/auth-service/src/authorization/engine/condition-evaluator.ts",
+        "services/auth-service/src/authorization/engine/target-matcher.ts",
+        "services/auth-service/src/authorization/engine/decision.ts",
+        "services/auth-service/src/authorization/engine/types.ts",
+        "services/auth-service/src/authorization/engine/index.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [
+          "POLICY_COMBINING_ALGORITHM"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 5,
+      "tags": ["authorization", "abac", "policy", "engine"]
+    },
+    {
+      "id": "AUTHZ-002",
+      "task_name": "Policy Storage and Management",
+      "feature_details": "Implement policy storage with versioning, tenant-specific policies, and CRUD operations.",
+      "feature_dependency": ["AUTHZ-001", "MONGO-009"],
+      "ai_prompt": "Implement policy storage:\n\n1. Create services/auth-service/src/authorization/storage/policy-repository.ts:\n   ```typescript\n   export class PolicyRepository {\n     create(policy: CreatePolicyDTO): Promise<Policy>;\n     update(id: string, policy: UpdatePolicyDTO): Promise<Policy>;\n     delete(id: string): Promise<void>;\n     getById(id: string): Promise<Policy | null>;\n     getByTenant(tenantId: string): Promise<Policy[]>;\n     getGlobalPolicies(): Promise<Policy[]>;\n     getAllActivePolicies(): Promise<Policy[]>;\n   }\n   ```\n\n2. Policy storage schema:\n   ```typescript\n   {\n     _id: ObjectId,\n     tenant_id: string | null,  // null for global\n     name: string,\n     description: string,\n     version: number,\n     is_active: boolean,\n     effect: 'allow' | 'deny',\n     priority: number,\n     target: {...},\n     conditions: [...],\n     metadata: {\n       created_by: string,\n       created_at: Date,\n       updated_at: Date\n     }\n   }\n   ```\n\n3. Create services/auth-service/src/authorization/storage/policy-versioning.ts:\n   - Track policy versions\n   - Store policy history\n   - Rollback to previous version\n   - Compare versions\n\n4. Create services/auth-service/src/authorization/storage/default-policies.ts:\n   - Define system default policies:\n     * Owner has full access to own resources\n     * Admin has full access within tenant\n     * Members can read shared resources\n     * Deny cross-tenant access\n   - Applied as fallback\n\n5. Create services/gateway/src/routes/v1/admin/policies.ts:\n   - POST /v1/admin/policies - Create policy\n   - GET /v1/admin/policies - List policies\n   - GET /v1/admin/policies/:id - Get policy\n   - PUT /v1/admin/policies/:id - Update policy\n   - DELETE /v1/admin/policies/:id - Delete policy\n   - POST /v1/admin/policies/:id/activate - Activate\n   - POST /v1/admin/policies/:id/deactivate - Deactivate\n\n6. Policy validation:\n   - Validate on create/update\n   - Test policy before activation\n   - Simulate policy effect",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test CRUD operations",
+          "Test versioning",
+          "Test default policies"
+        ],
+        "integration_tests": [
+          "Test policy storage with MongoDB",
+          "Test version history",
+          "Test tenant isolation"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Policies are stored correctly",
+        "Versioning tracks all changes",
+        "Default policies are applied",
+        "CRUD endpoints work",
+        "Tenant isolation is enforced"
+      ],
+      "files_to_create": [
+        "services/auth-service/src/authorization/storage/policy-repository.ts",
+        "services/auth-service/src/authorization/storage/policy-versioning.ts",
+        "services/auth-service/src/authorization/storage/default-policies.ts",
+        "services/auth-service/src/authorization/storage/types.ts",
+        "services/auth-service/src/authorization/storage/index.ts",
+        "services/gateway/src/routes/v1/admin/policies.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/v1/admin/policies",
+          "description": "Create policy"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/admin/policies",
+          "description": "List policies"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/admin/policies/:id",
+          "description": "Get policy details"
+        },
+        {
+          "method": "PUT",
+          "path": "/v1/admin/policies/:id",
+          "description": "Update policy"
+        },
+        {
+          "method": "DELETE",
+          "path": "/v1/admin/policies/:id",
+          "description": "Delete policy"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "policies",
+            "description": "Store ABAC policies"
+          },
+          {
+            "name": "policy_versions",
+            "description": "Store policy version history"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "policies",
+            "fields": ["tenant_id", "is_active"]
+          },
+          {
+            "collection": "policy_versions",
+            "fields": ["policy_id", "version"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["authorization", "policies", "storage", "versioning"]
+    },
+    {
+      "id": "AUTHZ-003",
+      "task_name": "Policy Evaluation Cache",
+      "feature_details": "Implement a high-performance caching layer for policy evaluations to minimize repeated computations.",
+      "feature_dependency": ["AUTHZ-001"],
+      "ai_prompt": "Implement policy evaluation cache:\n\n1. Create services/auth-service/src/authorization/cache/decision-cache.ts:\n   ```typescript\n   export class DecisionCache {\n     get(key: string): Promise<CachedDecision | null>;\n     set(key: string, decision: PolicyDecision, ttl?: number): Promise<void>;\n     invalidate(pattern: string): Promise<void>;\n     invalidateForUser(userId: string): Promise<void>;\n     invalidateForResource(resourceType: string, resourceId: string): Promise<void>;\n   }\n   ```\n\n2. Cache key generation:\n   ```typescript\n   // Key format: authz:{tenant_id}:{user_id}:{resource_type}:{resource_id}:{action}\n   generateCacheKey(request: AccessRequest): string\n   ```\n\n3. Create services/auth-service/src/authorization/cache/policy-cache.ts:\n   - Cache compiled policies\n   - Invalidate on policy update\n   - TTL: 5 minutes for policies\n   - Per-tenant policy cache\n\n4. Create services/auth-service/src/authorization/cache/invalidation-strategy.ts:\n   - Invalidation triggers:\n     * Policy created/updated/deleted\n     * User role changed\n     * Resource ownership changed\n     * Tenant settings changed\n   - Kafka events for distributed invalidation\n\n5. Multi-level caching:\n   - L1: In-memory cache (LRU, 1000 entries)\n   - L2: Redis cache (TTL 5 minutes)\n   - Read from L1, fallback to L2, fallback to evaluate\n\n6. Create services/auth-service/src/authorization/cache/cache-metrics.ts:\n   - Cache hit/miss ratio\n   - Cache size\n   - Invalidation count\n   - Average lookup time\n\n7. Cache configuration:\n   - Decision cache TTL: 60 seconds\n   - Policy cache TTL: 300 seconds\n   - Max memory for L1: 50MB\n\n8. Negative caching:\n   - Cache deny decisions\n   - Shorter TTL for denials (30 seconds)",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test cache key generation",
+          "Test LRU eviction",
+          "Test invalidation patterns"
+        ],
+        "integration_tests": [
+          "Test L1/L2 caching",
+          "Test invalidation propagation",
+          "Test cache performance"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Cache reduces evaluation time by 90%",
+        "Invalidation works correctly",
+        "Multi-level caching works",
+        "Cache metrics are collected",
+        "Memory usage is bounded"
+      ],
+      "files_to_create": [
+        "services/auth-service/src/authorization/cache/decision-cache.ts",
+        "services/auth-service/src/authorization/cache/policy-cache.ts",
+        "services/auth-service/src/authorization/cache/invalidation-strategy.ts",
+        "services/auth-service/src/authorization/cache/cache-metrics.ts",
+        "services/auth-service/src/authorization/cache/lru-cache.ts",
+        "services/auth-service/src/authorization/cache/types.ts",
+        "services/auth-service/src/authorization/cache/index.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["redis"],
+        "environment_variables": [
+          "DECISION_CACHE_TTL_SECONDS",
+          "POLICY_CACHE_TTL_SECONDS",
+          "L1_CACHE_MAX_SIZE"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["authorization", "caching", "performance", "redis"]
+    },
+    {
+      "id": "AUTHZ-004",
+      "task_name": "Authorization Middleware",
+      "feature_details": "Create the gateway middleware that intercepts requests and enforces authorization policies.",
+      "feature_dependency": ["AUTHZ-001", "AUTHZ-003"],
+      "ai_prompt": "Implement authorization middleware:\n\n1. Create services/gateway/src/middleware/authorization/authz-middleware.ts:\n   ```typescript\n   export function authorizationMiddleware(options: AuthzOptions) {\n     return async (request: FastifyRequest, reply: FastifyReply) => {\n       const decision = await enforcer.authorize({\n         subject: extractSubject(request),\n         resource: extractResource(request),\n         action: extractAction(request),\n         environment: extractEnvironment(request)\n       });\n\n       if (decision.effect === 'deny') {\n         throw new ForbiddenError(decision.reason);\n       }\n     };\n   }\n   ```\n\n2. Create services/gateway/src/middleware/authorization/subject-extractor.ts:\n   - Extract subject from request:\n     * user_id from auth context\n     * tenant_id from tenant context\n     * roles from token claims\n     * Additional attributes from user profile\n\n3. Create services/gateway/src/middleware/authorization/resource-extractor.ts:\n   - Extract resource from request:\n     * Type from route (e.g., 'message', 'conversation')\n     * ID from params\n     * Owner from database lookup (cached)\n     * Additional attributes as needed\n\n4. Create services/gateway/src/middleware/authorization/action-mapper.ts:\n   - Map HTTP methods to actions:\n     * GET -> 'read'\n     * POST -> 'create'\n     * PUT/PATCH -> 'update'\n     * DELETE -> 'delete'\n   - Route-specific action overrides\n\n5. Create services/gateway/src/decorators/require-permission.ts:\n   - Route decorator for explicit permissions:\n     ```typescript\n     @requirePermission('message.send')\n     async sendMessage(request, reply) { ... }\n     ```\n\n6. Create services/gateway/src/middleware/authorization/authz-enforcer.ts:\n   - AuthzEnforcer class\n   - Connect to policy engine\n   - Handle caching\n   - Audit logging\n\n7. Error handling:\n   - 403 Forbidden with reason\n   - Include required permissions in error\n   - Audit failed authorization\n\n8. Skip authorization:\n   - Public routes (health, docs)\n   - Internal routes",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test subject extraction",
+          "Test resource extraction",
+          "Test action mapping"
+        ],
+        "integration_tests": [
+          "Test middleware with policies",
+          "Test permission decorator",
+          "Test error responses"
+        ],
+        "e2e_tests": [
+          "Test authorization in real routes"
+        ]
+      },
+      "acceptance_criteria": [
+        "Middleware enforces policies",
+        "Subject/resource extraction works",
+        "Action mapping is correct",
+        "403 includes reason",
+        "Authorization is audited"
+      ],
+      "files_to_create": [
+        "services/gateway/src/middleware/authorization/authz-middleware.ts",
+        "services/gateway/src/middleware/authorization/subject-extractor.ts",
+        "services/gateway/src/middleware/authorization/resource-extractor.ts",
+        "services/gateway/src/middleware/authorization/action-mapper.ts",
+        "services/gateway/src/middleware/authorization/authz-enforcer.ts",
+        "services/gateway/src/middleware/authorization/types.ts",
+        "services/gateway/src/middleware/authorization/index.ts",
+        "services/gateway/src/decorators/require-permission.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [
+          "AUTHZ_ENABLED",
+          "AUTHZ_AUDIT_ENABLED"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 3,
+      "tags": ["authorization", "middleware", "gateway", "enforcement"]
+    },
+    {
+      "id": "AUTHZ-005",
+      "task_name": "Authorization Audit Logging",
+      "feature_details": "Implement comprehensive audit logging for all authorization decisions for security and compliance.",
+      "feature_dependency": ["AUTHZ-004"],
+      "ai_prompt": "Implement authorization audit logging:\n\n1. Create services/auth-service/src/authorization/audit/audit-logger.ts:\n   ```typescript\n   export class AuthorizationAuditLogger {\n     logDecision(request: AccessRequest, decision: PolicyDecision): Promise<void>;\n     logPolicyChange(policy: Policy, action: 'create' | 'update' | 'delete', actor: string): Promise<void>;\n     logRoleChange(userId: string, role: string, action: 'grant' | 'revoke', actor: string): Promise<void>;\n   }\n   ```\n\n2. Audit log entry structure:\n   ```typescript\n   interface AuthzAuditEntry {\n     id: string;\n     timestamp: Date;\n     request_id: string;\n     tenant_id: string;\n     subject: {\n       user_id: string;\n       roles: string[];\n     };\n     resource: {\n       type: string;\n       id: string;\n     };\n     action: string;\n     decision: 'allow' | 'deny';\n     matched_policies: string[];\n     reason?: string;\n     duration_ms: number;\n     cache_hit: boolean;\n   }\n   ```\n\n3. Create services/auth-service/src/authorization/audit/audit-storage.ts:\n   - Store in MongoDB for persistence\n   - Also stream to Kafka for real-time analysis\n   - Retention policy: 90 days\n\n4. Create services/auth-service/src/authorization/audit/audit-query.ts:\n   - Query audit logs:\n     * By user\n     * By resource\n     * By decision (allow/deny)\n     * By time range\n     * By tenant\n   - Pagination support\n\n5. Create services/gateway/src/routes/v1/admin/audit.ts:\n   - GET /v1/admin/audit/authorization - Query authorization audit logs\n   - GET /v1/admin/audit/authorization/stats - Get statistics\n   - GET /v1/admin/audit/authorization/export - Export logs\n\n6. Real-time alerting:\n   - Alert on high deny rate\n   - Alert on suspicious patterns\n   - Alert on privilege escalation attempts\n\n7. Analytics integration:\n   - Stream to analytics pipeline\n   - Authorization dashboards (in clientFacingUI for tenant, Grafana for platform)\n   - Access pattern analysis",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test log entry creation",
+          "Test query filtering"
+        ],
+        "integration_tests": [
+          "Test audit storage",
+          "Test Kafka streaming",
+          "Test query endpoints"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "All authorization decisions are logged",
+        "Policy changes are audited",
+        "Logs can be queried efficiently",
+        "Alerting works for anomalies",
+        "Retention is enforced"
+      ],
+      "files_to_create": [
+        "services/auth-service/src/authorization/audit/audit-logger.ts",
+        "services/auth-service/src/authorization/audit/audit-storage.ts",
+        "services/auth-service/src/authorization/audit/audit-query.ts",
+        "services/auth-service/src/authorization/audit/audit-alerts.ts",
+        "services/auth-service/src/authorization/audit/types.ts",
+        "services/auth-service/src/authorization/audit/index.ts",
+        "services/gateway/src/routes/v1/admin/audit.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb", "kafka"],
+        "environment_variables": [
+          "AUTHZ_AUDIT_RETENTION_DAYS",
+          "AUTHZ_AUDIT_ALERT_THRESHOLD"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/v1/admin/audit/authorization",
+          "description": "Query authorization audit logs"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/admin/audit/authorization/stats",
+          "description": "Get authorization statistics"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/admin/audit/authorization/export",
+          "description": "Export audit logs"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "authz_audit_logs",
+            "description": "Store authorization audit entries"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "authz_audit_logs",
+            "fields": ["tenant_id", "timestamp"]
+          },
+          {
+            "collection": "authz_audit_logs",
+            "fields": ["subject.user_id", "timestamp"]
+          },
+          {
+            "collection": "authz_audit_logs",
+            "fields": ["decision", "timestamp"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["authorization", "audit", "logging", "compliance"]
+    }
+  ]
+}

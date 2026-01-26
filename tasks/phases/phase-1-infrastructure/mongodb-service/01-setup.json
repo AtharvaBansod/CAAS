@@ -1,0 +1,245 @@
+{
+  "task_group": "mongodb-setup",
+  "description": "MongoDB deployment, replica set configuration, and core infrastructure setup",
+  "priority": "critical",
+  "estimated_hours": 20,
+  "phase": 1,
+  "feature_area": "mongodb-service",
+  "tasks": [
+    {
+      "id": "MONGO-001",
+      "task_name": "Docker MongoDB Replica Set Configuration",
+      "feature_details": "Configure MongoDB 7.0+ as a 3-node replica set using Docker Compose. This includes primary and secondary nodes with proper authentication, TLS encryption, and keyfile authentication for inter-node communication.",
+      "feature_dependency": [],
+      "ai_prompt": "Create a production-ready MongoDB 7.0+ replica set configuration with Docker Compose. Requirements:\n\n1. Create docker/mongodb/ folder with:\n   - mongo-keyfile (generate with openssl rand -base64 756)\n   - init-scripts/01-init-replica.js (replica set initialization)\n   - init-scripts/02-create-users.js (create application users)\n   - mongod.conf (MongoDB configuration)\n\n2. The replica set should have:\n   - 1 primary node (priority 2)\n   - 2 secondary nodes (priority 1)\n   - SCRAM-SHA-256 authentication\n   - Read preference: primaryPreferred\n\n3. Create initialization scripts that:\n   - Wait for all nodes to be ready\n   - Initialize the replica set\n   - Create admin user\n   - Create application user with readWrite on caas_platform\n   - Create monitoring user\n\n4. Environment variables for:\n   - MONGO_ROOT_USER\n   - MONGO_ROOT_PASSWORD\n   - MONGO_APP_USER\n   - MONGO_APP_PASSWORD\n\nEnsure the configuration is secure and follows MongoDB best practices for production deployments.",
+      "testing_instructions": {
+        "unit_tests": [],
+        "integration_tests": [
+          "Verify replica set status with rs.status()",
+          "Verify all nodes are reachable",
+          "Test failover by stopping primary",
+          "Verify authentication works for all users"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "MongoDB replica set is running with 3 nodes",
+        "Primary election happens within 10 seconds of failure",
+        "All nodes can authenticate with each other via keyfile",
+        "Application user can connect and perform CRUD operations",
+        "TLS encryption is enabled for client connections",
+        "Health check endpoint returns healthy status"
+      ],
+      "files_to_create": [
+        "tasks/docker/mongodb/mongo-keyfile",
+        "tasks/docker/mongodb/mongod.conf",
+        "tasks/docker/mongodb/init-scripts/01-init-replica.js",
+        "tasks/docker/mongodb/init-scripts/02-create-users.js",
+        "tasks/docker/mongodb/init-scripts/03-create-databases.js"
+      ],
+      "files_to_modify": [
+        "tasks/docker-compose.yml"
+      ],
+      "docker_requirements": {
+        "services": ["mongodb-primary", "mongodb-secondary-1", "mongodb-secondary-2"],
+        "environment_variables": [
+          "MONGO_ROOT_USER",
+          "MONGO_ROOT_PASSWORD",
+          "MONGO_APP_USER",
+          "MONGO_APP_PASSWORD"
+        ],
+        "volumes": ["mongodb_data", "mongodb_config"],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 6,
+      "tags": ["mongodb", "docker", "infrastructure", "replica-set"]
+    },
+    {
+      "id": "MONGO-002",
+      "task_name": "MongoDB Service Package Setup",
+      "feature_details": "Initialize the mongodb-service package as a TypeScript Node.js library that provides database connectivity and abstraction layer for all CAAS services.",
+      "feature_dependency": ["MONGO-001"],
+      "ai_prompt": "Create the mongodb-service package with the following structure:\n\n1. Initialize package in services/mongodb-service/:\n   - package.json with mongoose, mongodb driver, typescript\n   - tsconfig.json with strict mode and ES2022 target\n   - Dockerfile for containerization\n   - .env.example with all required environment variables\n\n2. Create src/config/:\n   - database.config.ts - MongoDB connection configuration\n   - environment.ts - Environment variable validation using zod\n   - constants.ts - Database-related constants\n\n3. Create src/connections/:\n   - connection-manager.ts - Singleton connection manager\n   - connection-options.ts - Connection options factory\n   - health-check.ts - Database health monitoring\n\n4. The connection manager should:\n   - Support connection pooling (min: 10, max: 100)\n   - Handle reconnection with exponential backoff\n   - Emit events for connection state changes\n   - Support multiple database connections (platform, tenant)\n   - Provide graceful shutdown handling\n\n5. Export types for:\n   - ConnectionOptions\n   - DatabaseConfig\n   - HealthCheckResult\n\nUse modern TypeScript patterns, async/await, and proper error handling.",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test connection configuration parsing",
+          "Test environment variable validation",
+          "Test connection options factory"
+        ],
+        "integration_tests": [
+          "Test connection to running MongoDB instance",
+          "Test connection pooling behavior",
+          "Test reconnection after disconnect",
+          "Test graceful shutdown"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Package compiles without TypeScript errors",
+        "Connection to MongoDB replica set succeeds",
+        "Connection pool is created with configured size",
+        "Health check returns accurate status",
+        "Graceful shutdown closes all connections",
+        "Environment variable validation works"
+      ],
+      "files_to_create": [
+        "services/mongodb-service/package.json",
+        "services/mongodb-service/tsconfig.json",
+        "services/mongodb-service/Dockerfile",
+        "services/mongodb-service/.env.example",
+        "services/mongodb-service/src/config/database.config.ts",
+        "services/mongodb-service/src/config/environment.ts",
+        "services/mongodb-service/src/config/constants.ts",
+        "services/mongodb-service/src/config/index.ts",
+        "services/mongodb-service/src/connections/connection-manager.ts",
+        "services/mongodb-service/src/connections/connection-options.ts",
+        "services/mongodb-service/src/connections/health-check.ts",
+        "services/mongodb-service/src/connections/index.ts",
+        "services/mongodb-service/src/index.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb-service"],
+        "environment_variables": [
+          "MONGODB_URI",
+          "MONGODB_DATABASE",
+          "MONGODB_MIN_POOL_SIZE",
+          "MONGODB_MAX_POOL_SIZE"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 6,
+      "tags": ["mongodb", "typescript", "package", "connection"]
+    },
+    {
+      "id": "MONGO-003",
+      "task_name": "Base Repository Pattern Implementation",
+      "feature_details": "Implement the repository pattern as a base class that all entity-specific repositories will extend. Provides standard CRUD operations with tenant isolation.",
+      "feature_dependency": ["MONGO-002"],
+      "ai_prompt": "Create a base repository pattern implementation:\n\n1. Create src/repositories/base.repository.ts:\n   - Generic BaseRepository<T> class\n   - Methods: findById, findOne, findMany, create, createMany, update, updateMany, delete, softDelete, count, exists, aggregate\n   - All methods should accept options for: projection, sort, pagination, populate\n   - Implement tenant isolation - all queries must include tenant_id\n   - Support for transactions using sessions\n   - Query builder integration\n\n2. Create src/repositories/types.ts:\n   - FindOptions interface\n   - PaginationOptions interface\n   - SortOptions interface\n   - QueryFilter type\n   - RepositoryResult type\n\n3. Create src/utils/query-builder.ts:\n   - TenantAwareQueryBuilder class\n   - Methods: where, sort, skip, limit, select, populate\n   - Always inject tenant_id into queries\n   - Support for complex MongoDB operators ($in, $gte, $regex, etc.)\n\n4. Create src/utils/pagination.ts:\n   - Cursor-based pagination implementation\n   - Offset-based pagination fallback\n   - PaginatedResult<T> type\n\n5. Error handling:\n   - DatabaseError base class\n   - NotFoundError\n   - DuplicateKeyError\n   - ValidationError\n   - ConnectionError\n\nAll methods should be fully typed with proper generics.",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test query builder generates correct queries",
+          "Test tenant isolation is enforced",
+          "Test pagination calculations",
+          "Test error handling for various scenarios"
+        ],
+        "integration_tests": [
+          "Test CRUD operations against real database",
+          "Test transaction rollback on error",
+          "Test pagination with large datasets",
+          "Test soft delete functionality"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "All CRUD operations work correctly",
+        "Tenant isolation is enforced on all queries",
+        "Transactions rollback on error",
+        "Pagination returns correct results",
+        "Soft delete marks records instead of removing",
+        "Errors are properly typed and thrown"
+      ],
+      "files_to_create": [
+        "services/mongodb-service/src/repositories/base.repository.ts",
+        "services/mongodb-service/src/repositories/types.ts",
+        "services/mongodb-service/src/repositories/index.ts",
+        "services/mongodb-service/src/utils/query-builder.ts",
+        "services/mongodb-service/src/utils/pagination.ts",
+        "services/mongodb-service/src/utils/index.ts",
+        "services/mongodb-service/src/errors/database-error.ts",
+        "services/mongodb-service/src/errors/index.ts"
+      ],
+      "files_to_modify": [
+        "services/mongodb-service/src/index.ts"
+      ],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 5,
+      "tags": ["mongodb", "repository-pattern", "typescript", "data-access"]
+    },
+    {
+      "id": "MONGO-004",
+      "task_name": "Database Seeding and Development Data",
+      "feature_details": "Create seed data scripts for development and testing, including sample tenants, users, conversations, and messages.",
+      "feature_dependency": ["MONGO-003"],
+      "ai_prompt": "Create comprehensive database seeding functionality:\n\n1. Create src/seeds/ directory with:\n   - seed-runner.ts - Main seed orchestrator\n   - seed-config.ts - Seed configuration (quantities, options)\n   - data-generators/ folder for each entity type\n\n2. Create data generators for:\n   - Platform:\n     * 3 SAAS clients (free, pro, enterprise tiers)\n     * 5 applications (2 per pro/enterprise client)\n     * API keys for each application\n   - Tenants (for each SAAS client):\n     * 10-100 users per tenant\n     * 5-20 conversations per user\n     * 50-200 messages per conversation\n     * 10-50 files per tenant\n     * User relationships (friends, blocks)\n     * Groups with members\n\n3. Use faker.js for realistic data:\n   - User profiles (names, avatars, bios)\n   - Message content (text, emojis, links)\n   - File metadata (names, sizes, types)\n   - Timestamps with realistic distribution\n\n4. Create CLI commands:\n   - npm run seed - Run all seeds\n   - npm run seed:platform - Seed platform only\n   - npm run seed:tenant <tenant_id> - Seed specific tenant\n   - npm run seed:clear - Clear all data\n\n5. Support:\n   - Idempotent seeding (can run multiple times safely)\n   - Progress reporting\n   - Error recovery\n\nSeeds should create data that exercises all schema features.",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test data generators produce valid data",
+          "Test seed configuration parsing"
+        ],
+        "integration_tests": [
+          "Test full seeding process completes",
+          "Test clearing data works correctly",
+          "Test idempotent seeding",
+          "Test seed data is queryable"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Seed scripts create valid data for all collections",
+        "Data passes schema validation",
+        "Relationships between entities are valid",
+        "Seeds are idempotent (safe to run multiple times)",
+        "Progress is reported during seeding",
+        "Clear command removes all seed data"
+      ],
+      "files_to_create": [
+        "services/mongodb-service/src/seeds/seed-runner.ts",
+        "services/mongodb-service/src/seeds/seed-config.ts",
+        "services/mongodb-service/src/seeds/index.ts",
+        "services/mongodb-service/src/seeds/data-generators/platform.generator.ts",
+        "services/mongodb-service/src/seeds/data-generators/user.generator.ts",
+        "services/mongodb-service/src/seeds/data-generators/conversation.generator.ts",
+        "services/mongodb-service/src/seeds/data-generators/message.generator.ts",
+        "services/mongodb-service/src/seeds/data-generators/file.generator.ts",
+        "services/mongodb-service/src/seeds/data-generators/index.ts"
+      ],
+      "files_to_modify": [
+        "services/mongodb-service/package.json"
+      ],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": ["All platform and tenant collections"],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 3,
+      "tags": ["mongodb", "seeding", "development", "testing"]
+    }
+  ]
+}

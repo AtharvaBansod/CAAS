@@ -1,0 +1,243 @@
+{
+  "task_group": "socket-core-setup",
+  "description": "Core Socket.IO server setup with Docker and clustering",
+  "priority": "critical",
+  "estimated_hours": 18,
+  "phase": 3,
+  "feature_area": "socket-service",
+  "tasks": [
+    {
+      "id": "SOCKET-001",
+      "task_name": "Socket Service Docker Configuration",
+      "feature_details": "Set up Docker configuration for the Socket.IO service with proper networking and environment setup.",
+      "feature_dependency": ["MONGO-001", "KAFKA-001"],
+      "ai_prompt": "Create Docker configuration for Socket.IO service:\n\n1. Create services/socket-service/Dockerfile:\n   ```dockerfile\n   FROM node:20-alpine AS builder\n   WORKDIR /app\n   COPY package*.json ./\n   RUN npm ci --only=production\n\n   FROM node:20-alpine\n   RUN apk add --no-cache dumb-init\n   WORKDIR /app\n   COPY --from=builder /app/node_modules ./node_modules\n   COPY . .\n   RUN npm run build\n   USER node\n   EXPOSE 3001\n   ENTRYPOINT [\"dumb-init\", \"--\"]\n   CMD [\"node\", \"dist/index.js\"]\n   ```\n\n2. Create docker/socket-service/docker-compose.yml:\n   ```yaml\n   version: '3.8'\n   services:\n     socket-service-1:\n       build:\n         context: ../../services/socket-service\n       ports:\n         - \"3001:3001\"\n       environment:\n         - NODE_ENV=development\n         - SOCKET_PORT=3001\n         - REDIS_URL=redis://redis:6379\n         - MONGODB_URI=mongodb://mongo1:27017,mongo2:27017,mongo3:27017/caas?replicaSet=rs0\n         - KAFKA_BROKERS=kafka1:9092,kafka2:9092,kafka3:9092\n         - INSTANCE_ID=socket-1\n       depends_on:\n         - redis\n       networks:\n         - caas-network\n       healthcheck:\n         test: [\"CMD\", \"wget\", \"--spider\", \"-q\", \"http://localhost:3001/health\"]\n         interval: 30s\n         timeout: 10s\n         retries: 3\n\n     socket-service-2:\n       build:\n         context: ../../services/socket-service\n       ports:\n         - \"3002:3001\"\n       environment:\n         - NODE_ENV=development\n         - SOCKET_PORT=3001\n         - REDIS_URL=redis://redis:6379\n         - MONGODB_URI=mongodb://mongo1:27017,mongo2:27017,mongo3:27017/caas?replicaSet=rs0\n         - KAFKA_BROKERS=kafka1:9092,kafka2:9092,kafka3:9092\n         - INSTANCE_ID=socket-2\n       depends_on:\n         - redis\n       networks:\n         - caas-network\n   ```\n\n3. Create docker/nginx/socket-upstream.conf:\n   - Configure upstream for sticky sessions\n   - IP hash or cookie-based affinity\n   - Health checks\n\n4. Create services/socket-service/package.json:\n   - socket.io: ^4.7.x\n   - @socket.io/redis-adapter: ^8.x\n   - ioredis: ^5.x\n   - Dependencies for auth, logging\n\n5. Create services/socket-service/tsconfig.json:\n   - TypeScript configuration\n   - Strict mode enabled\n   - ES2022 target",
+      "testing_instructions": {
+        "unit_tests": [],
+        "integration_tests": [
+          "Test Docker builds successfully",
+          "Test service starts in container",
+          "Test health endpoint responds"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Docker image builds successfully",
+        "Container starts without errors",
+        "Health check passes",
+        "Service can connect to Redis",
+        "Multiple instances can run"
+      ],
+      "files_to_create": [
+        "services/socket-service/Dockerfile",
+        "services/socket-service/.dockerignore",
+        "services/socket-service/package.json",
+        "services/socket-service/tsconfig.json",
+        "docker/socket-service/docker-compose.yml",
+        "docker/nginx/socket-upstream.conf"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["redis", "mongodb"],
+        "environment_variables": [
+          "SOCKET_PORT",
+          "REDIS_URL",
+          "MONGODB_URI",
+          "INSTANCE_ID"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["socket", "docker", "infrastructure"]
+    },
+    {
+      "id": "SOCKET-002",
+      "task_name": "Socket.IO Server Bootstrap",
+      "feature_details": "Create the main Socket.IO server with proper configuration, middleware setup, and basic event handling.",
+      "feature_dependency": ["SOCKET-001"],
+      "ai_prompt": "Bootstrap Socket.IO server:\n\n1. Create services/socket-service/src/server.ts:\n   ```typescript\n   import { Server, Socket } from 'socket.io';\n   import { createAdapter } from '@socket.io/redis-adapter';\n   import { createClient } from 'redis';\n\n   export async function createSocketServer(httpServer: HttpServer): Promise<Server> {\n     const io = new Server(httpServer, {\n       cors: {\n         origin: config.cors.origins,\n         credentials: true,\n       },\n       path: config.socket.path,\n       transports: ['websocket', 'polling'],\n       pingInterval: config.socket.pingInterval,\n       pingTimeout: config.socket.pingTimeout,\n       allowUpgrades: true,\n       perMessageDeflate: true,\n     });\n\n     // Setup Redis adapter for horizontal scaling\n     const pubClient = createClient({ url: config.redis.url });\n     const subClient = pubClient.duplicate();\n     await Promise.all([pubClient.connect(), subClient.connect()]);\n     io.adapter(createAdapter(pubClient, subClient));\n\n     return io;\n   }\n   ```\n\n2. Create services/socket-service/src/index.ts:\n   ```typescript\n   import http from 'http';\n   import express from 'express';\n\n   async function bootstrap() {\n     const app = express();\n     const httpServer = http.createServer(app);\n\n     // Health check endpoint\n     app.get('/health', (req, res) => res.json({ status: 'healthy' }));\n\n     // Create Socket.IO server\n     const io = await createSocketServer(httpServer);\n\n     // Register namespaces\n     registerChatNamespace(io);\n     registerPresenceNamespace(io);\n\n     httpServer.listen(config.port);\n   }\n   ```\n\n3. Create services/socket-service/src/config/index.ts:\n   - Environment-based configuration\n   - Validation with Zod\n   - Default values\n\n4. Create services/socket-service/src/namespaces/chat.ts:\n   ```typescript\n   export function registerChatNamespace(io: Server) {\n     const chat = io.of('/chat');\n     chat.use(authMiddleware);\n     chat.on('connection', handleConnection);\n   }\n   ```\n\n5. Create services/socket-service/src/namespaces/presence.ts:\n   - Presence namespace\n   - Status updates\n   - Online/offline events\n\n6. Create services/socket-service/src/types/index.ts:\n   - Socket event types\n   - Payload interfaces\n   - Type-safe event handling",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test server creation",
+          "Test configuration loading",
+          "Test namespace registration"
+        ],
+        "integration_tests": [
+          "Test client connection",
+          "Test Redis adapter",
+          "Test namespace routing"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Server starts successfully",
+        "Redis adapter connects",
+        "Namespaces are registered",
+        "Health endpoint works",
+        "Clients can connect"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/server.ts",
+        "services/socket-service/src/index.ts",
+        "services/socket-service/src/config/index.ts",
+        "services/socket-service/src/namespaces/chat.ts",
+        "services/socket-service/src/namespaces/presence.ts",
+        "services/socket-service/src/types/index.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["redis"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/health",
+          "description": "Health check endpoint"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 5,
+      "tags": ["socket", "server", "bootstrap"]
+    },
+    {
+      "id": "SOCKET-003",
+      "task_name": "Socket.IO Clustering with Redis Adapter",
+      "feature_details": "Implement proper Socket.IO clustering using Redis adapter for horizontal scaling across multiple nodes.",
+      "feature_dependency": ["SOCKET-002"],
+      "ai_prompt": "Implement Socket.IO clustering:\n\n1. Create services/socket-service/src/adapters/redis-adapter.ts:\n   ```typescript\n   import { createAdapter } from '@socket.io/redis-adapter';\n   import { createClient, RedisClientType } from 'redis';\n   import { Emitter } from '@socket.io/redis-emitter';\n\n   export class RedisAdapterManager {\n     private pubClient: RedisClientType;\n     private subClient: RedisClientType;\n     private emitter: Emitter;\n\n     async initialize(): Promise<void>;\n     getAdapter(): any;\n     getEmitter(): Emitter;\n     async shutdown(): Promise<void>;\n   }\n   ```\n\n2. Create services/socket-service/src/cluster/cluster-manager.ts:\n   ```typescript\n   export class ClusterManager {\n     getInstanceId(): string;\n     getConnectedClientsCount(): Promise<number>;\n     getRoomMembers(room: string): Promise<string[]>;\n     broadcastToCluster(event: string, data: unknown): Promise<void>;\n     getClusterNodes(): Promise<ClusterNode[]>;\n   }\n   ```\n\n3. Create services/socket-service/src/cluster/node-discovery.ts:\n   - Node registration in Redis\n   - Heartbeat mechanism\n   - Dead node detection\n   - Node metadata storage\n\n4. Create services/socket-service/src/cluster/shard-manager.ts:\n   - Shard socket rooms across nodes\n   - Consistent hashing for room assignment\n   - Room balancing\n\n5. Create services/socket-service/src/adapters/cluster-adapter.ts:\n   - Extended Redis adapter\n   - Custom event routing\n   - Performance optimizations\n   - Connection state synchronization\n\n6. Create services/socket-service/src/utils/sticky-session.ts:\n   - Session ID extraction\n   - Cookie handling for sticky sessions\n   - Fallback mechanisms\n\n7. Metrics and monitoring:\n   - Connections per node\n   - Message throughput\n   - Adapter latency\n   - Room distribution",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test cluster manager",
+          "Test node discovery",
+          "Test shard assignment"
+        ],
+        "integration_tests": [
+          "Test multi-node messaging",
+          "Test room joins across nodes",
+          "Test node failure handling"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Messages broadcast across all nodes",
+        "Room members visible from any node",
+        "Node discovery works",
+        "Graceful node shutdown",
+        "Metrics are tracked"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/adapters/redis-adapter.ts",
+        "services/socket-service/src/cluster/cluster-manager.ts",
+        "services/socket-service/src/cluster/node-discovery.ts",
+        "services/socket-service/src/cluster/shard-manager.ts",
+        "services/socket-service/src/adapters/cluster-adapter.ts",
+        "services/socket-service/src/utils/sticky-session.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["redis"],
+        "environment_variables": [
+          "CLUSTER_HEARTBEAT_INTERVAL",
+          "CLUSTER_NODE_TIMEOUT"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 5,
+      "tags": ["socket", "clustering", "redis", "scaling"]
+    },
+    {
+      "id": "SOCKET-004",
+      "task_name": "Socket Health Monitoring and Metrics",
+      "feature_details": "Implement comprehensive health monitoring, metrics collection, and diagnostics for the socket service.",
+      "feature_dependency": ["SOCKET-003"],
+      "ai_prompt": "Implement socket health monitoring:\n\n1. Create services/socket-service/src/health/health-checker.ts:\n   ```typescript\n   export class SocketHealthChecker {\n     checkRedisConnection(): Promise<HealthStatus>;\n     checkMongoConnection(): Promise<HealthStatus>;\n     checkKafkaConnection(): Promise<HealthStatus>;\n     getOverallHealth(): Promise<HealthReport>;\n   }\n\n   interface HealthReport {\n     status: 'healthy' | 'degraded' | 'unhealthy';\n     checks: {\n       redis: HealthStatus;\n       mongo: HealthStatus;\n       kafka: HealthStatus;\n     };\n     metrics: {\n       connections: number;\n       rooms: number;\n       uptime: number;\n     };\n   }\n   ```\n\n2. Create services/socket-service/src/metrics/socket-metrics.ts:\n   ```typescript\n   export class SocketMetrics {\n     // Connection metrics\n     incrementConnections(): void;\n     decrementConnections(): void;\n     getConnectionCount(): number;\n\n     // Message metrics\n     recordMessageSent(namespace: string, event: string): void;\n     recordMessageReceived(namespace: string, event: string): void;\n\n     // Latency metrics\n     recordEventLatency(event: string, latencyMs: number): void;\n\n     // Export for Prometheus\n     getMetrics(): string;\n   }\n   ```\n\n3. Create services/socket-service/src/health/connection-tracker.ts:\n   - Track connected sockets\n   - Per-tenant connection limits\n   - Connection analytics\n   - Zombie connection detection\n\n4. Create services/socket-service/src/routes/health.ts:\n   - GET /health - Basic health\n   - GET /health/ready - Readiness probe\n   - GET /health/live - Liveness probe\n   - GET /metrics - Prometheus metrics\n\n5. Create services/socket-service/src/diagnostics/socket-inspector.ts:\n   - List connected sockets\n   - Inspect socket state\n   - Force disconnect capability\n   - Debug mode for development\n\n6. Create services/socket-service/src/diagnostics/event-logger.ts:\n   - Log socket events\n   - Sampling for high traffic\n   - Debug correlation IDs\n   - Event replay capability",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test health checker",
+          "Test metrics collection",
+          "Test connection tracking"
+        ],
+        "integration_tests": [
+          "Test health endpoints",
+          "Test metrics export",
+          "Test diagnostics"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Health endpoints return correct status",
+        "Metrics are collected accurately",
+        "Connection limits are enforced",
+        "Prometheus metrics are exported",
+        "Diagnostics tools work"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/health/health-checker.ts",
+        "services/socket-service/src/metrics/socket-metrics.ts",
+        "services/socket-service/src/health/connection-tracker.ts",
+        "services/socket-service/src/routes/health.ts",
+        "services/socket-service/src/diagnostics/socket-inspector.ts",
+        "services/socket-service/src/diagnostics/event-logger.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [
+          "METRICS_ENABLED",
+          "DIAGNOSTICS_ENABLED"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/health",
+          "description": "Basic health check"
+        },
+        {
+          "method": "GET",
+          "path": "/health/ready",
+          "description": "Readiness probe"
+        },
+        {
+          "method": "GET",
+          "path": "/metrics",
+          "description": "Prometheus metrics"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["socket", "health", "metrics", "monitoring"]
+    }
+  ]
+}

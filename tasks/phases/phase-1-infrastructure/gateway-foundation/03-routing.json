@@ -1,0 +1,360 @@
+{
+  "task_group": "gateway-routing",
+  "description": "API versioning, tenant routing, SDK endpoints, and webhook handling",
+  "priority": "critical",
+  "estimated_hours": 16,
+  "phase": 1,
+  "feature_area": "gateway-foundation",
+  "tasks": [
+    {
+      "id": "GATEWAY-010",
+      "task_name": "API Versioning and Route Registration",
+      "feature_details": "Implement API versioning strategy with route registration, version negotiation, and deprecation handling.",
+      "feature_dependency": ["GATEWAY-003"],
+      "ai_prompt": "Implement API versioning:\n\n1. Create src/routes/index.ts:\n   - Route registration system\n   - Version-prefixed routes\n   - Auto-discovery of route files\n\n2. Create src/routes/version-manager.ts:\n   - Version handling:\n     * URL path: /v1/..., /v2/...\n     * Header: X-API-Version\n     * Accept header: application/vnd.caas.v1+json\n   - Default version when none specified\n   - Version negotiation\n\n3. Create src/routes/v1/index.ts:\n   - V1 API route prefix\n   - Register all v1 routes:\n     * /v1/auth/*\n     * /v1/tenants/*\n     * /v1/users/*\n     * /v1/conversations/*\n     * /v1/messages/*\n     * /v1/groups/*\n     * /v1/files/*\n     * /v1/notifications/*\n     * /v1/webhooks/*\n\n4. Create src/routes/route-factory.ts:\n   - Factory for creating versioned routes\n   - Schema attachment\n   - Middleware attachment\n   - Documentation generation\n\n5. Create src/middleware/versioning/deprecation.ts:\n   - Deprecation headers:\n     * Deprecation: true\n     * Sunset: <date>\n     * Link: <migration-guide>\n   - Log deprecated endpoint usage\n   - Metrics for deprecated calls\n\n6. Create src/middleware/versioning/version-redirect.ts:\n   - Redirect old versions to new\n   - Version compatibility layer\n   - Transform request/response for compatibility\n\n7. Create src/docs/openapi-generator.ts:\n   - Generate OpenAPI spec from routes\n   - Per-version documentation\n   - Swagger UI integration",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test version parsing",
+          "Test route registration",
+          "Test deprecation headers"
+        ],
+        "integration_tests": [
+          "Test version negotiation",
+          "Test route discovery",
+          "Test OpenAPI generation"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Routes are versioned correctly",
+        "Version negotiation works",
+        "Deprecated endpoints return headers",
+        "OpenAPI docs are generated",
+        "Route discovery is automatic"
+      ],
+      "files_to_create": [
+        "services/gateway/src/routes/index.ts",
+        "services/gateway/src/routes/version-manager.ts",
+        "services/gateway/src/routes/route-factory.ts",
+        "services/gateway/src/routes/v1/index.ts",
+        "services/gateway/src/middleware/versioning/deprecation.ts",
+        "services/gateway/src/middleware/versioning/version-redirect.ts",
+        "services/gateway/src/middleware/versioning/index.ts",
+        "services/gateway/src/docs/openapi-generator.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [
+          "DEFAULT_API_VERSION",
+          "SUPPORTED_API_VERSIONS"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["gateway", "routing", "versioning", "openapi"]
+    },
+    {
+      "id": "GATEWAY-011",
+      "task_name": "Tenant Context and Routing",
+      "feature_details": "Implement tenant context resolution from requests and tenant-aware routing for multi-tenant operation.",
+      "feature_dependency": ["GATEWAY-005", "GATEWAY-010"],
+      "ai_prompt": "Implement tenant context and routing:\n\n1. Create src/middleware/tenant/tenant-resolver.ts:\n   - Resolve tenant from multiple sources:\n     * Subdomain: tenant1.api.caas.com\n     * Header: X-Tenant-ID\n     * API key: Extract tenant from key\n     * JWT: Extract tenant from claims\n   - Priority order for resolution\n   - Cache tenant config in Redis\n\n2. Create src/middleware/tenant/tenant-context.ts:\n   - TenantContext interface:\n     ```typescript\n     interface TenantContext {\n       tenant_id: string;\n       app_id: string;\n       name: string;\n       plan: 'free' | 'startup' | 'business' | 'enterprise';\n       settings: TenantSettings;\n       limits: TenantLimits;\n       database_strategy: 'shared' | 'collection' | 'database';\n       is_active: boolean;\n       created_at: Date;\n     }\n     ```\n   - Attach to request.tenant\n\n3. Create src/middleware/tenant/tenant-validation.ts:\n   - Validate tenant is active\n   - Check tenant subscription status\n   - Verify tenant hasn't exceeded limits\n   - Block suspended tenants\n\n4. Create src/services/tenant-service.ts:\n   - TenantService class:\n     * getTenant(id: string): Promise<Tenant>\n     * getTenantByApiKey(keyId: string): Promise<Tenant>\n     * validateTenantAccess(tenantId: string, resource: string): Promise<boolean>\n   - Redis caching with TTL\n   - Fallback to MongoDB\n\n5. Create src/middleware/tenant/cross-tenant.ts:\n   - Prevent cross-tenant data access\n   - Validate tenant ownership of resources\n   - Audit cross-tenant attempts\n\n6. Create src/routes/v1/tenants.ts:\n   - Tenant management endpoints:\n     * GET /v1/tenant - Get current tenant\n     * PUT /v1/tenant/settings - Update settings\n     * GET /v1/tenant/usage - Get usage stats\n\n7. Create src/middleware/tenant/tenant-isolation.ts:\n   - Database connection switching\n   - Schema-level isolation\n   - Query scoping",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test tenant resolution from each source",
+          "Test context creation",
+          "Test cross-tenant prevention"
+        ],
+        "integration_tests": [
+          "Test full tenant resolution flow",
+          "Test tenant caching",
+          "Test tenant validation"
+        ],
+        "e2e_tests": [
+          "Test tenant isolation"
+        ]
+      },
+      "acceptance_criteria": [
+        "Tenant is resolved correctly from all sources",
+        "Context is available in handlers",
+        "Cross-tenant access is prevented",
+        "Suspended tenants are blocked",
+        "Tenant caching works correctly"
+      ],
+      "files_to_create": [
+        "services/gateway/src/middleware/tenant/tenant-resolver.ts",
+        "services/gateway/src/middleware/tenant/tenant-context.ts",
+        "services/gateway/src/middleware/tenant/tenant-validation.ts",
+        "services/gateway/src/middleware/tenant/cross-tenant.ts",
+        "services/gateway/src/middleware/tenant/tenant-isolation.ts",
+        "services/gateway/src/middleware/tenant/index.ts",
+        "services/gateway/src/services/tenant-service.ts",
+        "services/gateway/src/routes/v1/tenants.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [
+          "TENANT_CACHE_TTL",
+          "DEFAULT_DATABASE_STRATEGY"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/v1/tenant",
+          "description": "Get current tenant details"
+        },
+        {
+          "method": "PUT",
+          "path": "/v1/tenant/settings",
+          "description": "Update tenant settings"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/tenant/usage",
+          "description": "Get tenant usage statistics"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 5,
+      "tags": ["gateway", "tenant", "multi-tenancy", "routing"]
+    },
+    {
+      "id": "GATEWAY-012",
+      "task_name": "SDK Authentication Endpoints",
+      "feature_details": "Implement SDK-specific authentication endpoints for mobile and web clients using the CAAS SDK.",
+      "feature_dependency": ["GATEWAY-005", "GATEWAY-011"],
+      "ai_prompt": "Implement SDK authentication endpoints:\n\n1. Create src/routes/v1/auth/index.ts:\n   - Auth route group\n\n2. Create src/routes/v1/auth/sdk-auth.ts:\n   - POST /v1/auth/sdk/token\n     * Request: { app_id, app_secret, user_external_id?, metadata? }\n     * Response: { access_token, refresh_token, expires_in, user }\n     * Generate JWT with SDK claims\n     * Create/update user if user_external_id provided\n\n3. Create src/routes/v1/auth/refresh.ts:\n   - POST /v1/auth/refresh\n     * Request: { refresh_token }\n     * Response: { access_token, refresh_token, expires_in }\n     * Rotate refresh token\n     * Invalidate old refresh token\n\n4. Create src/routes/v1/auth/logout.ts:\n   - POST /v1/auth/logout\n     * Invalidate access token\n     * Invalidate refresh token\n     * Clear session data\n     * Notify presence service\n\n5. Create src/services/token-service.ts:\n   - TokenService class:\n     * generateAccessToken(user: User, tenant: Tenant): string\n     * generateRefreshToken(userId: string): string\n     * validateToken(token: string): TokenPayload\n     * revokeToken(token: string): void\n   - Token storage in Redis\n   - Token rotation strategy\n\n6. Create src/routes/v1/auth/api-key.ts:\n   - POST /v1/auth/api-keys - Create API key (admin only)\n   - GET /v1/auth/api-keys - List API keys\n   - DELETE /v1/auth/api-keys/:id - Revoke API key\n   - POST /v1/auth/api-keys/:id/rotate - Rotate key\n\n7. Create src/utils/jwt-helpers.ts:\n   - JWT generation with RS256\n   - Custom claims\n   - Key rotation support\n\n8. Token configuration:\n   - Access token: 15 minutes\n   - Refresh token: 7 days\n   - Sliding expiration option",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test token generation",
+          "Test token validation",
+          "Test refresh rotation"
+        ],
+        "integration_tests": [
+          "Test SDK auth flow",
+          "Test refresh flow",
+          "Test logout flow",
+          "Test API key management"
+        ],
+        "e2e_tests": [
+          "Test complete auth cycle"
+        ]
+      },
+      "acceptance_criteria": [
+        "SDK can authenticate and get tokens",
+        "Refresh tokens rotate correctly",
+        "Logout invalidates all tokens",
+        "API keys can be managed",
+        "Tokens have correct claims and expiration"
+      ],
+      "files_to_create": [
+        "services/gateway/src/routes/v1/auth/index.ts",
+        "services/gateway/src/routes/v1/auth/sdk-auth.ts",
+        "services/gateway/src/routes/v1/auth/refresh.ts",
+        "services/gateway/src/routes/v1/auth/logout.ts",
+        "services/gateway/src/routes/v1/auth/api-key.ts",
+        "services/gateway/src/services/token-service.ts",
+        "services/gateway/src/utils/jwt-helpers.ts",
+        "services/gateway/src/schemas/validators/auth.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [
+          "JWT_PRIVATE_KEY",
+          "JWT_PUBLIC_KEY",
+          "ACCESS_TOKEN_EXPIRY",
+          "REFRESH_TOKEN_EXPIRY"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/v1/auth/sdk/token",
+          "description": "Authenticate SDK and get tokens"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/auth/refresh",
+          "description": "Refresh access token"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/auth/logout",
+          "description": "Logout and invalidate tokens"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/auth/api-keys",
+          "description": "Create new API key"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/auth/api-keys",
+          "description": "List API keys"
+        },
+        {
+          "method": "DELETE",
+          "path": "/v1/auth/api-keys/:id",
+          "description": "Revoke API key"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "refresh_tokens",
+            "description": "Store refresh tokens with metadata"
+          },
+          {
+            "name": "api_keys",
+            "description": "Store API keys with permissions"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "refresh_tokens",
+            "fields": ["token_hash"]
+          },
+          {
+            "collection": "api_keys",
+            "fields": ["key_hash"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["gateway", "authentication", "sdk", "jwt", "api-keys"]
+    },
+    {
+      "id": "GATEWAY-013",
+      "task_name": "Webhook Management and Dispatch",
+      "feature_details": "Implement webhook configuration, event dispatching, retry logic, and signature verification for tenant webhooks.",
+      "feature_dependency": ["GATEWAY-011", "KAFKA-008"],
+      "ai_prompt": "Implement webhook system:\n\n1. Create src/routes/v1/webhooks/index.ts:\n   - Webhook management routes\n\n2. Create src/routes/v1/webhooks/config.ts:\n   - POST /v1/webhooks - Register webhook\n     * url, events[], secret, active\n   - GET /v1/webhooks - List webhooks\n   - PUT /v1/webhooks/:id - Update webhook\n   - DELETE /v1/webhooks/:id - Delete webhook\n   - POST /v1/webhooks/:id/test - Test webhook\n\n3. Create src/services/webhook-service.ts:\n   - WebhookService class:\n     * createWebhook(config: WebhookConfig): Promise<Webhook>\n     * updateWebhook(id: string, config: Partial<WebhookConfig>): Promise<Webhook>\n     * deleteWebhook(id: string): Promise<void>\n     * getWebhooksForEvent(tenantId: string, event: string): Promise<Webhook[]>\n     * testWebhook(id: string): Promise<WebhookTestResult>\n\n4. Create src/services/webhook-dispatcher.ts:\n   - WebhookDispatcher class:\n     * dispatch(webhook: Webhook, event: WebhookEvent): Promise<void>\n   - HTTP request with:\n     * X-Webhook-ID header\n     * X-Webhook-Signature header (HMAC-SHA256)\n     * X-Webhook-Timestamp header\n     * X-Webhook-Event header\n   - Timeout: 30 seconds\n   - Retry on 5xx or timeout\n\n5. Create src/services/webhook-retry.ts:\n   - Retry strategy:\n     * 3 retries\n     * Exponential backoff: 1min, 5min, 30min\n   - Dead letter after max retries\n   - Kafka-based retry queue\n\n6. Create src/utils/webhook-signature.ts:\n   - Generate HMAC-SHA256 signature\n   - Signature format: t=timestamp,v1=signature\n   - Verify signature helper for SDK docs\n\n7. Create src/routes/v1/webhooks/logs.ts:\n   - GET /v1/webhooks/:id/logs - Get delivery logs\n   - Pagination support\n   - Filter by status\n\n8. Webhook events to support:\n   - message.sent, message.delivered, message.read\n   - conversation.created, conversation.updated\n   - user.created, user.updated\n   - group.created, group.updated, member.added, member.removed\n\n9. Create webhook consumer for Kafka events",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test signature generation",
+          "Test retry logic",
+          "Test event filtering"
+        ],
+        "integration_tests": [
+          "Test webhook creation",
+          "Test webhook dispatch",
+          "Test retry queue",
+          "Test delivery logging"
+        ],
+        "e2e_tests": [
+          "Test complete webhook flow"
+        ]
+      },
+      "acceptance_criteria": [
+        "Webhooks can be configured per tenant",
+        "Events are dispatched reliably",
+        "Signatures can be verified",
+        "Failed webhooks are retried",
+        "Delivery logs are available"
+      ],
+      "files_to_create": [
+        "services/gateway/src/routes/v1/webhooks/index.ts",
+        "services/gateway/src/routes/v1/webhooks/config.ts",
+        "services/gateway/src/routes/v1/webhooks/logs.ts",
+        "services/gateway/src/services/webhook-service.ts",
+        "services/gateway/src/services/webhook-dispatcher.ts",
+        "services/gateway/src/services/webhook-retry.ts",
+        "services/gateway/src/utils/webhook-signature.ts",
+        "services/gateway/src/schemas/validators/webhook.ts",
+        "services/gateway/src/consumers/webhook-consumer.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [
+          "WEBHOOK_TIMEOUT_MS",
+          "WEBHOOK_MAX_RETRIES",
+          "WEBHOOK_RETRY_DELAYS"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/v1/webhooks",
+          "description": "Register a webhook"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/webhooks",
+          "description": "List webhooks"
+        },
+        {
+          "method": "PUT",
+          "path": "/v1/webhooks/:id",
+          "description": "Update webhook"
+        },
+        {
+          "method": "DELETE",
+          "path": "/v1/webhooks/:id",
+          "description": "Delete webhook"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/webhooks/:id/test",
+          "description": "Test webhook delivery"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/webhooks/:id/logs",
+          "description": "Get webhook delivery logs"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "webhooks",
+            "description": "Webhook configurations"
+          },
+          {
+            "name": "webhook_logs",
+            "description": "Webhook delivery logs"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "webhooks",
+            "fields": ["tenant_id", "events"]
+          },
+          {
+            "collection": "webhook_logs",
+            "fields": ["webhook_id", "created_at"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 5,
+      "tags": ["gateway", "webhooks", "events", "dispatch"]
+    }
+  ]
+}

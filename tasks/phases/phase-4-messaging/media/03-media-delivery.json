@@ -1,0 +1,247 @@
+{
+  "task_group": "media-delivery",
+  "description": "CDN integration, signed URLs, and media streaming",
+  "priority": "high",
+  "estimated_hours": 16,
+  "phase": 4,
+  "feature_area": "media",
+  "tasks": [
+    {
+      "id": "MEDIA-009",
+      "task_name": "Signed URL Generation",
+      "feature_details": "Implement secure signed URL generation for private media access.",
+      "feature_dependency": ["MEDIA-004"],
+      "ai_prompt": "Implement signed URLs:\n\n1. Create services/media-service/src/delivery/signed-url.service.ts:\n   ```typescript\n   import { getSignedUrl } from '@aws-sdk/s3-request-presigner';\n   import { GetObjectCommand } from '@aws-sdk/client-s3';\n\n   export class SignedUrlService {\n     constructor(\n       private s3Client: S3Client,\n       private redis: Redis,\n     ) {}\n\n     async getSignedUrl(\n       key: string,\n       options: SignedUrlOptions = {},\n     ): Promise<string> {\n       const cacheKey = `signed_url:${key}`;\n       \n       // Check cache\n       const cached = await this.redis.get(cacheKey);\n       if (cached) {\n         return cached;\n       }\n\n       // Generate signed URL\n       const command = new GetObjectCommand({\n         Bucket: this.bucket,\n         Key: key,\n         ResponseContentType: options.contentType,\n         ResponseContentDisposition: options.download\n           ? `attachment; filename=\"${options.filename}\"`\n           : 'inline',\n       });\n\n       const url = await getSignedUrl(this.s3Client, command, {\n         expiresIn: options.expiresIn || 3600, // 1 hour default\n       });\n\n       // Cache URL (expire before URL expires)\n       await this.redis.setex(cacheKey, (options.expiresIn || 3600) - 60, url);\n\n       return url;\n     }\n\n     async getMediaUrls(media: Media): Promise<MediaUrls> {\n       return {\n         url: await this.getSignedUrl(media.key),\n         thumbnail_url: media.thumbnail_key\n           ? await this.getSignedUrl(media.thumbnail_key)\n           : undefined,\n         preview_url: media.preview_key\n           ? await this.getSignedUrl(media.preview_key)\n           : undefined,\n       };\n     }\n   }\n\n   interface SignedUrlOptions {\n     expiresIn?: number;\n     contentType?: string;\n     download?: boolean;\n     filename?: string;\n   }\n   ```\n\n2. Create services/gateway/src/routes/v1/media/download.ts:\n   - GET /v1/media/:id/url - Get signed URL\n   - GET /v1/media/:id/download - Download file\n\n3. URL expiration strategy:\n   - Default: 1 hour\n   - Cache in Redis (expire 1 minute early)\n   - Refresh on access\n\n4. Security considerations:\n   - Validate tenant access\n   - Log URL generation\n   - Rate limit URL requests\n   - IP restriction (optional)\n\n5. Download vs inline:\n   - Content-Disposition header\n   - Force download for files\n   - Inline for images/videos",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test URL generation",
+          "Test caching",
+          "Test expiration"
+        ],
+        "integration_tests": [
+          "Test with S3",
+          "Test download",
+          "Test access control"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Signed URLs generated",
+        "URLs are cached",
+        "Expiration works",
+        "Download works",
+        "Access controlled"
+      ],
+      "files_to_create": [
+        "services/media-service/src/delivery/signed-url.service.ts",
+        "services/gateway/src/routes/v1/media/download.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["minio", "redis"],
+        "environment_variables": [
+          "SIGNED_URL_EXPIRY",
+          "SIGNED_URL_CACHE_TTL"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/v1/media/:id/url",
+          "description": "Get signed URL for media"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/media/:id/download",
+          "description": "Download media file"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["media", "delivery", "signed-urls", "security"]
+    },
+    {
+      "id": "MEDIA-010",
+      "task_name": "CDN Integration",
+      "feature_details": "Implement CDN integration for optimized media delivery.",
+      "feature_dependency": ["MEDIA-009"],
+      "ai_prompt": "Implement CDN integration:\n\n1. Create services/media-service/src/delivery/cdn.service.ts:\n   ```typescript\n   export class CdnService {\n     constructor(private config: CdnConfig) {}\n\n     getCdnUrl(key: string, options: CdnOptions = {}): string {\n       const baseUrl = this.config.domain;\n       const path = this.buildPath(key, options);\n       const signature = this.signUrl(path);\n\n       return `${baseUrl}${path}?sig=${signature}&exp=${options.expiresAt}`;\n     }\n\n     private buildPath(key: string, options: CdnOptions): string {\n       let path = `/${key}`;\n\n       // Image transformations\n       if (options.width || options.height) {\n         path = `/resize/${options.width || 'auto'}x${options.height || 'auto'}${path}`;\n       }\n\n       if (options.format) {\n         path = `/format/${options.format}${path}`;\n       }\n\n       if (options.quality) {\n         path = `/quality/${options.quality}${path}`;\n       }\n\n       return path;\n     }\n\n     private signUrl(path: string): string {\n       // HMAC signature for URL security\n       const hmac = crypto.createHmac('sha256', this.config.signingKey);\n       hmac.update(path);\n       return hmac.digest('base64url');\n     }\n   }\n\n   interface CdnConfig {\n     domain: string;\n     signingKey: string;\n     enabled: boolean;\n   }\n\n   interface CdnOptions {\n     width?: number;\n     height?: number;\n     format?: 'webp' | 'avif' | 'jpeg' | 'png';\n     quality?: number;\n     expiresAt?: number;\n   }\n   ```\n\n2. CDN configuration:\n   - CloudFront, Cloudflare, or custom\n   - Origin: S3/MinIO bucket\n   - Cache headers configuration\n\n3. Image transformations via CDN:\n   - Resize on-the-fly\n   - Format conversion (WebP, AVIF)\n   - Quality adjustment\n\n4. Cache invalidation:\n   ```typescript\n   async invalidateCache(keys: string[]): Promise<void> {\n     // CloudFront invalidation\n     await this.cloudfront.createInvalidation({\n       DistributionId: this.distributionId,\n       InvalidationBatch: {\n         Paths: { Quantity: keys.length, Items: keys.map(k => `/${k}`) },\n         CallerReference: Date.now().toString(),\n       },\n     });\n   }\n   ```\n\n5. Fallback to S3:\n   - If CDN disabled\n   - If CDN error\n   - Development environment",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test URL building",
+          "Test signature generation",
+          "Test transformations"
+        ],
+        "integration_tests": [
+          "Test CDN delivery",
+          "Test cache invalidation",
+          "Test fallback"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "CDN URLs generated",
+        "Transformations work",
+        "Signatures verified",
+        "Cache invalidation works",
+        "Fallback works"
+      ],
+      "files_to_create": [
+        "services/media-service/src/delivery/cdn.service.ts",
+        "services/media-service/src/config/cdn.config.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [
+          "CDN_ENABLED",
+          "CDN_DOMAIN",
+          "CDN_SIGNING_KEY",
+          "CDN_DISTRIBUTION_ID"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["media", "delivery", "cdn", "caching"]
+    },
+    {
+      "id": "MEDIA-011",
+      "task_name": "Video Streaming",
+      "feature_details": "Implement adaptive video streaming with HLS/DASH.",
+      "feature_dependency": ["MEDIA-006"],
+      "ai_prompt": "Implement video streaming:\n\n1. Create services/media-service/src/delivery/streaming.service.ts:\n   ```typescript\n   export class StreamingService {\n     async generateHlsManifest(mediaId: string): Promise<string> {\n       const media = await this.mediaRepo.findById(mediaId);\n       const qualities = await this.getAvailableQualities(media);\n\n       // Generate master playlist\n       let manifest = '#EXTM3U\\n';\n       manifest += '#EXT-X-VERSION:3\\n';\n\n       for (const quality of qualities) {\n         manifest += `#EXT-X-STREAM-INF:BANDWIDTH=${quality.bandwidth},RESOLUTION=${quality.resolution}\\n`;\n         manifest += `${quality.playlistUrl}\\n`;\n       }\n\n       return manifest;\n     }\n\n     async getSegment(mediaId: string, quality: string, segment: number): Promise<Buffer> {\n       const segmentKey = `${mediaId}/${quality}/segment_${segment}.ts`;\n       return this.downloadFromS3(segmentKey);\n     }\n\n     async transcodeForStreaming(media: Media): Promise<void> {\n       const qualities = [\n         { name: '720p', width: 1280, height: 720, bitrate: '2500k' },\n         { name: '480p', width: 854, height: 480, bitrate: '1000k' },\n         { name: '360p', width: 640, height: 360, bitrate: '500k' },\n       ];\n\n       for (const quality of qualities) {\n         await this.transcodeQuality(media, quality);\n       }\n\n       // Generate HLS segments\n       await this.segmentVideo(media);\n     }\n   }\n   ```\n\n2. Create services/gateway/src/routes/v1/media/stream.ts:\n   - GET /v1/media/:id/stream - Get master playlist\n   - GET /v1/media/:id/stream/:quality/playlist.m3u8 - Quality playlist\n   - GET /v1/media/:id/stream/:quality/:segment.ts - Segment\n\n3. HLS configuration:\n   - 10-second segments\n   - Multiple quality levels\n   - Signed segment URLs\n\n4. Byte-range requests:\n   - Support Range header for progressive download\n   - Efficient seeking\n   - Resume download support\n\n5. Cache segments:\n   - Cache in CDN\n   - Long cache TTL for segments\n   - Short TTL for manifests",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test manifest generation",
+          "Test segment retrieval"
+        ],
+        "integration_tests": [
+          "Test HLS playback",
+          "Test quality switching",
+          "Test byte-range"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "HLS manifests generated",
+        "Segments served",
+        "Quality switching works",
+        "Byte-range works",
+        "Segments cached"
+      ],
+      "files_to_create": [
+        "services/media-service/src/delivery/streaming.service.ts",
+        "services/gateway/src/routes/v1/media/stream.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [
+          "HLS_SEGMENT_DURATION"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/v1/media/:id/stream",
+          "description": "Get HLS master playlist"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/media/:id/stream/:quality/playlist.m3u8",
+          "description": "Get quality-specific playlist"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/media/:id/stream/:quality/:segment",
+          "description": "Get video segment"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["media", "streaming", "hls", "video"]
+    },
+    {
+      "id": "MEDIA-012",
+      "task_name": "Media Cleanup and Quotas",
+      "feature_details": "Implement media cleanup jobs and storage quotas.",
+      "feature_dependency": ["MEDIA-004"],
+      "ai_prompt": "Implement cleanup and quotas:\n\n1. Create services/media-service/src/cleanup/cleanup.service.ts:\n   ```typescript\n   export class MediaCleanupService {\n     async cleanupOrphanedMedia(): Promise<CleanupResult> {\n       // Find media not attached to any message after 24 hours\n       const orphaned = await this.mediaRepo.findOrphaned({\n         olderThan: new Date(Date.now() - 24 * 60 * 60 * 1000),\n       });\n\n       for (const media of orphaned) {\n         await this.deleteMedia(media);\n       }\n\n       return { deleted: orphaned.length };\n     }\n\n     async cleanupExpiredMedia(): Promise<CleanupResult> {\n       // Find media past retention period\n       const expired = await this.mediaRepo.findExpired();\n\n       for (const media of expired) {\n         await this.deleteMedia(media);\n       }\n\n       return { deleted: expired.length };\n     }\n\n     private async deleteMedia(media: Media): Promise<void> {\n       // Delete from S3\n       await this.s3Client.deleteObject({ Bucket: this.bucket, Key: media.key });\n       if (media.thumbnail_key) {\n         await this.s3Client.deleteObject({ Bucket: this.bucket, Key: media.thumbnail_key });\n       }\n\n       // Delete from database\n       await this.mediaRepo.delete(media.id);\n     }\n   }\n   ```\n\n2. Create services/media-service/src/quotas/quota.service.ts:\n   ```typescript\n   export class QuotaService {\n     async checkQuota(tenantId: string, fileSize: number): Promise<QuotaCheck> {\n       const usage = await this.getUsage(tenantId);\n       const limit = await this.getLimit(tenantId);\n\n       if (usage + fileSize > limit) {\n         throw new PayloadTooLargeException(\n           `Storage quota exceeded. Used: ${usage}, Limit: ${limit}`,\n         );\n       }\n\n       return {\n         used: usage,\n         limit,\n         remaining: limit - usage,\n       };\n     }\n\n     async getUsage(tenantId: string): Promise<number> {\n       const result = await this.mediaRepo.aggregate([\n         { $match: { tenant_id: tenantId } },\n         { $group: { _id: null, total: { $sum: '$size' } } },\n       ]);\n       return result[0]?.total || 0;\n     }\n\n     async updateUsage(tenantId: string, delta: number): Promise<void> {\n       await this.redis.incrby(`quota:${tenantId}`, delta);\n     }\n   }\n   ```\n\n3. Scheduled jobs:\n   - Orphan cleanup: every hour\n   - Expired cleanup: daily\n   - Quota recalculation: weekly\n\n4. Storage quotas:\n   - Per-tenant limits\n   - Per-user limits (optional)\n   - Plan-based limits\n\n5. Create services/gateway/src/routes/v1/media/quota.ts:\n   - GET /v1/media/quota - Get current quota usage",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test cleanup logic",
+          "Test quota calculation"
+        ],
+        "integration_tests": [
+          "Test scheduled jobs",
+          "Test quota enforcement"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Orphans cleaned up",
+        "Expired cleaned up",
+        "Quotas enforced",
+        "Usage tracked",
+        "Jobs scheduled"
+      ],
+      "files_to_create": [
+        "services/media-service/src/cleanup/cleanup.service.ts",
+        "services/media-service/src/quotas/quota.service.ts",
+        "services/gateway/src/routes/v1/media/quota.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb", "minio", "redis"],
+        "environment_variables": [
+          "ORPHAN_CLEANUP_HOURS",
+          "DEFAULT_STORAGE_QUOTA"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/v1/media/quota",
+          "description": "Get storage quota usage"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [
+          {
+            "collection": "media",
+            "fields": ["tenant_id", "attached_to", "created_at"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["media", "cleanup", "quotas", "storage"]
+    }
+  ]
+}

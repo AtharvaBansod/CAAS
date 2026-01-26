@@ -1,0 +1,117 @@
+{
+  "feature_group": "widget-customization",
+  "description": "Widget theming, configuration, and advanced features",
+  "tasks": [
+    {
+      "task-name": "Widget Theming System",
+      "feature-details": "Implement theming for the widget that allows customization via configuration. Support brand colors, fonts, and custom CSS. Ensure theme is applied correctly in both regular and iframe modes.",
+      "feature-dependency": ["WIDGET-001", "UI-002"],
+      "ai-prompt": "Create widget theming in packages/widget/src/theme/:\n\n1. WidgetTheme.ts - Theme type definitions:\n   - ThemeConfig interface:\n     - primaryColor: string (hex or rgb)\n     - textColor: string\n     - backgroundColor: string\n     - fontFamily: string\n     - borderRadius: number\n     - headerStyle: 'gradient' | 'solid'\n   - Extend base @caas/ui theme types\n\n2. createWidgetTheme.ts:\n   - createWidgetTheme(config: Partial<ThemeConfig>): Theme\n   - Merge with defaults\n   - Generate CSS variables\n   - Generate derived colors (hover, active states)\n   - Support dark mode detection\n\n3. ThemeInjector.tsx:\n   - Inject theme CSS variables into widget container\n   - Support shadow DOM style injection\n   - Support iframe style injection\n   - Dynamic theme updates\n\n4. PresetThemes.ts:\n   - Provide preset color schemes:\n     - 'default' - Blue theme\n     - 'dark' - Dark mode\n     - 'minimal' - Black and white\n     - 'brand' - Use host page's CSS variables\n   - Easy to use: theme: 'dark'\n\n5. CustomCSS.ts:\n   - Accept custom CSS string in config\n   - Inject safely into widget\n   - Scope to widget container\n   - Sanitize for XSS prevention\n\n6. BrandingConfig:\n   - logo: string (URL)\n   - logoAlt: string\n   - companyName: string\n   - welcomeMessage: string\n   - poweredBy: boolean (show 'Powered by CAAS')\n\n7. Integration:\n   - Apply theme in WidgetProvider\n   - Pass to @caas/ui ThemeProvider\n   - Update dynamically if config changes",
+      "testing-instructions": "1. Test default theme applies correctly\n2. Test custom primaryColor changes accent\n3. Test preset themes apply correctly\n4. Test custom CSS is injected\n5. Test iframe mode receives theme\n6. Test shadow DOM receives theme\n7. Test branding config shows logo\n8. Test welcome message displays\n9. Test 'Powered by' can be hidden\n10. Test theme updates dynamically",
+      "acceptance_criteria": [
+        "Default theme looks professional",
+        "Custom colors apply correctly",
+        "Preset themes work",
+        "Custom CSS is safely injected",
+        "Branding is customizable",
+        "Theme works in iframe mode",
+        "Theme works with shadow DOM",
+        "No XSS vulnerabilities",
+        "Dark mode is supported"
+      ],
+      "files_to_create": [
+        "packages/widget/src/theme/WidgetTheme.ts",
+        "packages/widget/src/theme/createWidgetTheme.ts",
+        "packages/widget/src/theme/ThemeInjector.tsx",
+        "packages/widget/src/theme/PresetThemes.ts",
+        "packages/widget/src/theme/CustomCSS.ts",
+        "packages/widget/src/theme/BrandingConfig.ts",
+        "packages/widget/src/theme/index.ts"
+      ],
+      "docker_requirements": null,
+      "task_id": "WIDGET-005"
+    },
+    {
+      "task-name": "Widget Pre-Chat Form",
+      "feature-details": "Create a pre-chat form that collects user information before starting a conversation. Support custom fields, validation, and integration with user creation/identification.",
+      "feature-dependency": ["WIDGET-003"],
+      "ai-prompt": "Create pre-chat form in packages/widget/src/components/:\n\n1. PreChatForm.tsx:\n   Props (from config):\n   - enabled: boolean\n   - fields: FormField[]\n   - title: string\n   - subtitle: string\n   - submitLabel: string\n   - skipLabel: string (for optional form)\n   - onSubmit: (data: FormData) => Promise<void>\n   - onSkip?: () => void\n\n   FormField:\n   - name: string\n   - type: 'text' | 'email' | 'phone' | 'select' | 'textarea'\n   - label: string\n   - placeholder?: string\n   - required: boolean\n   - options?: string[] (for select)\n   - validation?: ValidationRule[]\n\n2. FormField.tsx:\n   - Render input based on type\n   - Show validation errors\n   - Accessible labels\n   - Use @caas/ui Input primitive\n\n3. FormValidation.ts:\n   - Validate field values\n   - Rules: required, email, phone, minLength, maxLength, pattern\n   - Return error messages\n   - Support custom validation\n\n4. DefaultFields.ts:\n   - Preset field configurations:\n     - Name (required text)\n     - Email (required email)\n     - Phone (optional tel)\n     - Company (optional text)\n     - Message (optional textarea)\n\n5. Integration with user identification:\n   - If user already identified, skip form\n   - Store form data in localStorage\n   - Create/update user via SDK\n   - Pass metadata to conversation\n\n6. UI Features:\n   - Show before chat loads\n   - Smooth transition to chat after submit\n   - Loading state during submission\n   - Error handling with retry\n   - 'Skip' option if not required\n\n7. Configuration example:\n   ```\n   preChatForm: {\n     enabled: true,\n     fields: [\n       { name: 'name', type: 'text', label: 'Your Name', required: true },\n       { name: 'email', type: 'email', label: 'Email', required: true },\n       { name: 'department', type: 'select', label: 'Department', options: ['Sales', 'Support'] }\n     ]\n   }\n   ```",
+      "testing-instructions": "1. Test form renders when enabled\n2. Test all field types render correctly\n3. Test required field validation\n4. Test email format validation\n5. Test form submits successfully\n6. Test skip button works when allowed\n7. Test transition to chat after submit\n8. Test error display and retry\n9. Test localStorage stores user data\n10. Test form skipped if user identified",
+      "acceptance_criteria": [
+        "Form displays before chat",
+        "All field types work correctly",
+        "Validation prevents invalid submission",
+        "User data is stored/submitted",
+        "Smooth transition to chat",
+        "Skip option works when configured",
+        "Error handling is user-friendly",
+        "Form is accessible",
+        "Previously identified users skip form"
+      ],
+      "files_to_create": [
+        "packages/widget/src/components/PreChatForm.tsx",
+        "packages/widget/src/components/FormField.tsx",
+        "packages/widget/src/utils/FormValidation.ts",
+        "packages/widget/src/config/DefaultFields.ts"
+      ],
+      "docker_requirements": null,
+      "task_id": "WIDGET-006"
+    },
+    {
+      "task-name": "Widget Notifications",
+      "feature-details": "Implement notification system for the widget including sound notifications, browser notifications (with permission), and visual indicators when chat is minimized.",
+      "feature-dependency": ["WIDGET-004"],
+      "ai-prompt": "Create notification system in packages/widget/src/notifications/:\n\n1. NotificationManager.ts:\n   - Configuration:\n     - soundEnabled: boolean\n     - soundUrl: string (custom sound URL)\n     - browserNotifications: boolean\n     - flashTitle: boolean (flash tab title)\n   - Methods:\n     - notify(message: Message): void\n     - requestPermission(): Promise<boolean>\n     - setEnabled(enabled: boolean): void\n\n2. SoundNotification.ts:\n   - Play sound on new message\n   - Preload audio file\n   - Support custom sound URL\n   - Fallback to default sound\n   - Volume control\n   - Mute when tab is focused and chat is open\n\n3. BrowserNotification.ts:\n   - Request notification permission\n   - Show browser notification for new messages\n   - Click to focus tab and open chat\n   - Notification content:\n     - Title: sender name\n     - Body: message preview (truncated)\n     - Icon: sender avatar or app icon\n   - Only when tab is not focused or chat is closed\n\n4. TitleNotification.ts:\n   - Flash tab title with unread count\n   - Pattern: 'New Message!' <-> 'Original Title'\n   - Stop when tab is focused\n   - Update count: '(3) New Messages!'\n\n5. VisualNotification.tsx:\n   - Pulse animation on launcher button\n   - Unread badge (already created)\n   - Message preview popup (optional)\n   - Subtle glow effect\n\n6. PreviewPopup.tsx:\n   - Small popup near launcher\n   - Shows latest message preview\n   - Auto-dismiss after 5 seconds\n   - Click to open chat\n   - Dismiss button\n\n7. Configuration:\n   ```\n   notifications: {\n     sound: { enabled: true, url: '/custom-sound.mp3' },\n     browser: { enabled: true, requestOnOpen: true },\n     preview: { enabled: true, duration: 5000 },\n     flashTitle: { enabled: true }\n   }\n   ```\n\n8. Permission handling:\n   - Request on first message or on config\n   - Store permission state\n   - Graceful degradation if denied",
+      "testing-instructions": "1. Test sound plays on new message\n2. Test custom sound URL works\n3. Test browser notification appears\n4. Test clicking notification opens chat\n5. Test title flashes with count\n6. Test preview popup appears\n7. Test popup auto-dismisses\n8. Test permission request flow\n9. Test notifications disabled when focused\n10. Test configuration options",
+      "acceptance_criteria": [
+        "Sound notification plays correctly",
+        "Custom sound can be configured",
+        "Browser notifications work",
+        "Tab title flashes with count",
+        "Preview popup shows message",
+        "Notifications respect focus state",
+        "Permission handling is graceful",
+        "All notifications are configurable",
+        "Performance is not impacted"
+      ],
+      "files_to_create": [
+        "packages/widget/src/notifications/NotificationManager.ts",
+        "packages/widget/src/notifications/SoundNotification.ts",
+        "packages/widget/src/notifications/BrowserNotification.ts",
+        "packages/widget/src/notifications/TitleNotification.ts",
+        "packages/widget/src/components/PreviewPopup.tsx",
+        "packages/widget/src/notifications/index.ts",
+        "packages/widget/assets/notification.mp3"
+      ],
+      "docker_requirements": null,
+      "task_id": "WIDGET-007"
+    },
+    {
+      "task-name": "Widget API and SDK Integration",
+      "feature-details": "Create comprehensive JavaScript API for widget control and host page integration. Support programmatic control, event handling, and custom actions. Publish widget SDK for advanced integrations.",
+      "feature-dependency": ["WIDGET-004"],
+      "ai-prompt": "Create widget API in packages/widget/src/api/:\n\n1. WidgetAPI.ts - Public API exposed on CAASWidget:\n   Initialization:\n   - init(config: WidgetConfig): Promise<void>\n   - destroy(): void\n   - isInitialized(): boolean\n\n   Window Control:\n   - open(): void\n   - close(): void\n   - toggle(): void\n   - isOpen(): boolean\n   - minimize(): void\n   - maximize(): void\n\n   Conversation:\n   - startConversation(options?: StartOptions): Promise<string>\n   - openConversation(conversationId: string): void\n   - sendMessage(content: string): Promise<void>\n   - getCurrentConversation(): Conversation | null\n\n   User:\n   - identify(userId: string, userData?: UserData): Promise<void>\n   - updateUser(userData: UserData): Promise<void>\n   - logout(): Promise<void>\n   - getUser(): User | null\n\n   State:\n   - getUnreadCount(): number\n   - getConnectionStatus(): 'connected' | 'connecting' | 'disconnected'\n\n   Configuration:\n   - updateConfig(config: Partial<WidgetConfig>): void\n   - getConfig(): WidgetConfig\n\n2. WidgetEvents (extend):\n   - on(event: WidgetEvent, handler: EventHandler): Unsubscribe\n   - off(event: WidgetEvent, handler: EventHandler): void\n   - once(event: WidgetEvent, handler: EventHandler): Unsubscribe\n\n   Events:\n   - 'ready'\n   - 'open'\n   - 'close'\n   - 'message:received'\n   - 'message:sent'\n   - 'conversation:started'\n   - 'conversation:ended'\n   - 'user:identified'\n   - 'error'\n   - 'connection:changed'\n\n3. CustomActions.ts:\n   - Register custom action buttons\n   - registerAction(action: CustomAction): void\n   - Actions appear in chat UI\n   - Callback when clicked\n   - Example: 'Schedule Demo' button\n\n4. Hooks (for React host pages):\n   - useCAASWidget() hook\n   - Returns widget state and methods\n   - SSR safe\n\n5. TypeScript Definitions:\n   - Generate .d.ts file\n   - Publish to DefinitelyTyped or include\n   - Document all types\n\n6. Error Handling:\n   - Throw CAASWidgetError with codes\n   - Error codes: INIT_FAILED, NOT_INITIALIZED, INVALID_CONFIG\n   - Graceful degradation\n\n7. Documentation:\n   - JSDoc comments on all methods\n   - README with API reference\n   - Example integrations",
+      "testing-instructions": "1. Test init() initializes widget\n2. Test destroy() cleans up\n3. Test open/close/toggle control window\n4. Test identify() sets user data\n5. Test sendMessage() sends programmatically\n6. Test events are fired correctly\n7. Test custom actions appear and fire\n8. Test error handling with invalid config\n9. Test TypeScript types are correct\n10. Test all methods are exposed on global",
+      "acceptance_criteria": [
+        "All API methods work correctly",
+        "Events fire at correct times",
+        "User identification works",
+        "Programmatic message sending works",
+        "Custom actions integrate",
+        "TypeScript types are complete",
+        "Error handling is informative",
+        "API is documented",
+        "SSR compatible"
+      ],
+      "files_to_create": [
+        "packages/widget/src/api/WidgetAPI.ts",
+        "packages/widget/src/api/CustomActions.ts",
+        "packages/widget/src/hooks/useCAASWidget.ts",
+        "packages/widget/src/api/errors.ts",
+        "packages/widget/types/index.d.ts"
+      ],
+      "docker_requirements": null,
+      "task_id": "WIDGET-008"
+    }
+  ]
+}

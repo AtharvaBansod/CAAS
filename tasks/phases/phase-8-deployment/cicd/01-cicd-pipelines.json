@@ -1,0 +1,108 @@
+{
+  "feature_group": "cicd-pipelines",
+  "description": "CI/CD pipeline configurations with GitHub Actions",
+  "tasks": [
+    {
+      "task-name": "GitHub Actions CI Pipeline",
+      "feature-details": "Create comprehensive CI pipeline that runs on pull requests and merges. Include linting, testing, type checking, and build verification for all packages and services.",
+      "feature-dependency": [],
+      "ai-prompt": "Create GitHub Actions CI workflow in .github/workflows/:\n\n1. ci.yml - Main CI pipeline:\n   ```yaml\n   name: CI\n   on:\n     pull_request:\n       branches: [main, develop]\n     push:\n       branches: [main, develop]\n   \n   jobs:\n     lint:\n       runs-on: ubuntu-latest\n       steps:\n         - uses: actions/checkout@v4\n         - uses: actions/setup-node@v4\n           with:\n             node-version: 20\n             cache: 'npm'\n         - run: npm ci\n         - run: npm run lint\n   \n     typecheck:\n       runs-on: ubuntu-latest\n       steps:\n         - uses: actions/checkout@v4\n         - uses: actions/setup-node@v4\n         - run: npm ci\n         - run: npm run typecheck\n   \n     test:\n       runs-on: ubuntu-latest\n       services:\n         mongodb:\n           image: mongo:7.0\n           ports:\n             - 27017:27017\n         redis:\n           image: redis:7\n           ports:\n             - 6379:6379\n       steps:\n         - uses: actions/checkout@v4\n         - uses: actions/setup-node@v4\n         - run: npm ci\n         - run: npm run test:ci\n           env:\n             MONGODB_URI: mongodb://localhost:27017/test\n             REDIS_URL: redis://localhost:6379\n         - uses: codecov/codecov-action@v3\n   \n     build:\n       runs-on: ubuntu-latest\n       steps:\n         - uses: actions/checkout@v4\n         - uses: actions/setup-node@v4\n         - run: npm ci\n         - run: npm run build\n         - uses: actions/upload-artifact@v3\n           with:\n             name: build\n             path: |\n               services/*/dist\n               packages/*/dist\n   ```\n\n2. Parallel execution:\n   - Lint, typecheck, test run in parallel\n   - Build waits for all to pass\n\n3. Caching:\n   - Cache npm dependencies\n   - Cache Turborepo output\n   - Cache Docker layers\n\n4. Matrix builds:\n   - Test on Node 18 and 20\n   - Test on multiple OS (optional)\n\n5. Status checks:\n   - Required for merge\n   - Branch protection rules\n\n6. PR automation:\n   - Add labels based on changed files\n   - Auto-assign reviewers\n   - Link to Jira tickets",
+      "testing-instructions": "1. Create PR and verify CI runs\n2. Verify all jobs run in parallel\n3. Test caching speeds up subsequent runs\n4. Verify failed tests block merge\n5. Test coverage upload to Codecov\n6. Verify artifacts are uploaded\n7. Test matrix builds\n8. Verify status checks are required",
+      "acceptance_criteria": [
+        "CI runs on all PRs and merges",
+        "Linting catches style issues",
+        "Type checking catches type errors",
+        "Tests run with services",
+        "Coverage is reported",
+        "Build artifacts are created",
+        "Caching improves speed",
+        "Failed jobs block merge"
+      ],
+      "files_to_create": [
+        ".github/workflows/ci.yml",
+        ".github/workflows/lint.yml",
+        ".github/workflows/test.yml",
+        ".github/dependabot.yml",
+        ".github/CODEOWNERS",
+        ".github/pull_request_template.md"
+      ],
+      "docker_requirements": null,
+      "task_id": "DEPLOY-007"
+    },
+    {
+      "task-name": "Docker Build and Push Pipeline",
+      "feature-details": "Create pipeline to build Docker images for all services and push to container registry. Support multi-architecture builds and image tagging strategy.",
+      "feature-dependency": ["DEPLOY-001", "DEPLOY-007"],
+      "ai-prompt": "Create Docker build pipeline in .github/workflows/:\n\n1. docker-build.yml:\n   ```yaml\n   name: Docker Build\n   on:\n     push:\n       branches: [main]\n       tags: ['v*']\n     workflow_dispatch:\n   \n   env:\n     REGISTRY: ghcr.io\n     IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/caas\n   \n   jobs:\n     build-matrix:\n       runs-on: ubuntu-latest\n       strategy:\n         matrix:\n           service: [gateway, messaging, socket, media, billing]\n       steps:\n         - uses: actions/checkout@v4\n         \n         - uses: docker/setup-qemu-action@v3\n         \n         - uses: docker/setup-buildx-action@v3\n         \n         - uses: docker/login-action@v3\n           with:\n             registry: ${{ env.REGISTRY }}\n             username: ${{ github.actor }}\n             password: ${{ secrets.GITHUB_TOKEN }}\n         \n         - uses: docker/metadata-action@v5\n           id: meta\n           with:\n             images: ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}\n             tags: |\n               type=ref,event=branch\n               type=semver,pattern={{version}}\n               type=sha\n         \n         - uses: docker/build-push-action@v5\n           with:\n             context: ./services/${{ matrix.service }}\n             platforms: linux/amd64,linux/arm64\n             push: true\n             tags: ${{ steps.meta.outputs.tags }}\n             cache-from: type=gha\n             cache-to: type=gha,mode=max\n   ```\n\n2. Image tagging strategy:\n   - main branch: :main, :sha-xxxxx\n   - Tags (v1.2.3): :1.2.3, :1.2, :1, :latest\n   - PRs: not pushed (build only)\n\n3. Multi-architecture:\n   - Build for amd64 and arm64\n   - Use QEMU for cross-compilation\n   - Build matrix for services\n\n4. Build caching:\n   - GitHub Actions cache\n   - Layer caching with BuildKit\n   - Reduce build time significantly\n\n5. Security scanning:\n   - Trivy vulnerability scan\n   - Block push on high/critical\n   - Generate SBOM\n\n6. Image signing:\n   - Cosign for image signing\n   - Verify in deployment\n\n7. Notification:\n   - Slack notification on build\n   - Alert on failure",
+      "testing-instructions": "1. Push to main and verify builds start\n2. Check all service images are built\n3. Verify multi-arch manifests\n4. Test image tags are correct\n5. Verify cache speeds up builds\n6. Test security scan runs\n7. Verify images are pushed to registry\n8. Test tagged release creates versioned images",
+      "acceptance_criteria": [
+        "All services are built as images",
+        "Multi-architecture support works",
+        "Tags follow naming convention",
+        "Build caching improves speed",
+        "Security scan blocks vulnerable images",
+        "Images are pushed to registry",
+        "Notifications are sent",
+        "SBOM is generated"
+      ],
+      "files_to_create": [
+        ".github/workflows/docker-build.yml",
+        ".github/workflows/security-scan.yml"
+      ],
+      "docker_requirements": null,
+      "task_id": "DEPLOY-008"
+    },
+    {
+      "task-name": "Deployment Pipeline",
+      "feature-details": "Create deployment pipelines for staging and production environments. Support both push-based (GitHub Actions) and pull-based (ArgoCD) deployment strategies.",
+      "feature-dependency": ["DEPLOY-003", "DEPLOY-008"],
+      "ai-prompt": "Create deployment pipelines in .github/workflows/:\n\n1. deploy-staging.yml:\n   ```yaml\n   name: Deploy Staging\n   on:\n     push:\n       branches: [main]\n     workflow_dispatch:\n   \n   jobs:\n     deploy:\n       runs-on: ubuntu-latest\n       environment: staging\n       steps:\n         - uses: actions/checkout@v4\n         \n         - uses: azure/setup-kubectl@v3\n         \n         - uses: azure/k8s-set-context@v3\n           with:\n             kubeconfig: ${{ secrets.KUBECONFIG_STAGING }}\n         \n         - name: Update image tags\n           run: |\n             cd kubernetes/overlays/staging\n             kustomize edit set image \\\n               gateway=ghcr.io/org/caas/gateway:${{ github.sha }} \\\n               messaging=ghcr.io/org/caas/messaging:${{ github.sha }}\n         \n         - name: Deploy\n           run: |\n             kustomize build kubernetes/overlays/staging | kubectl apply -f -\n         \n         - name: Wait for rollout\n           run: |\n             kubectl rollout status deployment/gateway -n caas --timeout=300s\n   ```\n\n2. deploy-production.yml:\n   - Triggered manually or on release\n   - Requires approval\n   - Blue-green or canary strategy\n\n3. Environment configuration:\n   - GitHub Environments for staging/production\n   - Required reviewers for production\n   - Environment secrets\n\n4. ArgoCD integration (alternative):\n   - GitOps approach\n   - Automatic sync on manifest change\n   - GitHub Actions updates manifests\n\n5. Rollback capability:\n   ```yaml\n   - name: Rollback\n     if: failure()\n     run: |\n       kubectl rollout undo deployment/gateway -n caas\n   ```\n\n6. Health checks:\n   - Wait for deployment rollout\n   - Run smoke tests\n   - Rollback on failure\n\n7. Notifications:\n   - Slack on deployment start/finish\n   - PagerDuty on failure (production)\n\n8. Database migrations:\n   - Run before deployment\n   - Separate migration job\n   - Rollback on failure",
+      "testing-instructions": "1. Push to main and verify staging deployment\n2. Verify images are updated in cluster\n3. Test rollout status is monitored\n4. Trigger production deployment\n5. Verify approval is required\n6. Test rollback on failure\n7. Verify notifications are sent\n8. Test smoke tests run after deploy",
+      "acceptance_criteria": [
+        "Staging deploys automatically",
+        "Production requires approval",
+        "Deployments use correct images",
+        "Rollouts are monitored",
+        "Failed deployments rollback",
+        "Notifications are sent",
+        "Health checks validate deployment",
+        "Migrations run before deploy"
+      ],
+      "files_to_create": [
+        ".github/workflows/deploy-staging.yml",
+        ".github/workflows/deploy-production.yml",
+        ".github/workflows/rollback.yml",
+        ".github/workflows/migrations.yml",
+        "scripts/smoke-test.sh"
+      ],
+      "docker_requirements": null,
+      "task_id": "DEPLOY-009"
+    },
+    {
+      "task-name": "Release Management",
+      "feature-details": "Implement release management workflow with semantic versioning, changelog generation, and release automation. Support hotfix branches and release candidates.",
+      "feature-dependency": ["DEPLOY-008"],
+      "ai-prompt": "Create release management workflow in .github/workflows/:\n\n1. release.yml:\n   ```yaml\n   name: Release\n   on:\n     push:\n       tags:\n         - 'v*.*.*'\n   \n   jobs:\n     release:\n       runs-on: ubuntu-latest\n       steps:\n         - uses: actions/checkout@v4\n           with:\n             fetch-depth: 0\n         \n         - name: Generate Changelog\n           uses: orhun/git-cliff-action@v2\n           with:\n             config: cliff.toml\n             args: --latest --strip header\n           env:\n             OUTPUT: CHANGELOG.md\n         \n         - name: Create Release\n           uses: softprops/action-gh-release@v1\n           with:\n             body_path: CHANGELOG.md\n             draft: false\n             prerelease: ${{ contains(github.ref, '-rc') }}\n   ```\n\n2. Semantic versioning:\n   - MAJOR.MINOR.PATCH\n   - Pre-release: v1.2.3-rc.1\n   - Follows semver.org\n\n3. Changelog generation:\n   - Use conventional commits\n   - Auto-generate from git history\n   - Group by type (feat, fix, etc.)\n\n4. Version bump automation:\n   ```yaml\n   name: Version Bump\n   on:\n     workflow_dispatch:\n       inputs:\n         bump:\n           type: choice\n           options: [patch, minor, major]\n   \n   jobs:\n     bump:\n       runs-on: ubuntu-latest\n       steps:\n         - uses: actions/checkout@v4\n         - run: npm version ${{ inputs.bump }}\n         - run: git push --follow-tags\n   ```\n\n5. Release candidate workflow:\n   - Create RC branch\n   - Tag as v1.2.3-rc.1\n   - Deploy to staging\n   - Promote to release\n\n6. Hotfix workflow:\n   - Branch from release tag\n   - Apply fix\n   - Cherry-pick to main\n   - Release patch version\n\n7. Package publishing:\n   - Publish SDK to npm\n   - Update documentation\n   - Notify customers\n\n8. Release notes:\n   - What's new\n   - Breaking changes\n   - Migration guide\n   - Contributors",
+      "testing-instructions": "1. Create a tag and verify release is created\n2. Check changelog is generated\n3. Test version bump workflow\n4. Test RC tagging and promotion\n5. Verify SDK is published to npm\n6. Test hotfix workflow\n7. Verify release notes are complete\n8. Test pre-release flag for RCs",
+      "acceptance_criteria": [
+        "Tags trigger release workflow",
+        "Changelog is auto-generated",
+        "GitHub release is created",
+        "Version bump workflow works",
+        "RC workflow supports staging",
+        "Hotfix workflow is available",
+        "SDK is published on release",
+        "Release notes are comprehensive"
+      ],
+      "files_to_create": [
+        ".github/workflows/release.yml",
+        ".github/workflows/version-bump.yml",
+        ".github/workflows/publish-sdk.yml",
+        "cliff.toml",
+        "CHANGELOG.md"
+      ],
+      "docker_requirements": null,
+      "task_id": "DEPLOY-010"
+    }
+  ]
+}

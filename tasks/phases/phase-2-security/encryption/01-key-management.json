@@ -1,0 +1,325 @@
+{
+  "task_group": "key-management",
+  "description": "Cryptographic key generation, storage, rotation, and distribution",
+  "priority": "critical",
+  "estimated_hours": 18,
+  "phase": 2,
+  "feature_area": "encryption",
+  "tasks": [
+    {
+      "id": "ENCRYPT-001",
+      "task_name": "Key Generation Service",
+      "feature_details": "Implement secure cryptographic key generation for all encryption needs including identity keys, pre-keys, and signing keys.",
+      "feature_dependency": ["MONGO-009"],
+      "ai_prompt": "Create the key generation service:\n\n1. Create services/crypto-service/package.json:\n   Dependencies:\n   - @noble/curves (ed25519, x25519)\n   - @noble/hashes (sha256, sha512)\n   - crypto (Node.js built-in)\n   - @libsignal/libsignal-client (optional, for Signal Protocol)\n\n2. Create services/crypto-service/src/keys/key-generator.ts:\n   ```typescript\n   export class KeyGenerator {\n     generateIdentityKeyPair(): Promise<KeyPair>;\n     generateSignedPreKey(identityKey: PrivateKey): Promise<SignedPreKey>;\n     generatePreKeys(count: number): Promise<PreKey[]>;\n     generateSessionKey(): Promise<Buffer>;\n     generateApiKey(): Promise<string>;\n     generateSecret(bytes: number): Promise<Buffer>;\n   }\n   ```\n\n3. Key types to generate:\n   ```typescript\n   // Identity Key Pair (long-term)\n   - Algorithm: Ed25519 for signing\n   - X25519 for key agreement\n\n   // Signed Pre-Key (medium-term, rotates weekly)\n   - X25519 key pair\n   - Signature from identity key\n\n   // One-Time Pre-Keys (single use)\n   - X25519 key pairs\n   - Generate 100 at a time\n\n   // Session Key (ephemeral)\n   - 256-bit AES key\n   - For symmetric encryption\n   ```\n\n4. Create services/crypto-service/src/keys/key-derivation.ts:\n   - HKDF for key derivation\n   - Derive multiple keys from master\n   - Salt and info parameters\n\n5. Create services/crypto-service/src/keys/key-encoding.ts:\n   - Base64 encoding for storage\n   - Hex encoding for display\n   - Binary for crypto operations\n   - Key fingerprint generation\n\n6. Security requirements:\n   - Use system CSPRNG only\n   - Clear key material from memory\n   - Never log key contents\n   - Validate key parameters\n\n7. Create services/crypto-service/src/keys/types.ts:\n   - KeyPair, PublicKey, PrivateKey interfaces\n   - PreKey, SignedPreKey interfaces\n   - Key encoding options",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test key generation produces valid keys",
+          "Test key encoding roundtrips",
+          "Test key derivation produces consistent results"
+        ],
+        "integration_tests": [
+          "Test keys can be used for encryption",
+          "Test signature generation and verification"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Identity keys use Ed25519/X25519",
+        "Keys are cryptographically random",
+        "Encoding preserves key material",
+        "Key fingerprints are consistent",
+        "Memory is cleared after use"
+      ],
+      "files_to_create": [
+        "services/crypto-service/package.json",
+        "services/crypto-service/tsconfig.json",
+        "services/crypto-service/src/keys/key-generator.ts",
+        "services/crypto-service/src/keys/key-derivation.ts",
+        "services/crypto-service/src/keys/key-encoding.ts",
+        "services/crypto-service/src/keys/types.ts",
+        "services/crypto-service/src/keys/index.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 5,
+      "tags": ["encryption", "keys", "cryptography", "generation"]
+    },
+    {
+      "id": "ENCRYPT-002",
+      "task_name": "Key Storage and Vault",
+      "feature_details": "Implement secure key storage with encryption at rest, access control, and hardware security module (HSM) integration capability.",
+      "feature_dependency": ["ENCRYPT-001", "MONGO-005"],
+      "ai_prompt": "Implement secure key storage:\n\n1. Create services/crypto-service/src/storage/key-vault.ts:\n   ```typescript\n   export class KeyVault {\n     storeKey(params: StoreKeyParams): Promise<string>;\n     retrieveKey(keyId: string): Promise<DecryptedKey>;\n     deleteKey(keyId: string): Promise<void>;\n     rotateKey(keyId: string): Promise<string>;\n     listKeys(userId: string): Promise<KeyMetadata[]>;\n   }\n\n   interface StoreKeyParams {\n     user_id: string;\n     tenant_id: string;\n     key_type: KeyType;\n     key_material: Buffer;\n     metadata?: Record<string, unknown>;\n   }\n   ```\n\n2. Key storage schema:\n   ```typescript\n   {\n     _id: ObjectId,\n     key_id: string,\n     user_id: string,\n     tenant_id: string,\n     key_type: 'identity' | 'signed_pre_key' | 'pre_key' | 'session',\n     encrypted_key: Buffer,  // Encrypted with master key\n     encryption_key_id: string,  // Which master key\n     created_at: Date,\n     expires_at: Date | null,\n     is_active: boolean,\n     metadata: {...}\n   }\n   ```\n\n3. Create services/crypto-service/src/storage/master-key-provider.ts:\n   - Master key hierarchy:\n     * Root key (from env/HSM)\n     * Tenant encryption key (derived)\n     * User encryption key (derived)\n   - Key derivation using HKDF\n\n4. Create services/crypto-service/src/storage/key-encryption.ts:\n   - Encrypt key material with AES-256-GCM\n   - Include AAD for additional protection\n   - Store IV with ciphertext\n\n5. HSM integration interface:\n   ```typescript\n   interface HSMProvider {\n     getRootKey(): Promise<Buffer>;\n     sign(data: Buffer): Promise<Buffer>;\n     decrypt(data: Buffer): Promise<Buffer>;\n   }\n   ```\n   - Stub implementation for development\n   - AWS KMS / Azure Key Vault adapters\n\n6. Create services/crypto-service/src/storage/key-access-control.ts:\n   - Users can only access their own keys\n   - Audit key access\n   - Rate limit key retrieval\n\n7. Create services/crypto-service/src/storage/key-backup.ts:\n   - Encrypted key backup\n   - Recovery key generation\n   - Secure recovery process",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test key encryption/decryption",
+          "Test key storage",
+          "Test access control"
+        ],
+        "integration_tests": [
+          "Test with MongoDB",
+          "Test master key rotation",
+          "Test key retrieval"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Keys are encrypted at rest",
+        "Master key hierarchy works",
+        "Access control is enforced",
+        "HSM interface is defined",
+        "Key backup/recovery works"
+      ],
+      "files_to_create": [
+        "services/crypto-service/src/storage/key-vault.ts",
+        "services/crypto-service/src/storage/master-key-provider.ts",
+        "services/crypto-service/src/storage/key-encryption.ts",
+        "services/crypto-service/src/storage/key-access-control.ts",
+        "services/crypto-service/src/storage/key-backup.ts",
+        "services/crypto-service/src/storage/hsm/hsm-provider.ts",
+        "services/crypto-service/src/storage/hsm/stub-hsm.ts",
+        "services/crypto-service/src/storage/types.ts",
+        "services/crypto-service/src/storage/index.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb"],
+        "environment_variables": [
+          "MASTER_KEY",
+          "HSM_PROVIDER",
+          "KEY_ENCRYPTION_ALGORITHM"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "encrypted_keys",
+            "description": "Store encrypted cryptographic keys"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "encrypted_keys",
+            "fields": ["user_id", "key_type"]
+          },
+          {
+            "collection": "encrypted_keys",
+            "fields": ["key_id"],
+            "options": { "unique": true }
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 5,
+      "tags": ["encryption", "storage", "vault", "hsm"]
+    },
+    {
+      "id": "ENCRYPT-003",
+      "task_name": "Key Distribution Service",
+      "feature_details": "Implement the key distribution server for Signal Protocol pre-key bundles and public key exchange.",
+      "feature_dependency": ["ENCRYPT-001", "ENCRYPT-002"],
+      "ai_prompt": "Implement key distribution:\n\n1. Create services/crypto-service/src/distribution/key-server.ts:\n   ```typescript\n   export class KeyServer {\n     uploadIdentityKey(userId: string, publicKey: Buffer): Promise<void>;\n     uploadSignedPreKey(userId: string, preKey: SignedPreKey): Promise<void>;\n     uploadPreKeys(userId: string, preKeys: PreKey[]): Promise<void>;\n     getPreKeyBundle(userId: string): Promise<PreKeyBundle>;\n     getIdentityKey(userId: string): Promise<Buffer | null>;\n   }\n   ```\n\n2. Pre-key bundle structure:\n   ```typescript\n   interface PreKeyBundle {\n     registration_id: number;\n     device_id: number;\n     identity_key: Buffer;\n     signed_pre_key: {\n       id: number;\n       public_key: Buffer;\n       signature: Buffer;\n     };\n     pre_key?: {\n       id: number;\n       public_key: Buffer;\n     };\n   }\n   ```\n\n3. Create services/crypto-service/src/distribution/pre-key-manager.ts:\n   - Track pre-key usage (one-time use)\n   - Replenishment logic when running low\n   - Notify client to upload more\n   - Pre-key exhaustion handling\n\n4. Create services/crypto-service/src/distribution/signed-pre-key-rotation.ts:\n   - Rotate signed pre-key weekly\n   - Keep old keys for grace period\n   - Signature verification\n\n5. Create services/gateway/src/routes/v1/keys/index.ts:\n   - POST /v1/keys/identity - Upload identity key\n   - POST /v1/keys/signed-prekey - Upload signed pre-key\n   - POST /v1/keys/prekeys - Upload pre-keys\n   - GET /v1/keys/:userId/bundle - Get pre-key bundle\n   - GET /v1/keys/:userId/identity - Get identity key only\n   - GET /v1/keys/count - Get remaining pre-key count\n\n6. Create services/crypto-service/src/distribution/key-change-notification.ts:\n   - Notify contacts when identity key changes\n   - Safety number generation\n   - Key change verification flow\n\n7. Rate limiting:\n   - Limit pre-key bundle requests per minute\n   - Prevent pre-key exhaustion attacks\n   - Monitor for suspicious patterns",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test bundle creation",
+          "Test pre-key tracking",
+          "Test signature verification"
+        ],
+        "integration_tests": [
+          "Test key upload flow",
+          "Test bundle retrieval",
+          "Test pre-key replenishment"
+        ],
+        "e2e_tests": [
+          "Test complete key exchange"
+        ]
+      },
+      "acceptance_criteria": [
+        "Identity keys are uploaded securely",
+        "Pre-key bundles are available",
+        "One-time pre-keys are consumed correctly",
+        "Signed pre-keys rotate properly",
+        "Rate limiting prevents abuse"
+      ],
+      "files_to_create": [
+        "services/crypto-service/src/distribution/key-server.ts",
+        "services/crypto-service/src/distribution/pre-key-manager.ts",
+        "services/crypto-service/src/distribution/signed-pre-key-rotation.ts",
+        "services/crypto-service/src/distribution/key-change-notification.ts",
+        "services/crypto-service/src/distribution/types.ts",
+        "services/crypto-service/src/distribution/index.ts",
+        "services/gateway/src/routes/v1/keys/index.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb", "redis"],
+        "environment_variables": [
+          "PREKEY_REPLENISHMENT_THRESHOLD",
+          "SIGNED_PREKEY_ROTATION_DAYS"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/v1/keys/identity",
+          "description": "Upload identity public key"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/keys/signed-prekey",
+          "description": "Upload signed pre-key"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/keys/prekeys",
+          "description": "Upload one-time pre-keys"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/keys/:userId/bundle",
+          "description": "Get pre-key bundle for user"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "identity_keys",
+            "description": "Store public identity keys"
+          },
+          {
+            "name": "signed_pre_keys",
+            "description": "Store signed pre-keys"
+          },
+          {
+            "name": "one_time_pre_keys",
+            "description": "Store one-time pre-keys"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "identity_keys",
+            "fields": ["user_id"],
+            "options": { "unique": true }
+          },
+          {
+            "collection": "one_time_pre_keys",
+            "fields": ["user_id", "key_id"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["encryption", "distribution", "pre-keys", "signal"]
+    },
+    {
+      "id": "ENCRYPT-004",
+      "task_name": "Key Rotation and Revocation",
+      "feature_details": "Implement automated and manual key rotation with proper revocation and re-encryption procedures.",
+      "feature_dependency": ["ENCRYPT-002", "ENCRYPT-003"],
+      "ai_prompt": "Implement key rotation and revocation:\n\n1. Create services/crypto-service/src/rotation/key-rotation-service.ts:\n   ```typescript\n   export class KeyRotationService {\n     rotateIdentityKey(userId: string): Promise<KeyRotationResult>;\n     rotateSignedPreKey(userId: string): Promise<void>;\n     rotateMasterKey(): Promise<void>;\n     revokeKey(keyId: string, reason: RevocationReason): Promise<void>;\n     getRotationStatus(userId: string): Promise<RotationStatus>;\n   }\n   ```\n\n2. Identity key rotation:\n   - Generate new identity key pair\n   - Re-encrypt stored data\n   - Notify all contacts\n   - Keep old key for verification period\n   - Update pre-key signatures\n\n3. Create services/crypto-service/src/rotation/scheduled-rotation.ts:\n   - Automated rotation schedules:\n     * Signed pre-keys: Weekly\n     * Session keys: Per-session or daily\n     * Master keys: Monthly/quarterly\n   - Cron-based scheduler\n   - Monitor rotation compliance\n\n4. Create services/crypto-service/src/rotation/key-revocation.ts:\n   - Revocation reasons:\n     * USER_INITIATED\n     * KEY_COMPROMISE\n     * DEVICE_LOST\n     * ADMIN_ACTION\n   - Publish revocation to revocation list\n   - Notify affected parties\n\n5. Create services/crypto-service/src/rotation/re-encryption-job.ts:\n   - Background job for re-encryption\n   - Process historical data\n   - Minimal service disruption\n   - Progress tracking\n\n6. Create services/gateway/src/routes/v1/keys/rotation.ts:\n   - POST /v1/keys/rotate/identity - Rotate identity key\n   - POST /v1/keys/revoke - Revoke key\n   - GET /v1/keys/rotation-status - Get rotation status\n\n7. Create services/crypto-service/src/rotation/rotation-audit.ts:\n   - Audit all rotations\n   - Track rotation reasons\n   - Compliance reporting\n\n8. Emergency rotation:\n   - Immediate rotation on compromise\n   - Force disconnect all sessions\n   - Invalidate all sessions",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test rotation logic",
+          "Test revocation",
+          "Test scheduling"
+        ],
+        "integration_tests": [
+          "Test identity key rotation",
+          "Test re-encryption job",
+          "Test notification flow"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Scheduled rotation works",
+        "Manual rotation works",
+        "Revocation invalidates keys",
+        "Re-encryption completes successfully",
+        "Contacts are notified of changes"
+      ],
+      "files_to_create": [
+        "services/crypto-service/src/rotation/key-rotation-service.ts",
+        "services/crypto-service/src/rotation/scheduled-rotation.ts",
+        "services/crypto-service/src/rotation/key-revocation.ts",
+        "services/crypto-service/src/rotation/re-encryption-job.ts",
+        "services/crypto-service/src/rotation/rotation-audit.ts",
+        "services/crypto-service/src/rotation/types.ts",
+        "services/crypto-service/src/rotation/index.ts",
+        "services/gateway/src/routes/v1/keys/rotation.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb", "redis", "kafka"],
+        "environment_variables": [
+          "SIGNED_PREKEY_ROTATION_INTERVAL_DAYS",
+          "MASTER_KEY_ROTATION_INTERVAL_DAYS"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/v1/keys/rotate/identity",
+          "description": "Rotate identity key"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/keys/revoke",
+          "description": "Revoke a key"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/keys/rotation-status",
+          "description": "Get key rotation status"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "key_rotations",
+            "description": "Track key rotation history"
+          },
+          {
+            "name": "revoked_keys",
+            "description": "Store revoked key records"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "key_rotations",
+            "fields": ["user_id", "timestamp"]
+          },
+          {
+            "collection": "revoked_keys",
+            "fields": ["key_id"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["encryption", "rotation", "revocation", "security"]
+    }
+  ]
+}

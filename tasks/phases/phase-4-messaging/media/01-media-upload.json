@@ -1,0 +1,269 @@
+{
+  "task_group": "media-upload",
+  "description": "Media upload service with validation and storage",
+  "priority": "high",
+  "estimated_hours": 16,
+  "phase": 4,
+  "feature_area": "media",
+  "tasks": [
+    {
+      "id": "MEDIA-001",
+      "task_name": "Media Service Setup",
+      "feature_details": "Create media service with Docker setup and MinIO/S3 integration.",
+      "feature_dependency": ["GW-001"],
+      "ai_prompt": "Set up media service:\n\n1. Create services/media-service/Dockerfile:\n   ```dockerfile\n   FROM node:20-alpine\n   WORKDIR /app\n   RUN apk add --no-cache ffmpeg imagemagick\n   COPY package*.json ./\n   RUN npm ci --only=production\n   COPY . .\n   EXPOSE 3006\n   CMD [\"node\", \"dist/main.js\"]\n   ```\n\n2. Create services/media-service/src/main.ts:\n   ```typescript\n   import Fastify from 'fastify';\n   import multipart from '@fastify/multipart';\n   import { S3Client } from '@aws-sdk/client-s3';\n\n   const fastify = Fastify({ logger: true });\n\n   // Configure multipart uploads\n   fastify.register(multipart, {\n     limits: {\n       fileSize: 100 * 1024 * 1024, // 100MB max\n     },\n   });\n\n   // Initialize S3/MinIO client\n   const s3Client = new S3Client({\n     endpoint: process.env.S3_ENDPOINT,\n     region: process.env.S3_REGION,\n     credentials: {\n       accessKeyId: process.env.S3_ACCESS_KEY!,\n       secretAccessKey: process.env.S3_SECRET_KEY!,\n     },\n     forcePathStyle: true, // Required for MinIO\n   });\n   ```\n\n3. Create services/media-service/src/config/storage.config.ts:\n   ```typescript\n   export const storageConfig = {\n     endpoint: process.env.S3_ENDPOINT || 'http://minio:9000',\n     bucket: process.env.S3_BUCKET || 'caas-media',\n     region: process.env.S3_REGION || 'us-east-1',\n     cdnDomain: process.env.CDN_DOMAIN,\n     signedUrlExpiry: 3600, // 1 hour\n   };\n   ```\n\n4. Update docker-compose.yml with MinIO:\n   ```yaml\n   minio:\n     image: minio/minio:latest\n     command: server /data --console-address \":9001\"\n     environment:\n       MINIO_ROOT_USER: minioadmin\n       MINIO_ROOT_PASSWORD: minioadmin\n     volumes:\n       - minio_data:/data\n     ports:\n       - \"9000:9000\"\n       - \"9001:9001\"\n   ```\n\n5. Create bucket initialization script for development",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test S3 client configuration",
+          "Test multipart setup"
+        ],
+        "integration_tests": [
+          "Test MinIO connection",
+          "Test bucket operations"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Media service runs in Docker",
+        "S3/MinIO connected",
+        "Multipart configured",
+        "Bucket created"
+      ],
+      "files_to_create": [
+        "services/media-service/Dockerfile",
+        "services/media-service/src/main.ts",
+        "services/media-service/src/config/storage.config.ts",
+        "services/media-service/package.json"
+      ],
+      "files_to_modify": [
+        "docker-compose.yml"
+      ],
+      "docker_requirements": {
+        "services": ["minio"],
+        "environment_variables": [
+          "S3_ENDPOINT",
+          "S3_ACCESS_KEY",
+          "S3_SECRET_KEY",
+          "S3_BUCKET",
+          "S3_REGION"
+        ],
+        "volumes": ["minio_data"],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["media", "setup", "storage", "minio"]
+    },
+    {
+      "id": "MEDIA-002",
+      "task_name": "Upload Handler",
+      "feature_details": "Implement multipart file upload handler with streaming.",
+      "feature_dependency": ["MEDIA-001"],
+      "ai_prompt": "Implement upload handler:\n\n1. Create services/media-service/src/upload/upload.service.ts:\n   ```typescript\n   export class UploadService {\n     constructor(\n       private s3Client: S3Client,\n       private validator: MediaValidator,\n     ) {}\n\n     async uploadFile(\n       tenantId: string,\n       userId: string,\n       file: MultipartFile,\n     ): Promise<UploadResult> {\n       // 1. Validate file\n       await this.validator.validate(file);\n\n       // 2. Generate unique key\n       const key = this.generateKey(tenantId, file.filename);\n\n       // 3. Stream to S3\n       const upload = new Upload({\n         client: this.s3Client,\n         params: {\n           Bucket: this.bucket,\n           Key: key,\n           Body: file.file,\n           ContentType: file.mimetype,\n           Metadata: {\n             'tenant-id': tenantId,\n             'user-id': userId,\n             'original-name': file.filename,\n           },\n         },\n       });\n\n       await upload.done();\n\n       // 4. Create media record\n       const media = await this.mediaRepo.create({\n         tenant_id: tenantId,\n         user_id: userId,\n         key,\n         filename: file.filename,\n         mime_type: file.mimetype,\n         size: file.file.bytesRead,\n         status: 'uploaded',\n       });\n\n       // 5. Queue for processing\n       await this.kafkaProducer.send('media-processing', {\n         type: 'media.uploaded',\n         data: media,\n       });\n\n       return media;\n     }\n\n     private generateKey(tenantId: string, filename: string): string {\n       const date = new Date().toISOString().slice(0, 10);\n       const uuid = generateUUID();\n       const ext = path.extname(filename);\n       return `${tenantId}/${date}/${uuid}${ext}`;\n     }\n   }\n   ```\n\n2. Create services/gateway/src/routes/v1/media/upload.ts:\n   - POST /v1/media/upload - Single file upload\n   - POST /v1/media/upload-multiple - Multiple files\n   - Progress tracking via response headers\n\n3. Streaming upload:\n   - Stream directly to S3\n   - Don't buffer in memory\n   - Use @aws-sdk/lib-storage for multipart\n\n4. Upload tracking:\n   - Return upload ID immediately\n   - Client can poll status\n   - WebSocket for progress updates",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test key generation",
+          "Test metadata setting"
+        ],
+        "integration_tests": [
+          "Test S3 upload",
+          "Test streaming",
+          "Test large files"
+        ],
+        "e2e_tests": [
+          "Test full upload flow"
+        ]
+      },
+      "acceptance_criteria": [
+        "Files upload to S3",
+        "Streaming works",
+        "Metadata stored",
+        "Processing queued",
+        "Upload tracked"
+      ],
+      "files_to_create": [
+        "services/media-service/src/upload/upload.service.ts",
+        "services/gateway/src/routes/v1/media/upload.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["minio", "kafka"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/v1/media/upload",
+          "description": "Upload single file"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/media/upload-multiple",
+          "description": "Upload multiple files"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "media",
+            "description": "Store media metadata"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "media",
+            "fields": ["tenant_id", "user_id", "created_at"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["media", "upload", "streaming"]
+    },
+    {
+      "id": "MEDIA-003",
+      "task_name": "File Validation",
+      "feature_details": "Implement file type validation, size limits, and virus scanning.",
+      "feature_dependency": ["MEDIA-001"],
+      "ai_prompt": "Implement file validation:\n\n1. Create services/media-service/src/validation/media-validator.ts:\n   ```typescript\n   export class MediaValidator {\n     async validate(file: MultipartFile): Promise<ValidationResult> {\n       // 1. Check file size\n       const maxSize = this.getMaxSize(file.mimetype);\n       if (file.file.bytesRead > maxSize) {\n         throw new PayloadTooLargeException(`File exceeds ${maxSize} bytes`);\n       }\n\n       // 2. Validate MIME type\n       if (!this.isAllowedType(file.mimetype)) {\n         throw new BadRequestException('File type not allowed');\n       }\n\n       // 3. Verify actual file type (magic bytes)\n       const actualType = await this.detectFileType(file);\n       if (actualType !== file.mimetype) {\n         throw new BadRequestException('File type mismatch');\n       }\n\n       // 4. Virus scan\n       if (this.virusScanEnabled) {\n         await this.scanForVirus(file);\n       }\n\n       return { valid: true };\n     }\n\n     private async detectFileType(file: MultipartFile): Promise<string> {\n       // Use file-type library to detect from magic bytes\n       const { fileTypeFromStream } = await import('file-type');\n       const result = await fileTypeFromStream(file.file);\n       return result?.mime || 'application/octet-stream';\n     }\n   }\n   ```\n\n2. Create services/media-service/src/validation/virus-scanner.ts:\n   ```typescript\n   import NodeClam from 'clamscan';\n\n   export class VirusScanner {\n     private clam: NodeClam;\n\n     async scan(filePath: string): Promise<ScanResult> {\n       const { isInfected, viruses } = await this.clam.scanFile(filePath);\n       if (isInfected) {\n         throw new BadRequestException(`Virus detected: ${viruses.join(', ')}`);\n       }\n       return { clean: true };\n     }\n   }\n   ```\n\n3. Allowed file types:\n   ```typescript\n   const ALLOWED_TYPES = {\n     image: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],\n     video: ['video/mp4', 'video/webm', 'video/quicktime'],\n     audio: ['audio/mpeg', 'audio/ogg', 'audio/wav', 'audio/mp4'],\n     document: ['application/pdf', 'application/msword', ...],\n   };\n   ```\n\n4. Size limits per type:\n   - Images: 10MB\n   - Videos: 100MB\n   - Audio: 20MB\n   - Documents: 50MB\n\n5. Docker with ClamAV:\n   ```yaml\n   clamav:\n     image: clamav/clamav:latest\n     volumes:\n       - clamav_data:/var/lib/clamav\n   ```",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test type validation",
+          "Test size limits",
+          "Test magic byte detection"
+        ],
+        "integration_tests": [
+          "Test virus scanning",
+          "Test invalid files",
+          "Test edge cases"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "File types validated",
+        "Size limits enforced",
+        "Magic bytes checked",
+        "Viruses detected",
+        "Invalid files rejected"
+      ],
+      "files_to_create": [
+        "services/media-service/src/validation/media-validator.ts",
+        "services/media-service/src/validation/virus-scanner.ts"
+      ],
+      "files_to_modify": [
+        "docker-compose.yml"
+      ],
+      "docker_requirements": {
+        "services": ["clamav"],
+        "environment_variables": [
+          "VIRUS_SCAN_ENABLED",
+          "CLAMAV_HOST"
+        ],
+        "volumes": ["clamav_data"],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["media", "validation", "security", "virus"]
+    },
+    {
+      "id": "MEDIA-004",
+      "task_name": "Media Repository and Metadata",
+      "feature_details": "Implement media metadata storage and retrieval.",
+      "feature_dependency": ["MEDIA-002"],
+      "ai_prompt": "Implement media repository:\n\n1. Create services/media-service/src/media/media.entity.ts:\n   ```typescript\n   export interface Media {\n     id: string;\n     tenant_id: string;\n     user_id: string;\n     key: string; // S3 key\n     filename: string;\n     mime_type: string;\n     size: number;\n     type: 'image' | 'video' | 'audio' | 'file';\n     \n     // Processing results\n     status: 'uploaded' | 'processing' | 'ready' | 'failed';\n     thumbnail_key?: string;\n     preview_key?: string;\n     \n     // Media-specific metadata\n     dimensions?: { width: number; height: number };\n     duration?: number;\n     waveform?: number[];\n     \n     // URLs (generated)\n     url?: string;\n     thumbnail_url?: string;\n     \n     // Timestamps\n     created_at: Date;\n     updated_at: Date;\n     expires_at?: Date;\n   }\n   ```\n\n2. Create services/media-service/src/media/media.repository.ts:\n   ```typescript\n   export class MediaRepository {\n     async create(data: CreateMediaDto): Promise<Media>;\n     async findById(id: string, tenantId: string): Promise<Media | null>;\n     async findByUser(userId: string, tenantId: string, options: PaginationOptions): Promise<Media[]>;\n     async updateStatus(id: string, status: MediaStatus, metadata?: Partial<Media>): Promise<Media>;\n     async delete(id: string, tenantId: string): Promise<void>;\n   }\n   ```\n\n3. Create services/gateway/src/routes/v1/media/index.ts:\n   - GET /v1/media/:id - Get media metadata\n   - GET /v1/media - List user's media\n   - DELETE /v1/media/:id - Delete media\n\n4. Metadata storage:\n   - Store in MongoDB\n   - Index on tenant + user\n   - TTL index for expiring media\n\n5. URL generation:\n   - Generate signed URLs on request\n   - Cache URLs in Redis\n   - Refresh before expiry\n\n6. Garbage collection:\n   - Delete orphaned uploads\n   - Clean up failed processing\n   - Scheduled job",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test CRUD operations",
+          "Test status updates"
+        ],
+        "integration_tests": [
+          "Test with MongoDB",
+          "Test URL generation",
+          "Test garbage collection"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Metadata stored correctly",
+        "CRUD operations work",
+        "URLs generated",
+        "Garbage collection works"
+      ],
+      "files_to_create": [
+        "services/media-service/src/media/media.entity.ts",
+        "services/media-service/src/media/media.repository.ts",
+        "services/gateway/src/routes/v1/media/index.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb"],
+        "environment_variables": [
+          "MEDIA_EXPIRY_DAYS"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/v1/media/:id",
+          "description": "Get media metadata"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/media",
+          "description": "List user's media"
+        },
+        {
+          "method": "DELETE",
+          "path": "/v1/media/:id",
+          "description": "Delete media"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "media",
+            "description": "Store media metadata"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "media",
+            "fields": ["tenant_id", "user_id", "created_at"]
+          },
+          {
+            "collection": "media",
+            "fields": ["key"],
+            "unique": true
+          },
+          {
+            "collection": "media",
+            "fields": ["expires_at"],
+            "options": { "expireAfterSeconds": 0 }
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["media", "repository", "metadata"]
+    }
+  ]
+}

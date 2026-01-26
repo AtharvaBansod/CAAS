@@ -1,0 +1,223 @@
+{
+  "task_group": "structured-logging",
+  "description": "Pino setup and structured logging across all services",
+  "priority": "high",
+  "estimated_hours": 16,
+  "phase": 5,
+  "feature_area": "logging",
+  "tasks": [
+    {
+      "id": "LOG-001",
+      "task_name": "Pino Logger Setup",
+      "feature_details": "Configure Pino logger with structured logging for all services.",
+      "feature_dependency": [],
+      "ai_prompt": "Set up Pino logger:\n\n1. Create packages/shared/src/logging/logger.ts:\n   ```typescript\n   import pino from 'pino';\n\n   export interface LogContext {\n     requestId?: string;\n     traceId?: string;\n     spanId?: string;\n     tenantId?: string;\n     userId?: string;\n     service?: string;\n   }\n\n   export function createLogger(options: LoggerOptions = {}): pino.Logger {\n     return pino({\n       level: process.env.LOG_LEVEL || 'info',\n       formatters: {\n         level: (label) => ({ level: label }),\n         bindings: () => ({}),\n       },\n       timestamp: () => `,\"time\":\"${new Date().toISOString()}\"`,\n       base: {\n         service: options.service || process.env.SERVICE_NAME,\n         version: process.env.SERVICE_VERSION,\n         env: process.env.NODE_ENV,\n       },\n       redact: {\n         paths: [\n           'req.headers.authorization',\n           'req.headers.cookie',\n           'password',\n           'token',\n           'apiKey',\n           '*.password',\n           '*.token',\n         ],\n         censor: '[REDACTED]',\n       },\n       transport: process.env.NODE_ENV === 'development' ? {\n         target: 'pino-pretty',\n         options: {\n           colorize: true,\n           translateTime: 'SYS:standard',\n         },\n       } : undefined,\n     });\n   }\n\n   export const logger = createLogger();\n   ```\n\n2. Create packages/shared/src/logging/child-logger.ts:\n   ```typescript\n   export function createChildLogger(context: LogContext): pino.Logger {\n     return logger.child(context);\n   }\n\n   export function createRequestLogger(req: FastifyRequest): pino.Logger {\n     return logger.child({\n       requestId: req.id,\n       traceId: req.headers['x-trace-id'],\n       tenantId: req.user?.tenant_id,\n       userId: req.user?.id,\n     });\n   }\n   ```\n\n3. Log levels:\n   - trace: Detailed debugging\n   - debug: Development info\n   - info: Standard operations\n   - warn: Potential issues\n   - error: Errors\n   - fatal: Critical failures\n\n4. Integrate with Fastify:\n   ```typescript\n   fastify.register(require('@fastify/request-context'));\n   fastify.addHook('onRequest', (request, reply, done) => {\n     request.log = createRequestLogger(request);\n     done();\n   });\n   ```",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test logger creation",
+          "Test redaction",
+          "Test child loggers"
+        ],
+        "integration_tests": [
+          "Test log output format",
+          "Test request logging"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Pino logger configured",
+        "Structured JSON output",
+        "Sensitive data redacted",
+        "Child loggers work",
+        "Pretty print in dev"
+      ],
+      "files_to_create": [
+        "packages/shared/src/logging/logger.ts",
+        "packages/shared/src/logging/child-logger.ts",
+        "packages/shared/src/logging/index.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [
+          "LOG_LEVEL",
+          "SERVICE_NAME"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["logging", "pino", "structured"]
+    },
+    {
+      "id": "LOG-002",
+      "task_name": "Request Logging Middleware",
+      "feature_details": "Implement request/response logging with timing and correlation IDs.",
+      "feature_dependency": ["LOG-001", "GW-001"],
+      "ai_prompt": "Implement request logging:\n\n1. Create services/gateway/src/plugins/request-logger.ts:\n   ```typescript\n   import { FastifyPluginAsync } from 'fastify';\n   import { v4 as uuidv4 } from 'uuid';\n\n   export const requestLoggerPlugin: FastifyPluginAsync = async (fastify) => {\n     // Add request ID if not present\n     fastify.addHook('onRequest', async (request) => {\n       request.id = request.headers['x-request-id'] as string || uuidv4();\n       request.traceId = request.headers['x-trace-id'] as string || uuidv4();\n       \n       request.log.info({\n         msg: 'Request started',\n         method: request.method,\n         url: request.url,\n         userAgent: request.headers['user-agent'],\n         ip: request.ip,\n       });\n     });\n\n     // Log response\n     fastify.addHook('onResponse', async (request, reply) => {\n       request.log.info({\n         msg: 'Request completed',\n         method: request.method,\n         url: request.url,\n         statusCode: reply.statusCode,\n         duration: reply.getResponseTime(),\n       });\n     });\n\n     // Log errors\n     fastify.addHook('onError', async (request, reply, error) => {\n       request.log.error({\n         msg: 'Request error',\n         method: request.method,\n         url: request.url,\n         error: {\n           name: error.name,\n           message: error.message,\n           stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,\n         },\n       });\n     });\n   };\n   ```\n\n2. Add correlation headers:\n   ```typescript\n   fastify.addHook('onSend', async (request, reply) => {\n     reply.header('x-request-id', request.id);\n     reply.header('x-trace-id', request.traceId);\n   });\n   ```\n\n3. Propagate to downstream services:\n   ```typescript\n   const response = await fetch(serviceUrl, {\n     headers: {\n       'x-request-id': request.id,\n       'x-trace-id': request.traceId,\n       'x-span-id': uuidv4(),\n     },\n   });\n   ```\n\n4. Exclude health check paths from logging:\n   ```typescript\n   const excludePaths = ['/health', '/ready', '/metrics'];\n   if (!excludePaths.includes(request.url)) {\n     request.log.info(...);\n   }\n   ```",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test request ID generation",
+          "Test correlation propagation"
+        ],
+        "integration_tests": [
+          "Test full request cycle logging",
+          "Test error logging"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Request IDs generated",
+        "Trace IDs propagated",
+        "Request/response logged",
+        "Errors logged",
+        "Health checks excluded"
+      ],
+      "files_to_create": [
+        "services/gateway/src/plugins/request-logger.ts"
+      ],
+      "files_to_modify": [
+        "services/gateway/src/main.ts"
+      ],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["logging", "middleware", "correlation"]
+    },
+    {
+      "id": "LOG-003",
+      "task_name": "Service-Specific Logging",
+      "feature_details": "Implement logging for Kafka consumers, database operations, and external calls.",
+      "feature_dependency": ["LOG-001"],
+      "ai_prompt": "Implement service-specific logging:\n\n1. Create packages/shared/src/logging/kafka-logger.ts:\n   ```typescript\n   export class KafkaLogger {\n     constructor(private logger: pino.Logger) {}\n\n     onConsume(topic: string, message: KafkaMessage): void {\n       this.logger.debug({\n         msg: 'Kafka message received',\n         topic,\n         partition: message.partition,\n         offset: message.offset,\n         key: message.key?.toString(),\n       });\n     }\n\n     onProduce(topic: string, key: string): void {\n       this.logger.debug({\n         msg: 'Kafka message produced',\n         topic,\n         key,\n       });\n     }\n\n     onError(error: Error, context: string): void {\n       this.logger.error({\n         msg: 'Kafka error',\n         context,\n         error: error.message,\n       });\n     }\n   }\n   ```\n\n2. Create packages/shared/src/logging/db-logger.ts:\n   ```typescript\n   export class DatabaseLogger {\n     onQuery(collection: string, operation: string, duration: number): void {\n       this.logger.debug({\n         msg: 'Database query',\n         collection,\n         operation,\n         duration,\n       });\n     }\n\n     onSlowQuery(collection: string, operation: string, duration: number, query: object): void {\n       this.logger.warn({\n         msg: 'Slow database query',\n         collection,\n         operation,\n         duration,\n         query: process.env.LOG_QUERIES === 'true' ? query : undefined,\n       });\n     }\n   }\n   ```\n\n3. Create packages/shared/src/logging/external-logger.ts:\n   ```typescript\n   export class ExternalCallLogger {\n     async logCall<T>(name: string, fn: () => Promise<T>): Promise<T> {\n       const start = Date.now();\n       try {\n         const result = await fn();\n         this.logger.debug({\n           msg: 'External call completed',\n           service: name,\n           duration: Date.now() - start,\n           success: true,\n         });\n         return result;\n       } catch (error) {\n         this.logger.error({\n           msg: 'External call failed',\n           service: name,\n           duration: Date.now() - start,\n           error: error.message,\n         });\n         throw error;\n       }\n     }\n   }\n   ```\n\n4. MongoDB profiling integration:\n   - Log slow queries (>100ms)\n   - Log connection events\n   - Log errors",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test Kafka logging",
+          "Test DB logging"
+        ],
+        "integration_tests": [
+          "Test slow query detection",
+          "Test external call logging"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Kafka events logged",
+        "DB operations logged",
+        "Slow queries detected",
+        "External calls logged"
+      ],
+      "files_to_create": [
+        "packages/shared/src/logging/kafka-logger.ts",
+        "packages/shared/src/logging/db-logger.ts",
+        "packages/shared/src/logging/external-logger.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [
+          "LOG_QUERIES",
+          "SLOW_QUERY_THRESHOLD"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["logging", "kafka", "database"]
+    },
+    {
+      "id": "LOG-004",
+      "task_name": "Audit Logging",
+      "feature_details": "Implement audit logging for security-sensitive operations.",
+      "feature_dependency": ["LOG-001"],
+      "ai_prompt": "Implement audit logging:\n\n1. Create packages/shared/src/logging/audit-logger.ts:\n   ```typescript\n   export enum AuditAction {\n     USER_LOGIN = 'user.login',\n     USER_LOGOUT = 'user.logout',\n     USER_CREATED = 'user.created',\n     USER_DELETED = 'user.deleted',\n     PASSWORD_CHANGED = 'password.changed',\n     API_KEY_CREATED = 'api_key.created',\n     API_KEY_REVOKED = 'api_key.revoked',\n     PERMISSION_GRANTED = 'permission.granted',\n     PERMISSION_REVOKED = 'permission.revoked',\n     DATA_EXPORTED = 'data.exported',\n     DATA_DELETED = 'data.deleted',\n   }\n\n   export interface AuditEvent {\n     action: AuditAction;\n     actor: {\n       id: string;\n       type: 'user' | 'system' | 'api_key';\n     };\n     target?: {\n       id: string;\n       type: string;\n     };\n     tenantId: string;\n     metadata?: Record<string, unknown>;\n     ip?: string;\n     userAgent?: string;\n   }\n\n   export class AuditLogger {\n     async log(event: AuditEvent): Promise<void> {\n       // Log to structured log\n       this.logger.info({\n         msg: 'Audit event',\n         audit: true,\n         ...event,\n         timestamp: new Date().toISOString(),\n       });\n\n       // Persist to database for retention\n       await this.auditRepo.create({\n         ...event,\n         created_at: new Date(),\n       });\n\n       // Emit to Kafka for analytics\n       await this.kafkaProducer.send('audit-events', event);\n     }\n   }\n   ```\n\n2. Create services/auth-service/src/audit/audit.repository.ts:\n   - Store in MongoDB\n   - Index on tenant_id + created_at\n   - Retention policy (e.g., 2 years)\n\n3. Create services/gateway/src/routes/v1/admin/audit.ts:\n   - GET /v1/admin/audit - Search audit logs\n   - Filter by action, actor, target, date range\n\n4. Audit log retention:\n   - Configurable per tenant\n   - Minimum retention for compliance\n   - Archive to cold storage\n\n5. GDPR considerations:\n   - Audit logs are exempt from deletion\n   - Pseudonymization of deleted user data\n   - Export capability",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test audit event creation",
+          "Test event types"
+        ],
+        "integration_tests": [
+          "Test persistence",
+          "Test Kafka emission",
+          "Test search"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Audit events logged",
+        "Events persisted",
+        "Events searchable",
+        "Retention policy applied",
+        "GDPR compliant"
+      ],
+      "files_to_create": [
+        "packages/shared/src/logging/audit-logger.ts",
+        "services/auth-service/src/audit/audit.repository.ts",
+        "services/gateway/src/routes/v1/admin/audit.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb", "kafka"],
+        "environment_variables": [
+          "AUDIT_LOG_RETENTION_DAYS"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/v1/admin/audit",
+          "description": "Search audit logs"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "audit_logs",
+            "description": "Store audit events"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "audit_logs",
+            "fields": ["tenant_id", "created_at"]
+          },
+          {
+            "collection": "audit_logs",
+            "fields": ["action", "actor.id"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["logging", "audit", "security", "compliance"]
+    }
+  ]
+}

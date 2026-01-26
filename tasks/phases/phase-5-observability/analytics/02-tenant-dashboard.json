@@ -1,0 +1,196 @@
+{
+  "task_group": "tenant-dashboard",
+  "description": "React-based tenant admin dashboards in clientFacingUI",
+  "priority": "high",
+  "estimated_hours": 16,
+  "phase": 5,
+  "feature_area": "analytics",
+  "tasks": [
+    {
+      "id": "ANALYTICS-005",
+      "task_name": "Dashboard Layout Component",
+      "feature_details": "Create the main analytics dashboard layout in clientFacingUI.",
+      "feature_dependency": ["ANALYTICS-004"],
+      "ai_prompt": "Create dashboard layout in clientFacingUI:\n\n1. Create apps/client-ui/src/features/analytics/AnalyticsDashboard.tsx:\n   ```tsx\n   import { useState } from 'react';\n   import { DateRangePicker } from '@/components/DateRangePicker';\n   import { DashboardHeader } from './components/DashboardHeader';\n   import { MetricsGrid } from './components/MetricsGrid';\n   import { MessageVolumeChart } from './components/MessageVolumeChart';\n   import { ActiveUsersChart } from './components/ActiveUsersChart';\n   import { TopConversations } from './components/TopConversations';\n   import { MessageTypeBreakdown } from './components/MessageTypeBreakdown';\n   import { useDashboardData } from './hooks/useDashboardData';\n\n   export function AnalyticsDashboard() {\n     const [dateRange, setDateRange] = useState({\n       startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),\n       endDate: new Date()\n     });\n\n     const { data, isLoading, error } = useDashboardData(dateRange);\n\n     if (error) return <ErrorState error={error} />;\n\n     return (\n       <div className=\"analytics-dashboard\">\n         <DashboardHeader>\n           <DateRangePicker\n             value={dateRange}\n             onChange={setDateRange}\n             presets={['7d', '30d', '90d']}\n           />\n         </DashboardHeader>\n\n         <MetricsGrid loading={isLoading}>\n           <MetricCard\n             title=\"Total Messages\"\n             value={data?.totalMessages}\n             trend={data?.messagesTrend}\n           />\n           <MetricCard\n             title=\"Active Users\"\n             value={data?.activeUsers}\n             trend={data?.usersTrend}\n           />\n           <MetricCard\n             title=\"Conversations\"\n             value={data?.totalConversations}\n           />\n           <MetricCard\n             title=\"Avg Response Time\"\n             value={data?.avgResponseTime}\n             format=\"duration\"\n           />\n         </MetricsGrid>\n\n         <div className=\"dashboard-grid\">\n           <div className=\"chart-container span-2\">\n             <MessageVolumeChart\n               data={data?.messageVolume}\n               loading={isLoading}\n             />\n           </div>\n           <div className=\"chart-container\">\n             <ActiveUsersChart\n               data={data?.dau}\n               loading={isLoading}\n             />\n           </div>\n           <div className=\"chart-container\">\n             <MessageTypeBreakdown\n               data={data?.messageTypes}\n               loading={isLoading}\n             />\n           </div>\n           <div className=\"chart-container span-2\">\n             <TopConversations\n               data={data?.topConversations}\n               loading={isLoading}\n             />\n           </div>\n         </div>\n       </div>\n     );\n   }\n   ```\n\n2. Create apps/client-ui/src/features/analytics/components/MetricsGrid.tsx:\n   ```tsx\n   import { Skeleton } from '@/components/Skeleton';\n\n   interface MetricCardProps {\n     title: string;\n     value?: number;\n     trend?: { value: number; direction: 'up' | 'down' };\n     format?: 'number' | 'duration' | 'percentage';\n   }\n\n   export function MetricCard({ title, value, trend, format = 'number' }: MetricCardProps) {\n     const formatValue = (val: number) => {\n       switch (format) {\n         case 'duration':\n           return `${val.toFixed(1)}s`;\n         case 'percentage':\n           return `${val.toFixed(1)}%`;\n         default:\n           return val.toLocaleString();\n       }\n     };\n\n     return (\n       <div className=\"metric-card\">\n         <div className=\"metric-title\">{title}</div>\n         <div className=\"metric-value\">\n           {value !== undefined ? formatValue(value) : <Skeleton />}\n         </div>\n         {trend && (\n           <div className={`metric-trend ${trend.direction}`}>\n             {trend.direction === 'up' ? '↑' : '↓'} {trend.value}%\n           </div>\n         )}\n       </div>\n     );\n   }\n\n   export function MetricsGrid({ children, loading }: { children: React.ReactNode; loading: boolean }) {\n     return (\n       <div className=\"metrics-grid\">\n         {children}\n       </div>\n     );\n   }\n   ```\n\n3. Add styles:\n   ```css\n   .analytics-dashboard {\n     padding: 24px;\n     max-width: 1400px;\n     margin: 0 auto;\n   }\n\n   .metrics-grid {\n     display: grid;\n     grid-template-columns: repeat(4, 1fr);\n     gap: 16px;\n     margin-bottom: 24px;\n   }\n\n   .dashboard-grid {\n     display: grid;\n     grid-template-columns: repeat(3, 1fr);\n     gap: 16px;\n   }\n\n   .span-2 {\n     grid-column: span 2;\n   }\n   ```",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test MetricCard formatting",
+          "Test loading states"
+        ],
+        "integration_tests": [
+          "Test data fetching",
+          "Test date range changes"
+        ],
+        "e2e_tests": [
+          "Test full dashboard render"
+        ]
+      },
+      "acceptance_criteria": [
+        "Dashboard renders correctly",
+        "Date range picker works",
+        "Loading states shown",
+        "Responsive layout"
+      ],
+      "files_to_create": [
+        "apps/client-ui/src/features/analytics/AnalyticsDashboard.tsx",
+        "apps/client-ui/src/features/analytics/components/DashboardHeader.tsx",
+        "apps/client-ui/src/features/analytics/components/MetricsGrid.tsx",
+        "apps/client-ui/src/features/analytics/styles/dashboard.css"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["analytics", "dashboard", "react", "clientFacingUI"]
+    },
+    {
+      "id": "ANALYTICS-006",
+      "task_name": "Chart Components",
+      "feature_details": "Create Recharts-based visualization components.",
+      "feature_dependency": ["ANALYTICS-005"],
+      "ai_prompt": "Create chart components using Recharts:\n\n1. Create apps/client-ui/src/features/analytics/components/MessageVolumeChart.tsx:\n   ```tsx\n   import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';\n   import { ChartContainer } from './ChartContainer';\n\n   interface MessageVolumeData {\n     date: string;\n     messageCount: number;\n     activeUsers: number;\n   }\n\n   interface Props {\n     data?: MessageVolumeData[];\n     loading: boolean;\n   }\n\n   export function MessageVolumeChart({ data, loading }: Props) {\n     return (\n       <ChartContainer title=\"Message Volume\" loading={loading}>\n         <ResponsiveContainer width=\"100%\" height={300}>\n           <AreaChart data={data}>\n             <CartesianGrid strokeDasharray=\"3 3\" />\n             <XAxis \n               dataKey=\"date\" \n               tickFormatter={(value) => new Date(value).toLocaleDateString()}\n             />\n             <YAxis />\n             <Tooltip \n               labelFormatter={(value) => new Date(value).toLocaleDateString()}\n             />\n             <Area\n               type=\"monotone\"\n               dataKey=\"messageCount\"\n               stroke=\"#8884d8\"\n               fill=\"#8884d8\"\n               fillOpacity={0.3}\n               name=\"Messages\"\n             />\n           </AreaChart>\n         </ResponsiveContainer>\n       </ChartContainer>\n     );\n   }\n   ```\n\n2. Create apps/client-ui/src/features/analytics/components/ActiveUsersChart.tsx:\n   ```tsx\n   import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';\n   import { ChartContainer } from './ChartContainer';\n\n   interface DAUData {\n     date: string;\n     dau: number;\n   }\n\n   export function ActiveUsersChart({ data, loading }: { data?: DAUData[]; loading: boolean }) {\n     return (\n       <ChartContainer title=\"Daily Active Users\" loading={loading}>\n         <ResponsiveContainer width=\"100%\" height={250}>\n           <LineChart data={data}>\n             <CartesianGrid strokeDasharray=\"3 3\" />\n             <XAxis \n               dataKey=\"date\" \n               tickFormatter={(value) => new Date(value).toLocaleDateString()}\n             />\n             <YAxis />\n             <Tooltip />\n             <Line\n               type=\"monotone\"\n               dataKey=\"dau\"\n               stroke=\"#82ca9d\"\n               strokeWidth={2}\n               dot={false}\n               name=\"Users\"\n             />\n           </LineChart>\n         </ResponsiveContainer>\n       </ChartContainer>\n     );\n   }\n   ```\n\n3. Create apps/client-ui/src/features/analytics/components/MessageTypeBreakdown.tsx:\n   ```tsx\n   import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';\n   import { ChartContainer } from './ChartContainer';\n\n   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];\n\n   interface MessageTypeData {\n     type: string;\n     count: number;\n     percentage: number;\n   }\n\n   export function MessageTypeBreakdown({ data, loading }: { data?: MessageTypeData[]; loading: boolean }) {\n     return (\n       <ChartContainer title=\"Message Types\" loading={loading}>\n         <ResponsiveContainer width=\"100%\" height={250}>\n           <PieChart>\n             <Pie\n               data={data}\n               dataKey=\"count\"\n               nameKey=\"type\"\n               cx=\"50%\"\n               cy=\"50%\"\n               outerRadius={80}\n               label={({ type, percentage }) => `${type}: ${percentage.toFixed(1)}%`}\n             >\n               {data?.map((_, index) => (\n                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />\n               ))}\n             </Pie>\n             <Tooltip />\n             <Legend />\n           </PieChart>\n         </ResponsiveContainer>\n       </ChartContainer>\n     );\n   }\n   ```\n\n4. Create apps/client-ui/src/features/analytics/components/HourlyDistribution.tsx:\n   ```tsx\n   import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';\n   import { ChartContainer } from './ChartContainer';\n\n   export function HourlyDistribution({ data, loading }: { data?: { hour: number; count: number }[]; loading: boolean }) {\n     return (\n       <ChartContainer title=\"Activity by Hour\" loading={loading}>\n         <ResponsiveContainer width=\"100%\" height={250}>\n           <BarChart data={data}>\n             <CartesianGrid strokeDasharray=\"3 3\" />\n             <XAxis \n               dataKey=\"hour\" \n               tickFormatter={(h) => `${h}:00`}\n             />\n             <YAxis />\n             <Tooltip labelFormatter={(h) => `${h}:00 - ${h}:59`} />\n             <Bar dataKey=\"count\" fill=\"#8884d8\" name=\"Messages\" />\n           </BarChart>\n         </ResponsiveContainer>\n       </ChartContainer>\n     );\n   }\n   ```\n\n5. Create ChartContainer wrapper:\n   ```tsx\n   export function ChartContainer({ title, loading, children }: {\n     title: string;\n     loading: boolean;\n     children: React.ReactNode;\n   }) {\n     return (\n       <div className=\"chart-card\">\n         <h3 className=\"chart-title\">{title}</h3>\n         {loading ? <ChartSkeleton /> : children}\n       </div>\n     );\n   }\n   ```",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test chart rendering with mock data",
+          "Test tooltip formatting"
+        ],
+        "integration_tests": [
+          "Test responsive behavior",
+          "Test empty states"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "All charts render correctly",
+        "Responsive sizing works",
+        "Tooltips show correct data",
+        "Loading states work"
+      ],
+      "files_to_create": [
+        "apps/client-ui/src/features/analytics/components/MessageVolumeChart.tsx",
+        "apps/client-ui/src/features/analytics/components/ActiveUsersChart.tsx",
+        "apps/client-ui/src/features/analytics/components/MessageTypeBreakdown.tsx",
+        "apps/client-ui/src/features/analytics/components/HourlyDistribution.tsx",
+        "apps/client-ui/src/features/analytics/components/ChartContainer.tsx"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["analytics", "charts", "recharts", "clientFacingUI"]
+    },
+    {
+      "id": "ANALYTICS-007",
+      "task_name": "Data Tables Component",
+      "feature_details": "Create TanStack Table based data tables for analytics.",
+      "feature_dependency": ["ANALYTICS-005"],
+      "ai_prompt": "Create data tables using TanStack Table:\n\n1. Create apps/client-ui/src/features/analytics/components/TopConversations.tsx:\n   ```tsx\n   import { useMemo } from 'react';\n   import {\n     useReactTable,\n     getCoreRowModel,\n     getSortedRowModel,\n     flexRender,\n     createColumnHelper,\n   } from '@tanstack/react-table';\n   import { ChartContainer } from './ChartContainer';\n\n   interface Conversation {\n     conversationId: string;\n     name: string;\n     messageCount: number;\n     lastActivity: string;\n   }\n\n   const columnHelper = createColumnHelper<Conversation>();\n\n   export function TopConversations({ data, loading }: { data?: Conversation[]; loading: boolean }) {\n     const columns = useMemo(() => [\n       columnHelper.accessor('name', {\n         header: 'Conversation',\n         cell: info => (\n           <div className=\"conversation-name\">\n             {info.getValue() || 'Unnamed'}\n           </div>\n         ),\n       }),\n       columnHelper.accessor('messageCount', {\n         header: 'Messages',\n         cell: info => info.getValue().toLocaleString(),\n       }),\n       columnHelper.accessor('lastActivity', {\n         header: 'Last Activity',\n         cell: info => new Date(info.getValue()).toLocaleDateString(),\n       }),\n     ], []);\n\n     const table = useReactTable({\n       data: data || [],\n       columns,\n       getCoreRowModel: getCoreRowModel(),\n       getSortedRowModel: getSortedRowModel(),\n     });\n\n     return (\n       <ChartContainer title=\"Top Conversations\" loading={loading}>\n         <table className=\"analytics-table\">\n           <thead>\n             {table.getHeaderGroups().map(headerGroup => (\n               <tr key={headerGroup.id}>\n                 {headerGroup.headers.map(header => (\n                   <th key={header.id} onClick={header.column.getToggleSortingHandler()}>\n                     {flexRender(header.column.columnDef.header, header.getContext())}\n                     {header.column.getIsSorted() && (\n                       <span>{header.column.getIsSorted() === 'asc' ? ' ↑' : ' ↓'}</span>\n                     )}\n                   </th>\n                 ))}\n               </tr>\n             ))}\n           </thead>\n           <tbody>\n             {table.getRowModel().rows.map(row => (\n               <tr key={row.id}>\n                 {row.getVisibleCells().map(cell => (\n                   <td key={cell.id}>\n                     {flexRender(cell.column.columnDef.cell, cell.getContext())}\n                   </td>\n                 ))}\n               </tr>\n             ))}\n           </tbody>\n         </table>\n       </ChartContainer>\n     );\n   }\n   ```\n\n2. Create apps/client-ui/src/features/analytics/components/TopUsers.tsx:\n   ```tsx\n   import { useMemo } from 'react';\n   import { useReactTable, getCoreRowModel, flexRender, createColumnHelper } from '@tanstack/react-table';\n   import { Avatar } from '@/components/Avatar';\n   import { ChartContainer } from './ChartContainer';\n\n   interface User {\n     userId: string;\n     displayName: string;\n     messageCount: number;\n     conversationCount: number;\n     lastActive: string;\n   }\n\n   const columnHelper = createColumnHelper<User>();\n\n   export function TopUsers({ data, loading }: { data?: User[]; loading: boolean }) {\n     const columns = useMemo(() => [\n       columnHelper.accessor('displayName', {\n         header: 'User',\n         cell: info => (\n           <div className=\"user-cell\">\n             <Avatar name={info.getValue()} size=\"sm\" />\n             <span>{info.getValue()}</span>\n           </div>\n         ),\n       }),\n       columnHelper.accessor('messageCount', {\n         header: 'Messages',\n         cell: info => info.getValue().toLocaleString(),\n       }),\n       columnHelper.accessor('conversationCount', {\n         header: 'Conversations',\n         cell: info => info.getValue().toLocaleString(),\n       }),\n       columnHelper.accessor('lastActive', {\n         header: 'Last Active',\n         cell: info => formatRelativeTime(new Date(info.getValue())),\n       }),\n     ], []);\n\n     const table = useReactTable({\n       data: data || [],\n       columns,\n       getCoreRowModel: getCoreRowModel(),\n     });\n\n     return (\n       <ChartContainer title=\"Most Active Users\" loading={loading}>\n         <table className=\"analytics-table\">\n           {/* Same table structure as TopConversations */}\n         </table>\n       </ChartContainer>\n     );\n   }\n   ```\n\n3. Add table styles:\n   ```css\n   .analytics-table {\n     width: 100%;\n     border-collapse: collapse;\n   }\n\n   .analytics-table th {\n     text-align: left;\n     padding: 12px;\n     border-bottom: 2px solid var(--border-color);\n     cursor: pointer;\n   }\n\n   .analytics-table td {\n     padding: 12px;\n     border-bottom: 1px solid var(--border-color);\n   }\n\n   .analytics-table tr:hover {\n     background: var(--hover-color);\n   }\n   ```",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test table rendering",
+          "Test sorting"
+        ],
+        "integration_tests": [
+          "Test with API data",
+          "Test empty states"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Tables render correctly",
+        "Sorting works",
+        "Loading states work",
+        "Accessible markup"
+      ],
+      "files_to_create": [
+        "apps/client-ui/src/features/analytics/components/TopConversations.tsx",
+        "apps/client-ui/src/features/analytics/components/TopUsers.tsx",
+        "apps/client-ui/src/features/analytics/styles/tables.css"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["analytics", "tables", "tanstack", "clientFacingUI"]
+    },
+    {
+      "id": "ANALYTICS-008",
+      "task_name": "Analytics Data Hooks",
+      "feature_details": "Create TanStack Query hooks for analytics data fetching.",
+      "feature_dependency": ["ANALYTICS-004"],
+      "ai_prompt": "Create data fetching hooks:\n\n1. Create apps/client-ui/src/features/analytics/api/analytics-api.ts:\n   ```typescript\n   import { api } from '@/lib/api';\n\n   export interface DateRange {\n     startDate: Date;\n     endDate: Date;\n   }\n\n   export const analyticsApi = {\n     getDashboard: async () => {\n       const response = await api.get('/analytics/dashboard');\n       return response.data;\n     },\n\n     getMessageVolume: async (range: DateRange) => {\n       const response = await api.get('/analytics/messages/volume', {\n         params: {\n           startDate: range.startDate.toISOString(),\n           endDate: range.endDate.toISOString(),\n         },\n       });\n       return response.data;\n     },\n\n     getMessageTypes: async (range: DateRange) => {\n       const response = await api.get('/analytics/messages/types', {\n         params: {\n           startDate: range.startDate.toISOString(),\n           endDate: range.endDate.toISOString(),\n         },\n       });\n       return response.data;\n     },\n\n     getDAU: async (range: DateRange) => {\n       const response = await api.get('/analytics/users/dau', {\n         params: {\n           startDate: range.startDate.toISOString(),\n           endDate: range.endDate.toISOString(),\n         },\n       });\n       return response.data;\n     },\n\n     getTopConversations: async (limit?: number) => {\n       const response = await api.get('/analytics/messages/top-conversations', {\n         params: { limit },\n       });\n       return response.data;\n     },\n\n     getTopUsers: async (range: DateRange, limit?: number) => {\n       const response = await api.get('/analytics/users/top', {\n         params: {\n           startDate: range.startDate.toISOString(),\n           endDate: range.endDate.toISOString(),\n           limit,\n         },\n       });\n       return response.data;\n     },\n   };\n   ```\n\n2. Create apps/client-ui/src/features/analytics/hooks/useDashboardData.ts:\n   ```typescript\n   import { useQuery } from '@tanstack/react-query';\n   import { analyticsApi, DateRange } from '../api/analytics-api';\n\n   export function useDashboardData(range: DateRange) {\n     return useQuery({\n       queryKey: ['analytics', 'dashboard', range.startDate, range.endDate],\n       queryFn: () => analyticsApi.getDashboard(),\n       staleTime: 5 * 60 * 1000, // 5 minutes\n       refetchOnWindowFocus: false,\n     });\n   }\n\n   export function useMessageVolume(range: DateRange) {\n     return useQuery({\n       queryKey: ['analytics', 'messageVolume', range.startDate, range.endDate],\n       queryFn: () => analyticsApi.getMessageVolume(range),\n       staleTime: 5 * 60 * 1000,\n     });\n   }\n\n   export function useDAU(range: DateRange) {\n     return useQuery({\n       queryKey: ['analytics', 'dau', range.startDate, range.endDate],\n       queryFn: () => analyticsApi.getDAU(range),\n       staleTime: 5 * 60 * 1000,\n     });\n   }\n\n   export function useTopConversations(limit?: number) {\n     return useQuery({\n       queryKey: ['analytics', 'topConversations', limit],\n       queryFn: () => analyticsApi.getTopConversations(limit),\n       staleTime: 5 * 60 * 1000,\n     });\n   }\n\n   export function useTopUsers(range: DateRange, limit?: number) {\n     return useQuery({\n       queryKey: ['analytics', 'topUsers', range.startDate, range.endDate, limit],\n       queryFn: () => analyticsApi.getTopUsers(range, limit),\n       staleTime: 5 * 60 * 1000,\n     });\n   }\n   ```\n\n3. Create apps/client-ui/src/features/analytics/hooks/useAnalyticsExport.ts:\n   ```typescript\n   import { useMutation } from '@tanstack/react-query';\n   import { analyticsApi } from '../api/analytics-api';\n\n   export function useExportCSV() {\n     return useMutation({\n       mutationFn: async ({ type, range }: { type: string; range: DateRange }) => {\n         const response = await analyticsApi.exportCSV(type, range);\n         const blob = new Blob([response], { type: 'text/csv' });\n         const url = window.URL.createObjectURL(blob);\n         const a = document.createElement('a');\n         a.href = url;\n         a.download = `analytics-${type}-${Date.now()}.csv`;\n         a.click();\n         window.URL.revokeObjectURL(url);\n       },\n     });\n   }\n   ```\n\n4. Add query keys constants:\n   ```typescript\n   export const analyticsKeys = {\n     all: ['analytics'] as const,\n     dashboard: () => [...analyticsKeys.all, 'dashboard'] as const,\n     messageVolume: (range: DateRange) => [...analyticsKeys.all, 'messageVolume', range] as const,\n     dau: (range: DateRange) => [...analyticsKeys.all, 'dau', range] as const,\n     topConversations: (limit?: number) => [...analyticsKeys.all, 'topConversations', limit] as const,\n     topUsers: (range: DateRange, limit?: number) => [...analyticsKeys.all, 'topUsers', range, limit] as const,\n   };\n   ```",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test hook behavior with mocked API",
+          "Test query key generation"
+        ],
+        "integration_tests": [
+          "Test data fetching",
+          "Test caching behavior"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Hooks fetch data correctly",
+        "Caching works",
+        "Error handling works",
+        "Loading states work"
+      ],
+      "files_to_create": [
+        "apps/client-ui/src/features/analytics/api/analytics-api.ts",
+        "apps/client-ui/src/features/analytics/hooks/useDashboardData.ts",
+        "apps/client-ui/src/features/analytics/hooks/useAnalyticsExport.ts",
+        "apps/client-ui/src/features/analytics/hooks/queryKeys.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["analytics", "hooks", "tanstack-query", "clientFacingUI"]
+    }
+  ]
+}

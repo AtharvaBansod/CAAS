@@ -1,0 +1,85 @@
+{
+  "feature_group": "stripe-integration",
+  "description": "Stripe payment processing integration",
+  "tasks": [
+    {
+      "task-name": "Stripe Customer Management",
+      "feature-details": "Create Stripe customers for tenants and manage customer data synchronization. Handle customer creation, updates, and payment method attachment.",
+      "feature-dependency": ["BILLING-007"],
+      "ai-prompt": "Create Stripe customer management in services/billing:\n\n1. Install Stripe SDK:\n   - npm install stripe\n   - Configure with secret key\n   - Use TypeScript types\n\n2. StripeCustomer model:\n   - tenantId: string\n   - stripeCustomerId: string\n   - email: string\n   - name: string\n   - defaultPaymentMethodId?: string\n   - currency: string\n   - taxId?: string\n   - address?: BillingAddress\n   - metadata: Record<string, string>\n\n3. StripeService:\n   - createCustomer(tenant: Tenant): Promise<StripeCustomer>\n   - getCustomer(tenantId): Promise<StripeCustomer>\n   - updateCustomer(tenantId, updates): Promise<StripeCustomer>\n   - deleteCustomer(tenantId): Promise<void>\n   - syncCustomer(tenantId): Promise<StripeCustomer>\n\n4. Payment method management:\n   - attachPaymentMethod(tenantId, paymentMethodId): Promise<void>\n   - detachPaymentMethod(tenantId, paymentMethodId): Promise<void>\n   - setDefaultPaymentMethod(tenantId, paymentMethodId): Promise<void>\n   - listPaymentMethods(tenantId): Promise<PaymentMethod[]>\n\n5. Setup Intent flow:\n   - createSetupIntent(tenantId): Promise<{ clientSecret: string }>\n   - Used by frontend for secure card collection\n   - No card data touches our servers (PCI compliance)\n\n6. Webhook handling:\n   - customer.updated\n   - customer.deleted\n   - payment_method.attached\n   - payment_method.detached\n\n7. API endpoints:\n   - GET /customers/:tenantId - Get customer\n   - POST /customers/:tenantId/setup-intent - Create setup intent\n   - GET /customers/:tenantId/payment-methods - List payment methods\n   - DELETE /customers/:tenantId/payment-methods/:id - Remove payment method\n   - PUT /customers/:tenantId/default-payment - Set default",
+      "testing-instructions": "1. Test customer creation creates Stripe customer\n2. Test customer update syncs to Stripe\n3. Test setup intent returns client secret\n4. Test payment method attachment\n5. Test listing payment methods\n6. Test removing payment method\n7. Test webhook updates local data\n8. Test error handling for Stripe errors",
+      "acceptance_criteria": [
+        "Stripe customers are created for tenants",
+        "Customer data syncs bidirectionally",
+        "Setup intent works for card collection",
+        "Payment methods can be managed",
+        "Webhooks update local state",
+        "PCI compliance maintained",
+        "Stripe errors are handled gracefully"
+      ],
+      "files_to_create": [
+        "services/billing/src/stripe/stripe-client.ts",
+        "services/billing/src/models/stripe-customer.ts",
+        "services/billing/src/stripe/stripe-service.ts",
+        "services/billing/src/stripe/payment-methods.ts",
+        "services/billing/src/routes/customers.ts"
+      ],
+      "docker_requirements": null,
+      "task_id": "BILLING-010"
+    },
+    {
+      "task-name": "Stripe Subscription Billing",
+      "feature-details": "Integrate Stripe subscriptions for recurring billing. Sync local subscriptions with Stripe. Handle billing cycles, renewals, and failed payments.",
+      "feature-dependency": ["BILLING-008", "BILLING-010"],
+      "ai-prompt": "Create Stripe subscription billing in services/billing:\n\n1. Create Stripe products and prices:\n   - Sync plans to Stripe products\n   - Create prices for monthly/yearly\n   - Handle price updates\n\n2. StripeSubscription integration:\n   - Extend local Subscription model\n   - stripeSubscriptionId: string\n   - stripePriceId: string\n   - stripeStatus: string\n   - latestInvoiceId?: string\n\n3. Subscription creation flow:\n   - Create Stripe subscription\n   - Set payment method\n   - Handle trial period\n   - Sync status locally\n\n4. Subscription updates:\n   - upgrade: Change Stripe price, proration\n   - downgrade: Schedule at period end\n   - cancel: Cancel Stripe subscription\n   - resume: Reactivate if not deleted\n\n5. Billing cycle handling:\n   - Sync current_period_start/end\n   - Handle renewals\n   - Update local status\n\n6. Failed payment handling:\n   - Webhook: invoice.payment_failed\n   - Mark subscription past_due\n   - Send notification to tenant\n   - Retry logic (Stripe handles retries)\n   - Dunning: warn before cancellation\n\n7. Webhook handlers:\n   - customer.subscription.created\n   - customer.subscription.updated\n   - customer.subscription.deleted\n   - invoice.paid\n   - invoice.payment_failed\n   - invoice.payment_action_required\n\n8. API endpoints:\n   - POST /subscriptions/:id/checkout - Create checkout session\n   - POST /subscriptions/:id/portal - Create billing portal session\n\n9. Billing portal:\n   - Use Stripe Customer Portal\n   - Customers manage their own billing\n   - Configure portal in Stripe dashboard",
+      "testing-instructions": "1. Test subscription creates Stripe subscription\n2. Test upgrade changes Stripe price\n3. Test proration is calculated\n4. Test downgrade schedules at period end\n5. Test cancel cancels Stripe subscription\n6. Test webhook updates local status\n7. Test failed payment marks past_due\n8. Test billing portal link works",
+      "acceptance_criteria": [
+        "Subscriptions sync with Stripe",
+        "Billing cycles are tracked",
+        "Upgrades/downgrades work correctly",
+        "Failed payments are handled",
+        "Webhooks update status",
+        "Billing portal accessible",
+        "Proration is accurate",
+        "Dunning notifications work"
+      ],
+      "files_to_create": [
+        "services/billing/src/stripe/subscription-billing.ts",
+        "services/billing/src/stripe/products-sync.ts",
+        "services/billing/src/stripe/webhook-handlers.ts",
+        "services/billing/src/stripe/billing-portal.ts",
+        "services/billing/src/routes/checkout.ts"
+      ],
+      "docker_requirements": null,
+      "task_id": "BILLING-011"
+    },
+    {
+      "task-name": "Stripe Webhook Handler",
+      "feature-details": "Implement secure webhook endpoint for receiving Stripe events. Verify signatures, handle all billing-related events, and maintain idempotency.",
+      "feature-dependency": ["BILLING-010"],
+      "ai-prompt": "Create Stripe webhook handler in services/billing:\n\n1. Webhook endpoint:\n   - POST /webhooks/stripe\n   - Raw body parsing (required for signature)\n   - Verify webhook signature\n   - Return 200 quickly, process async\n\n2. Signature verification:\n   - Use Stripe webhook secret\n   - Verify stripe-signature header\n   - Reject invalid signatures (400)\n   - Log security failures\n\n3. Idempotency:\n   - Store processed event IDs\n   - Check before processing\n   - Prevent duplicate handling\n   - TTL: 24 hours\n\n4. Event routing:\n   - Map event types to handlers\n   - customer.* -> CustomerHandler\n   - subscription.* -> SubscriptionHandler\n   - invoice.* -> InvoiceHandler\n   - payment_method.* -> PaymentMethodHandler\n   - checkout.session.* -> CheckoutHandler\n\n5. Event handlers:\n   ```typescript\n   interface WebhookHandler {\n     handle(event: Stripe.Event): Promise<void>;\n   }\n   ```\n\n6. Error handling:\n   - Catch handler errors\n   - Log for debugging\n   - Still return 200 (Stripe will retry)\n   - Alert on repeated failures\n\n7. Event logging:\n   - Store all events for audit\n   - Retention: 90 days\n   - Searchable by type, customer\n\n8. Testing:\n   - Use Stripe CLI for local testing\n   - stripe listen --forward-to localhost:3012/webhooks/stripe\n   - Test event simulation\n\n9. Security:\n   - Only allow POST\n   - IP restriction (Stripe IPs) optional\n   - Rate limiting\n   - No sensitive data logging",
+      "testing-instructions": "1. Test valid webhook is processed\n2. Test invalid signature is rejected\n3. Test duplicate events are skipped\n4. Test all event types are routed\n5. Test handler errors don't affect response\n6. Test event is logged\n7. Test Stripe CLI forwarding works\n8. Test idempotency key storage",
+      "acceptance_criteria": [
+        "Webhook signature is verified",
+        "Invalid signatures are rejected",
+        "Duplicate events are handled",
+        "All event types are supported",
+        "Errors don't block response",
+        "Events are logged for audit",
+        "Idempotency prevents duplicates",
+        "Security measures in place"
+      ],
+      "files_to_create": [
+        "services/billing/src/webhooks/stripe-webhook.ts",
+        "services/billing/src/webhooks/signature-verification.ts",
+        "services/billing/src/webhooks/idempotency.ts",
+        "services/billing/src/webhooks/event-router.ts",
+        "services/billing/src/webhooks/handlers/index.ts",
+        "services/billing/src/models/webhook-event.ts",
+        "services/billing/src/routes/webhooks.ts"
+      ],
+      "docker_requirements": null,
+      "task_id": "BILLING-012"
+    }
+  ]
+}

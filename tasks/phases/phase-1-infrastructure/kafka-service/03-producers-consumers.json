@@ -1,0 +1,271 @@
+{
+  "task_group": "kafka-producers-consumers",
+  "description": "Producer and consumer pattern implementations with error handling and retry logic",
+  "priority": "critical",
+  "estimated_hours": 26,
+  "phase": 1,
+  "feature_area": "kafka-service",
+  "tasks": [
+    {
+      "id": "KAFKA-008",
+      "task_name": "Producer Implementation",
+      "feature_details": "Implement the base producer with batching, compression, retries, and exactly-once semantics for reliable message production.",
+      "feature_dependency": ["KAFKA-006", "KAFKA-007"],
+      "ai_prompt": "Implement the complete Kafka producer system:\n\n1. Create src/producers/base-producer.ts:\n   ```typescript\n   export class BaseProducer {\n     private producer: Kafka.Producer;\n     private schemaRegistry: SchemaRegistryClient;\n\n     async send<T>(params: {\n       topic: string;\n       key: string;\n       value: T;\n       headers?: Record<string, string>;\n       partition?: number;\n     }): Promise<RecordMetadata>;\n\n     async sendBatch<T>(params: {\n       topic: string;\n       messages: Array<{ key: string; value: T; headers?: Record<string, string> }>;\n     }): Promise<RecordMetadata[]>;\n\n     async transaction<R>(callback: (producer: TransactionalProducer) => Promise<R>): Promise<R>;\n   }\n   ```\n\n2. Producer configuration:\n   - acks: 'all' (wait for all replicas)\n   - compression: 'snappy' (fast compression)\n   - batch.size: 16384 (batch messages)\n   - linger.ms: 5 (small delay for batching)\n   - max.in.flight.requests: 5 (with idempotence)\n   - enable.idempotence: true (exactly-once)\n   - retries: 3\n   - retry.backoff.ms: 100\n\n3. Create src/producers/tenant-producer.ts:\n   - Tenant-aware producer\n   - Automatically routes to tenant topics\n   - Injects tenant_id into messages\n\n4. Create specific producers:\n   - src/producers/message-producer.ts (chat messages)\n   - src/producers/event-producer.ts (generic events)\n   - src/producers/analytics-producer.ts (analytics with fire-and-forget)\n\n5. Create src/producers/producer-interceptors.ts:\n   - Logging interceptor\n   - Metrics interceptor\n   - Tracing interceptor (inject trace headers)\n   - Schema validation interceptor\n\n6. Create src/producers/producer-metrics.ts:\n   - Track messages sent\n   - Track latency\n   - Track errors\n   - Track batch sizes\n\n7. Error handling:\n   - Retryable errors: connection, timeout\n   - Non-retryable errors: serialization, validation\n   - Dead letter queue for failed messages",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test message serialization",
+          "Test partition key selection",
+          "Test interceptor chain"
+        ],
+        "integration_tests": [
+          "Test single message production",
+          "Test batch production",
+          "Test transactional production",
+          "Test error handling and retries"
+        ],
+        "e2e_tests": [
+          "Test message flow from producer to consumer"
+        ]
+      },
+      "acceptance_criteria": [
+        "Messages produced with exactly-once semantics",
+        "Batching improves throughput",
+        "Retries handle transient failures",
+        "Metrics are collected",
+        "Tracing headers are injected"
+      ],
+      "files_to_create": [
+        "services/kafka-service/src/producers/base-producer.ts",
+        "services/kafka-service/src/producers/tenant-producer.ts",
+        "services/kafka-service/src/producers/message-producer.ts",
+        "services/kafka-service/src/producers/event-producer.ts",
+        "services/kafka-service/src/producers/analytics-producer.ts",
+        "services/kafka-service/src/producers/producer-interceptors.ts",
+        "services/kafka-service/src/producers/producer-metrics.ts",
+        "services/kafka-service/src/producers/types.ts",
+        "services/kafka-service/src/producers/index.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [
+          "PRODUCER_ACKS",
+          "PRODUCER_COMPRESSION",
+          "PRODUCER_BATCH_SIZE",
+          "PRODUCER_LINGER_MS"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 8,
+      "tags": ["kafka", "producer", "exactly-once", "batching"]
+    },
+    {
+      "id": "KAFKA-009",
+      "task_name": "Consumer Implementation",
+      "feature_details": "Implement the consumer framework with consumer groups, offset management, rebalancing, and concurrent message processing.",
+      "feature_dependency": ["KAFKA-007"],
+      "ai_prompt": "Implement the complete Kafka consumer system:\n\n1. Create src/consumers/base-consumer.ts:\n   ```typescript\n   export abstract class BaseConsumer<T> {\n     protected consumer: Kafka.Consumer;\n     protected groupId: string;\n\n     abstract process(message: KafkaMessage<T>): Promise<void>;\n\n     async start(): Promise<void>;\n     async stop(): Promise<void>;\n     async pause(): Promise<void>;\n     async resume(): Promise<void>;\n\n     protected onRebalance(event: RebalanceEvent): void;\n     protected onError(error: Error): void;\n   }\n   ```\n\n2. Consumer configuration:\n   - auto.offset.reset: 'earliest' (start from beginning)\n   - enable.auto.commit: false (manual commits)\n   - max.poll.records: 500\n   - session.timeout.ms: 30000\n   - heartbeat.interval.ms: 10000\n   - max.poll.interval.ms: 300000\n\n3. Create src/consumers/consumer-group-manager.ts:\n   - Manage multiple consumer groups\n   - Handle group rebalancing\n   - Track consumer lag\n   - Health checks\n\n4. Create src/consumers/batch-consumer.ts:\n   - Process messages in batches\n   - Configurable batch size\n   - Batch commit strategy\n\n5. Create src/consumers/concurrent-consumer.ts:\n   - Process messages concurrently within partition\n   - Worker pool pattern\n   - Respect message ordering when needed\n\n6. Create src/consumers/consumer-handlers/:\n   - message-handler.ts (chat message processing)\n   - event-handler.ts (event processing)\n   - notification-handler.ts (notification dispatch)\n   - analytics-handler.ts (analytics aggregation)\n\n7. Create src/consumers/offset-manager.ts:\n   - Manual offset commits\n   - Seek to specific offsets\n   - Track committed offsets\n   - Handle reprocessing\n\n8. Create src/consumers/consumer-metrics.ts:\n   - Track messages consumed\n   - Track processing latency\n   - Track consumer lag\n   - Track errors\n\n9. Offset commit strategies:\n   - At-least-once: commit after processing\n   - At-most-once: commit before processing\n   - Transactional: commit with transaction",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test message deserialization",
+          "Test handler routing",
+          "Test offset calculation"
+        ],
+        "integration_tests": [
+          "Test consumer group join/leave",
+          "Test rebalancing",
+          "Test offset commits",
+          "Test concurrent processing",
+          "Test batch processing"
+        ],
+        "e2e_tests": [
+          "Test complete message flow",
+          "Test failure recovery"
+        ]
+      },
+      "acceptance_criteria": [
+        "Consumer groups work correctly",
+        "Rebalancing is handled gracefully",
+        "Messages are processed at-least-once",
+        "Concurrent processing scales well",
+        "Consumer lag is tracked"
+      ],
+      "files_to_create": [
+        "services/kafka-service/src/consumers/base-consumer.ts",
+        "services/kafka-service/src/consumers/consumer-group-manager.ts",
+        "services/kafka-service/src/consumers/batch-consumer.ts",
+        "services/kafka-service/src/consumers/concurrent-consumer.ts",
+        "services/kafka-service/src/consumers/offset-manager.ts",
+        "services/kafka-service/src/consumers/consumer-metrics.ts",
+        "services/kafka-service/src/consumers/types.ts",
+        "services/kafka-service/src/consumers/index.ts",
+        "services/kafka-service/src/consumers/handlers/message-handler.ts",
+        "services/kafka-service/src/consumers/handlers/event-handler.ts",
+        "services/kafka-service/src/consumers/handlers/notification-handler.ts",
+        "services/kafka-service/src/consumers/handlers/analytics-handler.ts",
+        "services/kafka-service/src/consumers/handlers/index.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [
+          "CONSUMER_GROUP_ID",
+          "CONSUMER_MAX_POLL_RECORDS",
+          "CONSUMER_SESSION_TIMEOUT_MS"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 8,
+      "tags": ["kafka", "consumer", "consumer-groups", "offset-management"]
+    },
+    {
+      "id": "KAFKA-010",
+      "task_name": "Error Handling and DLQ",
+      "feature_details": "Implement comprehensive error handling with dead letter queues, retry logic, and circuit breakers for resilient message processing.",
+      "feature_dependency": ["KAFKA-008", "KAFKA-009"],
+      "ai_prompt": "Implement error handling and retry system:\n\n1. Create src/errors/kafka-errors.ts:\n   - Define error hierarchy:\n     * RetryableError (transient failures)\n     * NonRetryableError (permanent failures)\n     * PoisonPillError (malformed messages)\n     * TimeoutError\n     * SchemaError\n     * SerializationError\n\n2. Create src/errors/retry-policy.ts:\n   - RetryPolicy class\n   - Configurable:\n     * maxRetries: 3\n     * initialDelay: 100ms\n     * maxDelay: 30s\n     * backoffMultiplier: 2\n     * jitter: true\n   - Exponential backoff with jitter\n   - Retry topic strategy\n\n3. Create src/errors/dead-letter-queue.ts:\n   - DLQProducer class\n   - Send failed messages to DLQ\n   - Include error information:\n     * Original topic\n     * Error message\n     * Stack trace\n     * Retry count\n     * Timestamp\n   - DLQ consumer for reprocessing\n\n4. Create src/errors/circuit-breaker.ts:\n   - CircuitBreaker class for downstream services\n   - States: CLOSED, OPEN, HALF_OPEN\n   - Configuration:\n     * failureThreshold: 5\n     * resetTimeout: 60s\n     * halfOpenRequests: 3\n   - Metrics integration\n\n5. Create src/errors/retry-topic-consumer.ts:\n   - Consume from retry topics\n   - Honor delay before reprocessing\n   - Track retry attempts\n   - Move to DLQ after max retries\n\n6. Create src/errors/error-reporter.ts:\n   - Report errors to monitoring\n   - Integrate with distributed tracing\n   - Alert on high error rates\n\n7. Retry topic naming:\n   - {topic}.retry.1 (1 min delay)\n   - {topic}.retry.2 (5 min delay)\n   - {topic}.retry.3 (30 min delay)\n   - {topic}.dlq (dead letter)\n\n8. Create src/errors/poison-pill-handler.ts:\n   - Detect malformed messages\n   - Skip and log without processing\n   - Send to DLQ for analysis",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test retry policy calculations",
+          "Test circuit breaker state transitions",
+          "Test error classification"
+        ],
+        "integration_tests": [
+          "Test retry flow",
+          "Test DLQ production",
+          "Test circuit breaker with real failures",
+          "Test retry topic consumption"
+        ],
+        "e2e_tests": [
+          "Test complete failure -> retry -> DLQ flow"
+        ]
+      },
+      "acceptance_criteria": [
+        "Failed messages are retried with backoff",
+        "Messages move to DLQ after max retries",
+        "Circuit breaker prevents cascade failures",
+        "Poison pills are handled gracefully",
+        "Error metrics are collected"
+      ],
+      "files_to_create": [
+        "services/kafka-service/src/errors/kafka-errors.ts",
+        "services/kafka-service/src/errors/retry-policy.ts",
+        "services/kafka-service/src/errors/dead-letter-queue.ts",
+        "services/kafka-service/src/errors/circuit-breaker.ts",
+        "services/kafka-service/src/errors/retry-topic-consumer.ts",
+        "services/kafka-service/src/errors/error-reporter.ts",
+        "services/kafka-service/src/errors/poison-pill-handler.ts",
+        "services/kafka-service/src/errors/index.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [
+          "MAX_RETRIES",
+          "RETRY_INITIAL_DELAY_MS",
+          "RETRY_MAX_DELAY_MS",
+          "CIRCUIT_BREAKER_THRESHOLD",
+          "CIRCUIT_BREAKER_RESET_MS"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "kafka_dlq_messages",
+            "description": "Store DLQ messages for analysis and reprocessing"
+          }
+        ],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 6,
+      "tags": ["kafka", "error-handling", "dlq", "circuit-breaker", "retry"]
+    },
+    {
+      "id": "KAFKA-011",
+      "task_name": "Consumer Pipeline Orchestration",
+      "feature_details": "Implement the message processing pipeline that orchestrates message flow from consumption to processing with proper error handling.",
+      "feature_dependency": ["KAFKA-009", "KAFKA-010"],
+      "ai_prompt": "Create the consumer pipeline orchestration:\n\n1. Create src/pipeline/message-pipeline.ts:\n   ```typescript\n   export class MessagePipeline<T> {\n     constructor(private stages: PipelineStage<T>[]);\n\n     async process(message: KafkaMessage<T>): Promise<PipelineResult>;\n\n     addStage(stage: PipelineStage<T>): this;\n     removeStage(stageName: string): this;\n   }\n\n   interface PipelineStage<T> {\n     name: string;\n     process(context: PipelineContext<T>): Promise<PipelineContext<T>>;\n     onError?(error: Error, context: PipelineContext<T>): Promise<ErrorAction>;\n   }\n   ```\n\n2. Create standard pipeline stages:\n   - DeserializationStage\n   - ValidationStage\n   - TenantContextStage (load tenant config)\n   - AuthorizationStage (check permissions)\n   - TransformationStage (data transformation)\n   - ProcessingStage (business logic)\n   - PersistenceStage (save to database)\n   - NotificationStage (trigger notifications)\n   - MetricsStage (record metrics)\n\n3. Create src/pipeline/pipeline-builder.ts:\n   - Fluent API for building pipelines:\n     ```typescript\n     PipelineBuilder.create()\n       .deserialize(ChatMessageSchema)\n       .validate()\n       .withTenantContext()\n       .authorize('message.send')\n       .process(chatMessageHandler)\n       .persist()\n       .notify()\n       .metrics()\n       .build();\n     ```\n\n4. Create src/pipeline/pipeline-context.ts:\n   - Carry data through pipeline\n   - Track timing for each stage\n   - Collect metrics\n   - Handle errors\n\n5. Create preconfigured pipelines:\n   - chatMessagePipeline\n   - chatEventPipeline\n   - presencePipeline\n   - notificationPipeline\n   - analyticsPipeline\n\n6. Create src/pipeline/pipeline-executor.ts:\n   - Execute pipeline with tracing\n   - Handle stage failures\n   - Retry individual stages\n   - Collect stage metrics\n\n7. Create src/pipeline/pipeline-metrics.ts:\n   - Stage execution times\n   - Pipeline success/failure rates\n   - Throughput metrics",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test individual pipeline stages",
+          "Test pipeline builder",
+          "Test context propagation"
+        ],
+        "integration_tests": [
+          "Test complete pipeline execution",
+          "Test stage failure handling",
+          "Test stage retries",
+          "Test metrics collection"
+        ],
+        "e2e_tests": [
+          "Test message through complete pipeline"
+        ]
+      },
+      "acceptance_criteria": [
+        "Pipelines are configurable",
+        "Stages execute in order",
+        "Errors are handled per-stage",
+        "Metrics are collected for each stage",
+        "Tracing spans created for stages"
+      ],
+      "files_to_create": [
+        "services/kafka-service/src/pipeline/message-pipeline.ts",
+        "services/kafka-service/src/pipeline/pipeline-builder.ts",
+        "services/kafka-service/src/pipeline/pipeline-context.ts",
+        "services/kafka-service/src/pipeline/pipeline-executor.ts",
+        "services/kafka-service/src/pipeline/pipeline-metrics.ts",
+        "services/kafka-service/src/pipeline/stages/deserialization-stage.ts",
+        "services/kafka-service/src/pipeline/stages/validation-stage.ts",
+        "services/kafka-service/src/pipeline/stages/tenant-context-stage.ts",
+        "services/kafka-service/src/pipeline/stages/authorization-stage.ts",
+        "services/kafka-service/src/pipeline/stages/transformation-stage.ts",
+        "services/kafka-service/src/pipeline/stages/processing-stage.ts",
+        "services/kafka-service/src/pipeline/stages/persistence-stage.ts",
+        "services/kafka-service/src/pipeline/stages/notification-stage.ts",
+        "services/kafka-service/src/pipeline/stages/metrics-stage.ts",
+        "services/kafka-service/src/pipeline/stages/index.ts",
+        "services/kafka-service/src/pipeline/prebuilt/index.ts",
+        "services/kafka-service/src/pipeline/index.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 7,
+      "tags": ["kafka", "pipeline", "orchestration", "middleware"]
+    }
+  ]
+}

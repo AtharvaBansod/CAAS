@@ -1,0 +1,211 @@
+{
+  "task_group": "typing-indicators",
+  "description": "Real-time typing indicators for conversations",
+  "priority": "high",
+  "estimated_hours": 14,
+  "phase": 3,
+  "feature_area": "realtime-events",
+  "tasks": [
+    {
+      "id": "TYPING-001",
+      "task_name": "Typing Event Handler",
+      "feature_details": "Implement typing start/stop event handling with automatic timeout.",
+      "feature_dependency": ["SOCKET-009", "SOCKET-010"],
+      "ai_prompt": "Implement typing event handler:\n\n1. Create services/socket-service/src/typing/typing-handler.ts:\n   ```typescript\n   export class TypingHandler {\n     async handleTypingStart(socket: Socket, conversationId: string): Promise<void>;\n     async handleTypingStop(socket: Socket, conversationId: string): Promise<void>;\n     async getTypingUsers(conversationId: string): Promise<TypingUser[]>;\n   }\n\n   interface TypingUser {\n     user_id: string;\n     display_name: string;\n     started_at: Date;\n   }\n   ```\n\n2. Create services/socket-service/src/events/typing-events.ts:\n   ```typescript\n   socket.on('typing_start', async (data: { conversation_id: string }) => {\n     // Validate user is in conversation\n     const canType = await roomAuthorizer.canSendToRoom(socket.data.user.id, data.conversation_id);\n     if (!canType) return;\n\n     await typingHandler.handleTypingStart(socket, data.conversation_id);\n\n     // Broadcast to conversation (excluding sender)\n     socket.to(`conversation:${data.conversation_id}`).emit('user_typing', {\n       conversation_id: data.conversation_id,\n       user: {\n         id: socket.data.user.id,\n         display_name: socket.data.user.display_name,\n       },\n       is_typing: true,\n     });\n   });\n\n   socket.on('typing_stop', async (data: { conversation_id: string }) => {\n     await typingHandler.handleTypingStop(socket, data.conversation_id);\n\n     socket.to(`conversation:${data.conversation_id}`).emit('user_typing', {\n       conversation_id: data.conversation_id,\n       user: {\n         id: socket.data.user.id,\n       },\n       is_typing: false,\n     });\n   });\n   ```\n\n3. Create services/socket-service/src/typing/typing-state-store.ts:\n   - Store typing state in Redis\n   - Track typing per conversation\n   - Track typing per user per conversation\n   - TTL for automatic cleanup\n\n4. Automatic typing stop:\n   - Timeout after 3-5 seconds\n   - On message send\n   - On disconnect\n   - On room leave\n\n5. Rate limiting:\n   - Debounce typing events\n   - Max typing events per second\n   - Prevent typing spam",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test typing start",
+          "Test typing stop",
+          "Test timeout"
+        ],
+        "integration_tests": [
+          "Test broadcast to room",
+          "Test multi-user typing",
+          "Test rate limiting"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Typing events are broadcast",
+        "Automatic timeout works",
+        "State is tracked in Redis",
+        "Rate limiting is enforced",
+        "Multiple users can type"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/typing/typing-handler.ts",
+        "services/socket-service/src/typing/typing-state-store.ts",
+        "services/socket-service/src/events/typing-events.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["redis"],
+        "environment_variables": [
+          "TYPING_TIMEOUT_MS",
+          "TYPING_DEBOUNCE_MS"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 3,
+      "tags": ["typing", "realtime", "events"]
+    },
+    {
+      "id": "TYPING-002",
+      "task_name": "Typing Timeout Manager",
+      "feature_details": "Implement automatic typing timeout to clear stale typing indicators.",
+      "feature_dependency": ["TYPING-001"],
+      "ai_prompt": "Implement typing timeout manager:\n\n1. Create services/socket-service/src/typing/typing-timeout-manager.ts:\n   ```typescript\n   export class TypingTimeoutManager {\n     private timeouts: Map<string, NodeJS.Timeout>;\n\n     scheduleTimeout(userId: string, conversationId: string, timeoutMs: number): void;\n     cancelTimeout(userId: string, conversationId: string): void;\n     handleTimeout(userId: string, conversationId: string): Promise<void>;\n   }\n   ```\n\n2. Create services/socket-service/src/typing/typing-cleaner.ts:\n   ```typescript\n   export class TypingCleaner {\n     // Periodic job to clean stale typing indicators\n     async cleanStaleTyping(): Promise<void>;\n     async cleanUserTyping(userId: string): Promise<void>;\n     async cleanConversationTyping(conversationId: string): Promise<void>;\n   }\n   ```\n\n3. Timeout scenarios:\n   - User stops typing (3 seconds of inactivity)\n   - User sends message (immediate clear)\n   - User disconnects (immediate clear)\n   - User leaves room (immediate clear)\n   - User closes conversation (immediate clear)\n\n4. Create services/socket-service/src/typing/typing-event-emitter.ts:\n   - Emit typing stop on timeout\n   - Batch typing stops for efficiency\n   - Track timeout metrics\n\n5. Redis-based timeout (alternative):\n   - Use Redis key expiration\n   - Keyspace notifications\n   - Handle expiration events\n\n6. Configuration:\n   - Typing timeout duration\n   - Cleanup interval\n   - Max typing duration (absolute max)",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test timeout scheduling",
+          "Test timeout cancellation",
+          "Test cleanup logic"
+        ],
+        "integration_tests": [
+          "Test automatic timeout",
+          "Test message send clears typing",
+          "Test disconnect clears typing"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Typing times out correctly",
+        "Timeouts are cancelled when appropriate",
+        "Stale typing is cleaned up",
+        "No memory leaks",
+        "Metrics are tracked"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/typing/typing-timeout-manager.ts",
+        "services/socket-service/src/typing/typing-cleaner.ts",
+        "services/socket-service/src/typing/typing-event-emitter.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["redis"],
+        "environment_variables": [
+          "TYPING_TIMEOUT_MS",
+          "TYPING_MAX_DURATION_MS"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 3,
+      "tags": ["typing", "timeout", "cleanup"]
+    },
+    {
+      "id": "TYPING-003",
+      "task_name": "Typing Indicator Aggregation",
+      "feature_details": "Aggregate multiple typing users for display (e.g., 'Alice and Bob are typing').",
+      "feature_dependency": ["TYPING-001"],
+      "ai_prompt": "Implement typing aggregation:\n\n1. Create services/socket-service/src/typing/typing-aggregator.ts:\n   ```typescript\n   export class TypingAggregator {\n     async getTypingIndicator(conversationId: string, requestingUserId: string): Promise<TypingIndicator>;\n   }\n\n   interface TypingIndicator {\n     users: TypingUser[];\n     display_text: string; // 'Alice is typing...', 'Alice and Bob are typing...'\n     count: number;\n   }\n   ```\n\n2. Display text formatting:\n   - 1 user: \"Alice is typing...\"\n   - 2 users: \"Alice and Bob are typing...\"\n   - 3 users: \"Alice, Bob, and Carol are typing...\"\n   - 4+ users: \"4 people are typing...\"\n\n3. Create services/socket-service/src/typing/typing-display-formatter.ts:\n   ```typescript\n   export class TypingDisplayFormatter {\n     format(users: TypingUser[], locale: string): string;\n     formatShort(users: TypingUser[]): string;\n     formatCompact(count: number): string;\n   }\n   ```\n\n4. Client-side vs server-side formatting:\n   - Send raw user list to client\n   - Client can format locally\n   - Include locale preference\n\n5. Create services/socket-service/src/events/typing-query-events.ts:\n   ```typescript\n   socket.on('typing_query', async (data: { conversation_id: string }, callback) => {\n     const indicator = await typingAggregator.getTypingIndicator(\n       data.conversation_id,\n       socket.data.user.id\n     );\n     callback(indicator);\n   });\n   ```\n\n6. Exclude requesting user from list\n   - Don't show 'You are typing'\n   - Filter out self",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test aggregation",
+          "Test display formatting",
+          "Test self exclusion"
+        ],
+        "integration_tests": [
+          "Test query event",
+          "Test multi-user formatting",
+          "Test locale support"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Typing users are aggregated",
+        "Display text is formatted correctly",
+        "Self is excluded",
+        "Query returns current state",
+        "Multiple locales supported"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/typing/typing-aggregator.ts",
+        "services/socket-service/src/typing/typing-display-formatter.ts",
+        "services/socket-service/src/events/typing-query-events.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["redis"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["typing", "aggregation", "formatting"]
+    },
+    {
+      "id": "TYPING-004",
+      "task_name": "Typing Analytics and Metrics",
+      "feature_details": "Track typing metrics for analytics and debugging.",
+      "feature_dependency": ["TYPING-001", "KAFKA-008"],
+      "ai_prompt": "Implement typing metrics:\n\n1. Create services/socket-service/src/typing/typing-metrics.ts:\n   ```typescript\n   export class TypingMetrics {\n     recordTypingStart(userId: string, conversationId: string): void;\n     recordTypingStop(userId: string, conversationId: string, durationMs: number): void;\n     recordTypingTimeout(userId: string, conversationId: string): void;\n     getMetrics(): TypingStats;\n   }\n\n   interface TypingStats {\n     active_typing: number;\n     typing_starts_per_minute: number;\n     average_typing_duration_ms: number;\n     timeout_rate: number;\n   }\n   ```\n\n2. Metrics to track:\n   - Active typing count (gauge)\n   - Typing starts per minute (counter)\n   - Average typing duration\n   - Typing timeout rate\n   - Messages sent while typing\n\n3. Create services/socket-service/src/typing/typing-events-producer.ts:\n   - Optional: Produce to Kafka for analysis\n   - Batch events\n   - Sampling for high volume\n\n4. Prometheus metrics:\n   ```typescript\n   // caas_typing_active{tenant_id}\n   // caas_typing_starts_total{tenant_id}\n   // caas_typing_duration_seconds{tenant_id}\n   // caas_typing_timeouts_total{tenant_id}\n   ```\n\n5. Create services/socket-service/src/typing/typing-debug.ts:\n   - Debug logging for typing events\n   - Trace individual typing sessions\n   - Correlation with messages\n\n6. Dashboard data (for clientFacingUI):\n   - Typing activity heatmap\n   - Average response time (typing to message)\n   - User engagement metrics",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test metric recording",
+          "Test stats calculation",
+          "Test Prometheus format"
+        ],
+        "integration_tests": [
+          "Test Kafka production",
+          "Test metric accuracy",
+          "Test debug logging"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Metrics are recorded accurately",
+        "Prometheus metrics are exposed",
+        "Kafka events are produced",
+        "Debug logging works",
+        "Dashboard data available"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/typing/typing-metrics.ts",
+        "services/socket-service/src/typing/typing-events-producer.ts",
+        "services/socket-service/src/typing/typing-debug.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["kafka"],
+        "environment_variables": [
+          "TYPING_METRICS_ENABLED",
+          "TYPING_EVENTS_KAFKA_TOPIC"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["typing", "metrics", "analytics", "prometheus"]
+    }
+  ]
+}

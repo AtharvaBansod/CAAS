@@ -1,0 +1,209 @@
+{
+  "task_group": "log-aggregation",
+  "description": "Log aggregation with Vector, Loki, and search capabilities",
+  "priority": "high",
+  "estimated_hours": 16,
+  "phase": 5,
+  "feature_area": "logging",
+  "tasks": [
+    {
+      "id": "LOG-005",
+      "task_name": "Vector Log Collection",
+      "feature_details": "Set up Vector for log collection and routing.",
+      "feature_dependency": ["LOG-001"],
+      "ai_prompt": "Set up Vector log collection:\n\n1. Create infrastructure/vector/vector.toml:\n   ```toml\n   [api]\n   enabled = true\n   address = \"0.0.0.0:8686\"\n\n   # Collect logs from Docker containers\n   [sources.docker_logs]\n   type = \"docker_logs\"\n   docker_host = \"unix:///var/run/docker.sock\"\n   include_labels = [\"com.caas.service\"]\n\n   # Parse JSON logs\n   [transforms.parse_json]\n   type = \"remap\"\n   inputs = [\"docker_logs\"]\n   source = '''\n   . = parse_json!(.message)\n   .container = .container_name\n   del(.message)\n   '''\n\n   # Add metadata\n   [transforms.enrich]\n   type = \"remap\"\n   inputs = [\"parse_json\"]\n   source = '''\n   .environment = \"${ENVIRONMENT}\"\n   .cluster = \"${CLUSTER_NAME}\"\n   '''\n\n   # Filter out health checks\n   [transforms.filter]\n   type = \"filter\"\n   inputs = [\"enrich\"]\n   condition = '.url != \"/health\" && .url != \"/ready\"'\n\n   # Send to Loki\n   [sinks.loki]\n   type = \"loki\"\n   inputs = [\"filter\"]\n   endpoint = \"http://loki:3100\"\n   labels = { service = \"{{ service }}\", level = \"{{ level }}\", tenant = \"{{ tenantId }}\" }\n   encoding.codec = \"json\"\n\n   # Send errors to Kafka for alerting\n   [sinks.kafka_errors]\n   type = \"kafka\"\n   inputs = [\"filter\"]\n   bootstrap_servers = \"kafka:9092\"\n   topic = \"error-logs\"\n   encoding.codec = \"json\"\n   condition = '.level == \"error\" || .level == \"fatal\"'\n   ```\n\n2. Update docker-compose.yml with Vector:\n   ```yaml\n   vector:\n     image: timberio/vector:0.34.0-alpine\n     volumes:\n       - ./infrastructure/vector/vector.toml:/etc/vector/vector.toml\n       - /var/run/docker.sock:/var/run/docker.sock\n     depends_on:\n       - loki\n     networks:\n       - caas-network\n   ```\n\n3. Service container labels:\n   ```yaml\n   gateway:\n     labels:\n       com.caas.service: gateway\n   ```\n\n4. Log rotation:\n   - Vector handles buffering\n   - Disk buffer for reliability\n   - Configurable retention",
+      "testing_instructions": {
+        "unit_tests": [],
+        "integration_tests": [
+          "Test log collection",
+          "Test parsing",
+          "Test routing"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Vector running",
+        "Logs collected from containers",
+        "JSON parsed correctly",
+        "Logs routed to Loki",
+        "Errors routed to Kafka"
+      ],
+      "files_to_create": [
+        "infrastructure/vector/vector.toml"
+      ],
+      "files_to_modify": [
+        "docker-compose.yml"
+      ],
+      "docker_requirements": {
+        "services": ["vector", "loki"],
+        "environment_variables": [
+          "ENVIRONMENT",
+          "CLUSTER_NAME"
+        ],
+        "volumes": ["/var/run/docker.sock"],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["logging", "vector", "collection"]
+    },
+    {
+      "id": "LOG-006",
+      "task_name": "Loki Log Storage",
+      "feature_details": "Set up Loki for log storage and querying.",
+      "feature_dependency": ["LOG-005"],
+      "ai_prompt": "Set up Loki:\n\n1. Create infrastructure/loki/loki-config.yaml:\n   ```yaml\n   auth_enabled: false\n\n   server:\n     http_listen_port: 3100\n\n   common:\n     path_prefix: /loki\n     storage:\n       filesystem:\n         chunks_directory: /loki/chunks\n         rules_directory: /loki/rules\n     replication_factor: 1\n     ring:\n       instance_addr: 127.0.0.1\n       kvstore:\n         store: inmemory\n\n   schema_config:\n     configs:\n       - from: 2024-01-01\n         store: boltdb-shipper\n         object_store: filesystem\n         schema: v11\n         index:\n           prefix: index_\n           period: 24h\n\n   storage_config:\n     boltdb_shipper:\n       active_index_directory: /loki/boltdb-shipper-active\n       cache_location: /loki/boltdb-shipper-cache\n       shared_store: filesystem\n     filesystem:\n       directory: /loki/chunks\n\n   limits_config:\n     reject_old_samples: true\n     reject_old_samples_max_age: 168h\n     ingestion_rate_mb: 10\n     ingestion_burst_size_mb: 20\n\n   compactor:\n     working_directory: /loki/compactor\n     shared_store: filesystem\n     retention_enabled: true\n     retention_delete_delay: 2h\n     retention_delete_worker_count: 150\n\n   chunk_store_config:\n     max_look_back_period: 168h\n\n   table_manager:\n     retention_deletes_enabled: true\n     retention_period: 168h\n   ```\n\n2. Update docker-compose.yml:\n   ```yaml\n   loki:\n     image: grafana/loki:2.9.2\n     ports:\n       - \"3100:3100\"\n     volumes:\n       - ./infrastructure/loki/loki-config.yaml:/etc/loki/local-config.yaml\n       - loki_data:/loki\n     command: -config.file=/etc/loki/local-config.yaml\n     networks:\n       - caas-network\n   ```\n\n3. Retention configuration:\n   - Default: 7 days\n   - Configurable per tenant\n   - Auto-compaction\n\n4. Multi-tenancy:\n   - Tenant header for isolation\n   - Per-tenant limits\n   - Query restrictions",
+      "testing_instructions": {
+        "unit_tests": [],
+        "integration_tests": [
+          "Test log ingestion",
+          "Test querying",
+          "Test retention"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Loki running",
+        "Logs stored",
+        "Logs queryable",
+        "Retention working",
+        "Multi-tenancy works"
+      ],
+      "files_to_create": [
+        "infrastructure/loki/loki-config.yaml"
+      ],
+      "files_to_modify": [
+        "docker-compose.yml"
+      ],
+      "docker_requirements": {
+        "services": ["loki"],
+        "environment_variables": [],
+        "volumes": ["loki_data"],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["logging", "loki", "storage"]
+    },
+    {
+      "id": "LOG-007",
+      "task_name": "Grafana Log Visualization",
+      "feature_details": "Set up Grafana dashboards for log visualization (internal platform monitoring).",
+      "feature_dependency": ["LOG-006"],
+      "ai_prompt": "Set up Grafana for logs (internal use):\n\n1. Update docker-compose.yml with Grafana:\n   ```yaml\n   grafana:\n     image: grafana/grafana:10.2.2\n     ports:\n       - \"3000:3000\"\n     environment:\n       - GF_SECURITY_ADMIN_PASSWORD=admin\n       - GF_USERS_ALLOW_SIGN_UP=false\n     volumes:\n       - grafana_data:/var/lib/grafana\n       - ./infrastructure/grafana/provisioning:/etc/grafana/provisioning\n     depends_on:\n       - loki\n       - prometheus\n     networks:\n       - caas-network\n   ```\n\n2. Create infrastructure/grafana/provisioning/datasources/datasources.yaml:\n   ```yaml\n   apiVersion: 1\n   datasources:\n     - name: Loki\n       type: loki\n       access: proxy\n       url: http://loki:3100\n       isDefault: false\n       editable: false\n\n     - name: Prometheus\n       type: prometheus\n       access: proxy\n       url: http://prometheus:9090\n       isDefault: true\n       editable: false\n   ```\n\n3. Create infrastructure/grafana/provisioning/dashboards/logs.json:\n   - Service logs overview\n   - Error rate by service\n   - Log volume over time\n   - Recent errors panel\n   - Log search interface\n\n4. Dashboard panels:\n   ```json\n   {\n     \"panels\": [\n       {\n         \"title\": \"Error Logs\",\n         \"type\": \"logs\",\n         \"datasource\": \"Loki\",\n         \"targets\": [{\n           \"expr\": \"{level=\\\"error\\\"}\"\n         }]\n       },\n       {\n         \"title\": \"Request Latency Distribution\",\n         \"type\": \"heatmap\",\n         \"datasource\": \"Loki\",\n         \"targets\": [{\n           \"expr\": \"sum by (le) (rate({service=~\\\".+\\\"} | json | unwrap duration [5m]))\"\n         }]\n       }\n     ]\n   }\n   ```\n\n5. Note: This is for internal CAAS platform monitoring only. Client analytics will be in clientFacingUI.",
+      "testing_instructions": {
+        "unit_tests": [],
+        "integration_tests": [
+          "Test Grafana access",
+          "Test Loki datasource",
+          "Test dashboard queries"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Grafana accessible",
+        "Loki datasource connected",
+        "Dashboards provisioned",
+        "Logs visible",
+        "Search working"
+      ],
+      "files_to_create": [
+        "infrastructure/grafana/provisioning/datasources/datasources.yaml",
+        "infrastructure/grafana/provisioning/dashboards/logs.json",
+        "infrastructure/grafana/provisioning/dashboards/dashboard.yaml"
+      ],
+      "files_to_modify": [
+        "docker-compose.yml"
+      ],
+      "docker_requirements": {
+        "services": ["grafana"],
+        "environment_variables": [
+          "GF_SECURITY_ADMIN_PASSWORD"
+        ],
+        "volumes": ["grafana_data"],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["logging", "grafana", "visualization", "internal"]
+    },
+    {
+      "id": "LOG-008",
+      "task_name": "Log Search API",
+      "feature_details": "Implement log search API for admin access.",
+      "feature_dependency": ["LOG-006"],
+      "ai_prompt": "Implement log search API:\n\n1. Create services/gateway/src/routes/v1/admin/logs.ts:\n   ```typescript\n   import { FastifyInstance } from 'fastify';\n\n   export async function logRoutes(fastify: FastifyInstance) {\n     // Search logs\n     fastify.get<{ Querystring: LogSearchQuery }>('/logs', {\n       onRequest: [fastify.authenticate, fastify.requireAdmin],\n       handler: async (request, reply) => {\n         const result = await logService.search({\n           query: request.query.q,\n           service: request.query.service,\n           level: request.query.level,\n           from: request.query.from,\n           to: request.query.to,\n           limit: request.query.limit || 100,\n         });\n         return result;\n       },\n     });\n\n     // Get log stream (WebSocket)\n     fastify.get('/logs/stream', {\n       websocket: true,\n       handler: async (connection, request) => {\n         const subscription = logService.subscribe({\n           service: request.query.service,\n           level: request.query.level,\n         });\n\n         subscription.on('log', (log) => {\n           connection.socket.send(JSON.stringify(log));\n         });\n\n         connection.socket.on('close', () => {\n           subscription.unsubscribe();\n         });\n       },\n     });\n   }\n   ```\n\n2. Create services/gateway/src/services/log.service.ts:\n   ```typescript\n   export class LogService {\n     async search(params: LogSearchParams): Promise<LogSearchResult> {\n       const query = this.buildLokiQuery(params);\n\n       const response = await fetch(\n         `${this.lokiUrl}/loki/api/v1/query_range`,\n         {\n           method: 'GET',\n           headers: { 'Content-Type': 'application/json' },\n           body: JSON.stringify({\n             query,\n             start: params.from || Date.now() - 3600000,\n             end: params.to || Date.now(),\n             limit: params.limit,\n           }),\n         },\n       );\n\n       return this.parseResponse(await response.json());\n     }\n\n     private buildLokiQuery(params: LogSearchParams): string {\n       let query = '{';\n       const labels: string[] = [];\n\n       if (params.service) {\n         labels.push(`service=\"${params.service}\"`);\n       }\n       if (params.level) {\n         labels.push(`level=\"${params.level}\"`);\n       }\n\n       query += labels.join(',') + '}';\n\n       if (params.query) {\n         query += ` |~ \"${params.query}\"`;\n       }\n\n       return query;\n     }\n   }\n   ```\n\n3. Log streaming via WebSocket:\n   - Real-time log tailing\n   - Filter by service/level\n   - Auto-reconnect\n\n4. Rate limiting:\n   - Limit query rate\n   - Limit result size\n   - Admin only access",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test query building",
+          "Test result parsing"
+        ],
+        "integration_tests": [
+          "Test Loki integration",
+          "Test WebSocket streaming"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Search API works",
+        "Filters work",
+        "Streaming works",
+        "Rate limited",
+        "Admin only"
+      ],
+      "files_to_create": [
+        "services/gateway/src/routes/v1/admin/logs.ts",
+        "services/gateway/src/services/log.service.ts"
+      ],
+      "files_to_modify": [
+        "services/gateway/src/routes/v1/admin/index.ts"
+      ],
+      "docker_requirements": {
+        "services": ["loki"],
+        "environment_variables": [
+          "LOKI_URL"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/v1/admin/logs",
+          "description": "Search logs"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/admin/logs/stream",
+          "description": "Stream logs via WebSocket"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["logging", "api", "search", "streaming"]
+    }
+  ]
+}

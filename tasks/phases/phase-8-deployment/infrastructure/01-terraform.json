@@ -1,0 +1,118 @@
+{
+  "feature_group": "infrastructure",
+  "description": "Infrastructure as Code with Terraform",
+  "tasks": [
+    {
+      "task-name": "Terraform Base Configuration",
+      "feature-details": "Set up Terraform configuration for cloud infrastructure. Support multiple cloud providers (AWS, GCP, Azure). Create modular structure with environments.",
+      "feature-dependency": [],
+      "ai-prompt": "Create Terraform configuration in infrastructure/terraform/:\n\n1. Directory structure:\n   ```\n   infrastructure/terraform/\n   ├── modules/\n   │   ├── kubernetes/\n   │   ├── database/\n   │   ├── networking/\n   │   └── storage/\n   ├── environments/\n   │   ├── staging/\n   │   └── production/\n   └── shared/\n       ├── providers.tf\n       ├── versions.tf\n       └── variables.tf\n   ```\n\n2. Provider configuration (AWS example):\n   ```hcl\n   terraform {\n     required_version = \">= 1.5.0\"\n     \n     required_providers {\n       aws = {\n         source  = \"hashicorp/aws\"\n         version = \"~> 5.0\"\n       }\n       kubernetes = {\n         source  = \"hashicorp/kubernetes\"\n         version = \"~> 2.0\"\n       }\n     }\n     \n     backend \"s3\" {\n       bucket         = \"caas-terraform-state\"\n       key            = \"terraform.tfstate\"\n       region         = \"us-east-1\"\n       encrypt        = true\n       dynamodb_table = \"terraform-locks\"\n     }\n   }\n   ```\n\n3. VPC/Networking module:\n   - VPC with public/private subnets\n   - NAT Gateway\n   - Internet Gateway\n   - Route tables\n   - Security groups\n\n4. EKS/GKE module:\n   - Managed Kubernetes cluster\n   - Node groups with auto-scaling\n   - IAM roles and policies\n   - Add-ons (EBS CSI, CoreDNS)\n\n5. Remote state:\n   - S3 bucket with versioning\n   - DynamoDB for locking\n   - Encryption enabled\n\n6. Environment separation:\n   - Separate state per environment\n   - Variable files per environment\n   - Workspaces (optional)\n\n7. Outputs:\n   - Cluster endpoint\n   - Kubeconfig\n   - Database endpoints\n   - Load balancer DNS",
+      "testing-instructions": "1. Run terraform init in staging\n2. Run terraform plan and review\n3. Apply to staging and verify resources\n4. Test outputs are available\n5. Verify state is stored remotely\n6. Test locking with concurrent apply\n7. Verify environment isolation\n8. Destroy and verify cleanup",
+      "acceptance_criteria": [
+        "Terraform initializes successfully",
+        "Modules are reusable",
+        "State is stored remotely",
+        "Locking prevents conflicts",
+        "Environments are isolated",
+        "Resources are tagged properly",
+        "Outputs provide needed values",
+        "Destroy cleans up completely"
+      ],
+      "files_to_create": [
+        "infrastructure/terraform/versions.tf",
+        "infrastructure/terraform/providers.tf",
+        "infrastructure/terraform/variables.tf",
+        "infrastructure/terraform/backend.tf",
+        "infrastructure/terraform/modules/networking/main.tf",
+        "infrastructure/terraform/modules/networking/variables.tf",
+        "infrastructure/terraform/modules/networking/outputs.tf",
+        "infrastructure/terraform/environments/staging/main.tf",
+        "infrastructure/terraform/environments/staging/terraform.tfvars",
+        "infrastructure/terraform/environments/production/main.tf"
+      ],
+      "docker_requirements": null,
+      "task_id": "DEPLOY-011"
+    },
+    {
+      "task-name": "Managed Database Infrastructure",
+      "feature-details": "Provision managed database services using Terraform. Include MongoDB Atlas, Amazon ElastiCache (Redis), and Amazon MSK (Kafka). Configure security, backups, and monitoring.",
+      "feature-dependency": ["DEPLOY-011"],
+      "ai-prompt": "Create database infrastructure modules in infrastructure/terraform/:\n\n1. MongoDB Atlas module:\n   ```hcl\n   resource \"mongodbatlas_cluster\" \"main\" {\n     project_id   = var.project_id\n     name         = \"caas-${var.environment}\"\n     cluster_type = \"REPLICASET\"\n     \n     provider_instance_size_name = var.instance_size\n     provider_name               = \"AWS\"\n     provider_region_name        = var.region\n     \n     replication_specs {\n       num_shards = 1\n       regions_config {\n         region_name     = var.region\n         electable_nodes = 3\n         priority        = 7\n       }\n     }\n     \n     backup_enabled = true\n     pit_enabled    = true\n   }\n   ```\n\n2. Amazon ElastiCache (Redis):\n   - Redis cluster mode enabled\n   - Multi-AZ deployment\n   - Automatic failover\n   - Encryption at rest and in transit\n   - Parameter group for tuning\n\n3. Amazon MSK (Kafka):\n   - 3 broker cluster\n   - m5.large instances\n   - EBS storage with auto-expansion\n   - TLS encryption\n   - IAM authentication\n\n4. Elasticsearch (OpenSearch):\n   - 3 node cluster\n   - Encrypted at rest\n   - VPC access\n   - Automated snapshots\n\n5. Security:\n   - Security groups restrict access\n   - Encryption enabled everywhere\n   - IAM policies for access\n   - Secrets stored in Secrets Manager\n\n6. Backups:\n   - Automated daily backups\n   - Retention: 7 days staging, 30 days production\n   - Point-in-time recovery enabled\n\n7. Monitoring:\n   - CloudWatch alarms\n   - Performance insights\n   - Slow query logging\n\n8. Connection strings:\n   - Stored in Secrets Manager\n   - Rotated automatically\n   - Retrieved by Kubernetes secrets",
+      "testing-instructions": "1. Apply MongoDB module and verify cluster\n2. Apply Redis module and verify cluster\n3. Apply Kafka module and verify brokers\n4. Test connectivity from EKS\n5. Verify encryption is enabled\n6. Test backup runs\n7. Verify monitoring alarms\n8. Test secrets are stored",
+      "acceptance_criteria": [
+        "MongoDB cluster is provisioned",
+        "Redis cluster is operational",
+        "Kafka cluster is healthy",
+        "All databases are encrypted",
+        "Backups are configured",
+        "Monitoring is enabled",
+        "Connection strings in Secrets Manager",
+        "Security groups are restrictive"
+      ],
+      "files_to_create": [
+        "infrastructure/terraform/modules/database/mongodb/main.tf",
+        "infrastructure/terraform/modules/database/mongodb/variables.tf",
+        "infrastructure/terraform/modules/database/redis/main.tf",
+        "infrastructure/terraform/modules/database/redis/variables.tf",
+        "infrastructure/terraform/modules/database/kafka/main.tf",
+        "infrastructure/terraform/modules/database/kafka/variables.tf",
+        "infrastructure/terraform/modules/database/elasticsearch/main.tf"
+      ],
+      "docker_requirements": null,
+      "task_id": "DEPLOY-012"
+    },
+    {
+      "task-name": "Kubernetes Cluster Infrastructure",
+      "feature-details": "Provision managed Kubernetes cluster with Terraform. Configure node pools, auto-scaling, and cluster add-ons. Support for EKS, GKE, or AKS.",
+      "feature-dependency": ["DEPLOY-011"],
+      "ai-prompt": "Create Kubernetes module in infrastructure/terraform/:\n\n1. EKS Cluster (AWS):\n   ```hcl\n   module \"eks\" {\n     source  = \"terraform-aws-modules/eks/aws\"\n     version = \"~> 19.0\"\n     \n     cluster_name    = \"caas-${var.environment}\"\n     cluster_version = \"1.29\"\n     \n     vpc_id     = module.vpc.vpc_id\n     subnet_ids = module.vpc.private_subnets\n     \n     cluster_endpoint_public_access  = true\n     cluster_endpoint_private_access = true\n     \n     eks_managed_node_groups = {\n       general = {\n         desired_size = 3\n         min_size     = 2\n         max_size     = 10\n         \n         instance_types = [\"m5.large\"]\n         capacity_type  = \"ON_DEMAND\"\n       }\n       \n       spot = {\n         desired_size = 2\n         min_size     = 0\n         max_size     = 20\n         \n         instance_types = [\"m5.large\", \"m5a.large\"]\n         capacity_type  = \"SPOT\"\n       }\n     }\n     \n     cluster_addons = {\n       coredns = { most_recent = true }\n       kube-proxy = { most_recent = true }\n       vpc-cni = { most_recent = true }\n       aws-ebs-csi-driver = { most_recent = true }\n     }\n   }\n   ```\n\n2. Node groups:\n   - General: on-demand for stability\n   - Spot: for cost optimization\n   - Database: high memory for operators\n\n3. IAM roles:\n   - Cluster role\n   - Node role\n   - Service account roles (IRSA)\n\n4. Cluster add-ons:\n   - CoreDNS\n   - kube-proxy\n   - VPC CNI\n   - EBS CSI driver\n   - Metrics server\n\n5. OIDC provider:\n   - For IRSA (IAM roles for service accounts)\n   - Pod identity\n\n6. Kubernetes provider:\n   - Configure after cluster creation\n   - Install Helm charts\n\n7. Essential Helm charts:\n   - NGINX Ingress Controller\n   - cert-manager\n   - external-secrets\n   - Prometheus stack\n\n8. Outputs:\n   - Cluster endpoint\n   - Kubeconfig command\n   - OIDC provider ARN",
+      "testing-instructions": "1. Apply EKS module and wait for creation\n2. Verify node groups are running\n3. Test kubectl connectivity\n4. Verify add-ons are installed\n5. Test IRSA with sample pod\n6. Verify Ingress controller is working\n7. Test cert-manager issues certificates\n8. Verify auto-scaling works",
+      "acceptance_criteria": [
+        "EKS cluster is created",
+        "Node groups are operational",
+        "kubectl can connect",
+        "Add-ons are functioning",
+        "IRSA is configured",
+        "Helm charts are deployed",
+        "Auto-scaling works",
+        "Monitoring is enabled"
+      ],
+      "files_to_create": [
+        "infrastructure/terraform/modules/kubernetes/main.tf",
+        "infrastructure/terraform/modules/kubernetes/variables.tf",
+        "infrastructure/terraform/modules/kubernetes/outputs.tf",
+        "infrastructure/terraform/modules/kubernetes/node-groups.tf",
+        "infrastructure/terraform/modules/kubernetes/addons.tf",
+        "infrastructure/terraform/modules/kubernetes/helm.tf"
+      ],
+      "docker_requirements": null,
+      "task_id": "DEPLOY-013"
+    },
+    {
+      "task-name": "DNS and SSL Configuration",
+      "feature-details": "Configure DNS records and SSL certificates using Terraform. Use Route53 or CloudFlare for DNS. Integrate with cert-manager for automatic certificate renewal.",
+      "feature-dependency": ["DEPLOY-011", "DEPLOY-013"],
+      "ai-prompt": "Create DNS and SSL configuration in infrastructure/terraform/:\n\n1. Route53 DNS zones:\n   ```hcl\n   resource \"aws_route53_zone\" \"main\" {\n     name = \"caas.io\"\n   }\n   \n   resource \"aws_route53_record\" \"api\" {\n     zone_id = aws_route53_zone.main.zone_id\n     name    = \"api.caas.io\"\n     type    = \"A\"\n     \n     alias {\n       name                   = data.kubernetes_ingress_v1.main.status.0.load_balancer.0.ingress.0.hostname\n       zone_id                = data.aws_elb_hosted_zone_id.main.id\n       evaluate_target_health = true\n     }\n   }\n   ```\n\n2. DNS records:\n   - api.caas.io -> Gateway Load Balancer\n   - socket.caas.io -> Socket Load Balancer\n   - admin.caas.io -> Admin Portal\n   - *.tenant.caas.io -> Wildcard for tenants\n\n3. CloudFlare alternative:\n   - DNS management\n   - DDoS protection\n   - CDN for static assets\n   - Web Application Firewall\n\n4. ACM Certificates:\n   - Request certificate for domains\n   - DNS validation\n   - Used by Load Balancer\n\n5. cert-manager integration:\n   - ClusterIssuer for Let's Encrypt\n   - Auto-renewal\n   - Certificate resources\n\n6. Wildcard certificate:\n   - For tenant subdomains\n   - DNS challenge validation\n\n7. Environment-specific:\n   - staging.api.caas.io\n   - api.caas.io (production)\n   - Different certificates per env\n\n8. Health checks:\n   - Route53 health checks\n   - Failover routing (optional)\n   - Latency-based routing (optional)",
+      "testing-instructions": "1. Apply DNS module and verify zone\n2. Verify DNS records are created\n3. Test DNS resolution\n4. Verify ACM certificate is issued\n5. Test cert-manager issues certificates\n6. Verify wildcard certificate\n7. Test HTTPS works end-to-end\n8. Verify health checks",
+      "acceptance_criteria": [
+        "DNS zone is created",
+        "All DNS records resolve",
+        "ACM certificates are issued",
+        "cert-manager integration works",
+        "Wildcard certificate works",
+        "HTTPS is functional",
+        "Auto-renewal is configured",
+        "Health checks are active"
+      ],
+      "files_to_create": [
+        "infrastructure/terraform/modules/dns/main.tf",
+        "infrastructure/terraform/modules/dns/variables.tf",
+        "infrastructure/terraform/modules/dns/records.tf",
+        "infrastructure/terraform/modules/dns/certificates.tf",
+        "infrastructure/terraform/modules/dns/outputs.tf"
+      ],
+      "docker_requirements": null,
+      "task_id": "DEPLOY-014"
+    }
+  ]
+}

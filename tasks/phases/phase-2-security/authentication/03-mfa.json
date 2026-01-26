@@ -1,0 +1,334 @@
+{
+  "task_group": "mfa",
+  "description": "Multi-factor authentication with TOTP, backup codes, and device trust",
+  "priority": "high",
+  "estimated_hours": 14,
+  "phase": 2,
+  "feature_area": "authentication",
+  "tasks": [
+    {
+      "id": "AUTH-009",
+      "task_name": "TOTP Implementation",
+      "feature_details": "Implement Time-based One-Time Password (TOTP) authentication compatible with authenticator apps.",
+      "feature_dependency": ["AUTH-006"],
+      "ai_prompt": "Implement TOTP authentication:\n\n1. Create services/auth-service/src/mfa/totp/totp-service.ts:\n   ```typescript\n   export class TOTPService {\n     generateSecret(): { secret: string; uri: string; qrCode: string };\n     verifyToken(secret: string, token: string): boolean;\n     enableTOTP(userId: string, secret: string, token: string): Promise<void>;\n     disableTOTP(userId: string): Promise<void>;\n     isTOTPEnabled(userId: string): Promise<boolean>;\n   }\n   ```\n\n2. Use otpauth library for TOTP generation:\n   - Algorithm: SHA1 (for compatibility)\n   - Digits: 6\n   - Period: 30 seconds\n   - Window: 1 (allow 1 period before/after)\n\n3. Create services/auth-service/src/mfa/totp/secret-storage.ts:\n   - Store encrypted secret in database\n   - Use platform encryption key\n   - Never expose raw secret after setup\n\n4. Create services/auth-service/src/mfa/totp/qr-generator.ts:\n   - Generate QR code for authenticator setup\n   - URI format: otpauth://totp/{issuer}:{user}?secret={secret}&issuer={issuer}\n   - Return as base64 PNG or SVG\n\n5. Create services/gateway/src/routes/v1/mfa/totp.ts:\n   - POST /v1/mfa/totp/setup - Start TOTP setup (returns QR)\n   - POST /v1/mfa/totp/verify - Verify and enable TOTP\n   - DELETE /v1/mfa/totp - Disable TOTP (requires password)\n   - POST /v1/mfa/totp/challenge - Verify TOTP during login\n\n6. Setup flow:\n   a. User requests setup -> Generate secret, return QR\n   b. User scans QR with authenticator\n   c. User enters verification code\n   d. If valid, enable TOTP, generate backup codes\n\n7. Login flow with TOTP:\n   a. User provides credentials\n   b. If TOTP enabled, return partial session + challenge\n   c. User provides TOTP code\n   d. If valid, complete authentication",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test secret generation",
+          "Test token verification",
+          "Test time window handling"
+        ],
+        "integration_tests": [
+          "Test TOTP setup flow",
+          "Test TOTP verification flow",
+          "Test disable flow"
+        ],
+        "e2e_tests": [
+          "Test complete MFA login flow"
+        ]
+      },
+      "acceptance_criteria": [
+        "TOTP works with Google Authenticator",
+        "TOTP works with Authy",
+        "Time window allows for clock drift",
+        "Secrets are encrypted at rest",
+        "QR codes are generated correctly"
+      ],
+      "files_to_create": [
+        "services/auth-service/src/mfa/totp/totp-service.ts",
+        "services/auth-service/src/mfa/totp/secret-storage.ts",
+        "services/auth-service/src/mfa/totp/qr-generator.ts",
+        "services/auth-service/src/mfa/totp/types.ts",
+        "services/auth-service/src/mfa/totp/index.ts",
+        "services/gateway/src/routes/v1/mfa/totp.ts",
+        "services/gateway/src/routes/v1/mfa/index.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [
+          "TOTP_ISSUER",
+          "TOTP_ALGORITHM",
+          "TOTP_PERIOD",
+          "TOTP_WINDOW"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/v1/mfa/totp/setup",
+          "description": "Start TOTP setup"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/mfa/totp/verify",
+          "description": "Verify and enable TOTP"
+        },
+        {
+          "method": "DELETE",
+          "path": "/v1/mfa/totp",
+          "description": "Disable TOTP"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/mfa/totp/challenge",
+          "description": "Verify TOTP during login"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "user_mfa",
+            "description": "Store MFA configuration per user"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "user_mfa",
+            "fields": ["user_id"],
+            "options": { "unique": true }
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["authentication", "mfa", "totp", "2fa"]
+    },
+    {
+      "id": "AUTH-010",
+      "task_name": "Backup Codes Implementation",
+      "feature_details": "Implement backup codes for MFA recovery when TOTP device is unavailable.",
+      "feature_dependency": ["AUTH-009"],
+      "ai_prompt": "Implement backup codes:\n\n1. Create services/auth-service/src/mfa/backup-codes/backup-code-service.ts:\n   ```typescript\n   export class BackupCodeService {\n     generateCodes(userId: string, count?: number): Promise<string[]>;\n     verifyCode(userId: string, code: string): Promise<boolean>;\n     regenerateCodes(userId: string): Promise<string[]>;\n     getRemainingCount(userId: string): Promise<number>;\n   }\n   ```\n\n2. Backup code format:\n   - 10 codes by default\n   - 8 characters each (alphanumeric, no confusing chars)\n   - Format: XXXX-XXXX for readability\n   - Example: AB12-CD34\n\n3. Create services/auth-service/src/mfa/backup-codes/code-generator.ts:\n   - Cryptographically secure generation\n   - Avoid ambiguous characters (0, O, l, 1, I)\n   - Format with hyphen for readability\n\n4. Create services/auth-service/src/mfa/backup-codes/code-storage.ts:\n   - Store hashed codes (bcrypt)\n   - Each code is single-use\n   - Track used/unused status\n   - Store in database (not Redis - needs persistence)\n\n5. Create services/gateway/src/routes/v1/mfa/backup-codes.ts:\n   - GET /v1/mfa/backup-codes - Get remaining count\n   - POST /v1/mfa/backup-codes/regenerate - Generate new codes (invalidates old)\n   - POST /v1/mfa/backup-codes/verify - Verify code during login\n\n6. User experience:\n   - Show codes only once during generation\n   - Warn user to save codes securely\n   - Show remaining count in account settings\n   - Alert when codes are low (< 3)\n\n7. Security:\n   - Require password to regenerate codes\n   - Rate limit code verification\n   - Log all code usage\n   - Alert user when backup code is used",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test code generation format",
+          "Test code verification",
+          "Test single-use enforcement"
+        ],
+        "integration_tests": [
+          "Test code storage and retrieval",
+          "Test regeneration flow",
+          "Test login with backup code"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "10 backup codes are generated",
+        "Codes are single-use",
+        "Used codes cannot be reused",
+        "Regeneration invalidates old codes",
+        "User is alerted when codes are low"
+      ],
+      "files_to_create": [
+        "services/auth-service/src/mfa/backup-codes/backup-code-service.ts",
+        "services/auth-service/src/mfa/backup-codes/code-generator.ts",
+        "services/auth-service/src/mfa/backup-codes/code-storage.ts",
+        "services/auth-service/src/mfa/backup-codes/types.ts",
+        "services/auth-service/src/mfa/backup-codes/index.ts",
+        "services/gateway/src/routes/v1/mfa/backup-codes.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [
+          "BACKUP_CODE_COUNT",
+          "BACKUP_CODE_LENGTH"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/v1/mfa/backup-codes",
+          "description": "Get remaining backup code count"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/mfa/backup-codes/regenerate",
+          "description": "Generate new backup codes"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/mfa/backup-codes/verify",
+          "description": "Verify backup code during login"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 3,
+      "tags": ["authentication", "mfa", "backup-codes", "recovery"]
+    },
+    {
+      "id": "AUTH-011",
+      "task_name": "Trusted Devices",
+      "feature_details": "Implement trusted device functionality to skip MFA on recognized devices for a configurable period.",
+      "feature_dependency": ["AUTH-009"],
+      "ai_prompt": "Implement trusted devices:\n\n1. Create services/auth-service/src/mfa/trusted-devices/trusted-device-service.ts:\n   ```typescript\n   export class TrustedDeviceService {\n     trustDevice(userId: string, deviceInfo: DeviceInfo): Promise<TrustToken>;\n     verifyTrust(userId: string, trustToken: string): Promise<boolean>;\n     removeTrust(userId: string, deviceId: string): Promise<void>;\n     removeAllTrust(userId: string): Promise<void>;\n     getTrustedDevices(userId: string): Promise<TrustedDevice[]>;\n   }\n   ```\n\n2. Trust token:\n   - Generated when user checks 'Trust this device'\n   - Stored in HTTP-only secure cookie\n   - Contains device fingerprint\n   - Expires after configurable period (30 days default)\n\n3. Create services/auth-service/src/mfa/trusted-devices/device-fingerprint.ts:\n   - Generate stable device fingerprint:\n     * User-Agent\n     * Screen resolution (from client)\n     * Timezone\n     * Language\n     * Platform\n   - Hash fingerprint for storage\n\n4. Create services/auth-service/src/mfa/trusted-devices/trust-storage.ts:\n   - Store trusted devices in database:\n     ```typescript\n     {\n       user_id: string,\n       device_id: string,\n       device_name: string,\n       fingerprint_hash: string,\n       trusted_at: Date,\n       expires_at: Date,\n       last_used: Date\n     }\n     ```\n\n5. Create services/gateway/src/routes/v1/mfa/trusted-devices.ts:\n   - GET /v1/mfa/trusted-devices - List trusted devices\n   - DELETE /v1/mfa/trusted-devices/:id - Remove trust\n   - DELETE /v1/mfa/trusted-devices - Remove all trusted devices\n\n6. MFA skip logic:\n   - If valid trust token present\n   - And device fingerprint matches\n   - And not expired\n   - Skip MFA challenge\n\n7. Security:\n   - Limit trusted devices per user\n   - Auto-expire after period\n   - Remove all on password change\n   - Alert on trust removal",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test trust token generation",
+          "Test fingerprint matching",
+          "Test expiration logic"
+        ],
+        "integration_tests": [
+          "Test trust flow",
+          "Test MFA skip with trust",
+          "Test trust removal"
+        ],
+        "e2e_tests": [
+          "Test trusted device login flow"
+        ]
+      },
+      "acceptance_criteria": [
+        "Users can trust devices",
+        "Trusted devices skip MFA",
+        "Trust expires after period",
+        "Users can manage trusted devices",
+        "Password change removes all trust"
+      ],
+      "files_to_create": [
+        "services/auth-service/src/mfa/trusted-devices/trusted-device-service.ts",
+        "services/auth-service/src/mfa/trusted-devices/device-fingerprint.ts",
+        "services/auth-service/src/mfa/trusted-devices/trust-storage.ts",
+        "services/auth-service/src/mfa/trusted-devices/types.ts",
+        "services/auth-service/src/mfa/trusted-devices/index.ts",
+        "services/gateway/src/routes/v1/mfa/trusted-devices.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [
+          "TRUST_TOKEN_EXPIRY_DAYS",
+          "MAX_TRUSTED_DEVICES"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/v1/mfa/trusted-devices",
+          "description": "List trusted devices"
+        },
+        {
+          "method": "DELETE",
+          "path": "/v1/mfa/trusted-devices/:id",
+          "description": "Remove specific trusted device"
+        },
+        {
+          "method": "DELETE",
+          "path": "/v1/mfa/trusted-devices",
+          "description": "Remove all trusted devices"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "trusted_devices",
+            "description": "Store trusted device information"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "trusted_devices",
+            "fields": ["user_id"]
+          },
+          {
+            "collection": "trusted_devices",
+            "fields": ["expires_at"],
+            "options": { "expireAfterSeconds": 0 }
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 3,
+      "tags": ["authentication", "mfa", "trusted-devices", "security"]
+    },
+    {
+      "id": "AUTH-012",
+      "task_name": "MFA Challenge Flow",
+      "feature_details": "Implement the complete MFA challenge flow during authentication with support for multiple factors and graceful fallbacks.",
+      "feature_dependency": ["AUTH-009", "AUTH-010", "AUTH-011"],
+      "ai_prompt": "Implement MFA challenge flow:\n\n1. Create services/auth-service/src/mfa/challenge/mfa-challenge-service.ts:\n   ```typescript\n   export class MFAChallengeService {\n     createChallenge(userId: string, sessionId: string): Promise<MFAChallenge>;\n     verifyChallenge(challengeId: string, method: MFAMethod, response: string): Promise<MFAChallengeResult>;\n     getAvailableMethods(userId: string): Promise<MFAMethod[]>;\n     switchMethod(challengeId: string, method: MFAMethod): Promise<MFAChallenge>;\n   }\n   ```\n\n2. Challenge structure:\n   ```typescript\n   interface MFAChallenge {\n     id: string;\n     user_id: string;\n     session_id: string;\n     method: MFAMethod;\n     available_methods: MFAMethod[];\n     expires_at: number;\n     attempts: number;\n     max_attempts: number;\n   }\n\n   type MFAMethod = 'totp' | 'backup_code' | 'email' | 'sms';\n   ```\n\n3. Create services/auth-service/src/mfa/challenge/challenge-storage.ts:\n   - Store challenges in Redis\n   - TTL: 5 minutes\n   - Track attempts\n   - Invalidate on success/max attempts\n\n4. Create services/auth-service/src/mfa/challenge/method-verifier.ts:\n   - Route verification to appropriate service:\n     * TOTP -> TOTPService\n     * Backup Code -> BackupCodeService\n     * Email/SMS -> (future implementation)\n   - Return consistent result\n\n5. Login flow integration:\n   a. User provides credentials -> verified\n   b. Check if MFA required\n   c. Check trusted device (skip if valid)\n   d. Create MFA challenge\n   e. Return challenge_token + available methods\n   f. User submits challenge response\n   g. Verify and complete login or fail\n\n6. Create services/gateway/src/routes/v1/auth/mfa-challenge.ts:\n   - POST /v1/auth/mfa/challenge - Verify MFA response\n   - POST /v1/auth/mfa/switch-method - Switch to different method\n   - GET /v1/auth/mfa/methods - Get available methods\n\n7. Rate limiting:\n   - 5 attempts per challenge\n   - Lock account after 3 failed challenges\n   - Exponential backoff on failures\n\n8. Logging and alerting:\n   - Log all MFA attempts\n   - Alert on repeated failures\n   - Track success/failure rates",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test challenge creation",
+          "Test method routing",
+          "Test attempt tracking"
+        ],
+        "integration_tests": [
+          "Test complete MFA flow",
+          "Test method switching",
+          "Test rate limiting"
+        ],
+        "e2e_tests": [
+          "Test full login with MFA"
+        ]
+      },
+      "acceptance_criteria": [
+        "MFA challenge is created after password verification",
+        "Multiple methods are available",
+        "Users can switch methods",
+        "Rate limiting prevents brute force",
+        "Successful verification completes login"
+      ],
+      "files_to_create": [
+        "services/auth-service/src/mfa/challenge/mfa-challenge-service.ts",
+        "services/auth-service/src/mfa/challenge/challenge-storage.ts",
+        "services/auth-service/src/mfa/challenge/method-verifier.ts",
+        "services/auth-service/src/mfa/challenge/types.ts",
+        "services/auth-service/src/mfa/challenge/index.ts",
+        "services/auth-service/src/mfa/index.ts",
+        "services/gateway/src/routes/v1/auth/mfa-challenge.ts"
+      ],
+      "files_to_modify": [
+        "services/gateway/src/routes/v1/auth/sdk-auth.ts"
+      ],
+      "docker_requirements": {
+        "services": ["redis"],
+        "environment_variables": [
+          "MFA_CHALLENGE_TTL_SECONDS",
+          "MFA_MAX_ATTEMPTS",
+          "MFA_LOCKOUT_THRESHOLD"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/v1/auth/mfa/challenge",
+          "description": "Verify MFA challenge response"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/auth/mfa/switch-method",
+          "description": "Switch to different MFA method"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/auth/mfa/methods",
+          "description": "Get available MFA methods"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["authentication", "mfa", "challenge", "security"]
+    }
+  ]
+}

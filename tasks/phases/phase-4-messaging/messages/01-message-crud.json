@@ -1,0 +1,252 @@
+{
+  "task_group": "message-crud",
+  "description": "Core message CRUD operations - create, read, update, delete",
+  "priority": "high",
+  "estimated_hours": 16,
+  "phase": 4,
+  "feature_area": "messages",
+  "tasks": [
+    {
+      "id": "MSG-001",
+      "task_name": "Message Service Setup",
+      "feature_details": "Create the message service with Docker setup and core interfaces.",
+      "feature_dependency": ["CONV-003", "KAFKA-001"],
+      "ai_prompt": "Set up message service:\n\n1. Create services/messaging-service/src/messages/message.types.ts:\n   ```typescript\n   export enum MessageType {\n     TEXT = 'text',\n     MEDIA = 'media',\n     SYSTEM = 'system',\n     RICH = 'rich',\n   }\n\n   export enum MessageStatus {\n     SENDING = 'sending',\n     SENT = 'sent',\n     DELIVERED = 'delivered',\n     READ = 'read',\n     FAILED = 'failed',\n   }\n\n   export interface Message {\n     id: string;\n     conversation_id: string;\n     tenant_id: string;\n     sender_id: string;\n     type: MessageType;\n     content: MessageContent;\n     reply_to?: string;\n     forwarded_from?: string;\n     mentions: string[];\n     status: MessageStatus;\n     edited: boolean;\n     edited_at?: Date;\n     deleted: boolean;\n     deleted_at?: Date;\n     created_at: Date;\n     updated_at: Date;\n   }\n\n   export interface MessageContent {\n     text?: string;\n     media?: MediaAttachment[];\n     system?: SystemMessageData;\n     rich?: RichContent;\n   }\n   ```\n\n2. Create services/messaging-service/src/messages/message.entity.ts:\n   - MongoDB schema for messages\n   - Indexes for efficient querying\n   - Compound indexes for conversation + timestamp\n\n3. Create services/messaging-service/src/messages/index.ts:\n   - Export all message-related modules\n\n4. MongoDB indexes:\n   - { conversation_id: 1, created_at: -1 }\n   - { sender_id: 1, created_at: -1 }\n   - { tenant_id: 1, conversation_id: 1 }\n   - { mentions: 1 } for mention queries\n\n5. Update docker-compose.yml to ensure messaging service has access to MongoDB and Kafka",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test message type validation",
+          "Test entity creation"
+        ],
+        "integration_tests": [
+          "Test MongoDB connection",
+          "Test index creation"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Message types defined",
+        "Entity schema created",
+        "Indexes configured",
+        "Service runs in Docker"
+      ],
+      "files_to_create": [
+        "services/messaging-service/src/messages/message.types.ts",
+        "services/messaging-service/src/messages/message.entity.ts",
+        "services/messaging-service/src/messages/index.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb", "kafka"],
+        "environment_variables": [
+          "MESSAGE_COLLECTION_NAME"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "messages",
+            "description": "Store all chat messages"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "messages",
+            "fields": ["conversation_id", "created_at"],
+            "options": { "background": true }
+          },
+          {
+            "collection": "messages",
+            "fields": ["tenant_id", "conversation_id"]
+          },
+          {
+            "collection": "messages",
+            "fields": ["mentions"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["messaging", "setup", "mongodb"]
+    },
+    {
+      "id": "MSG-002",
+      "task_name": "Message Repository Layer",
+      "feature_details": "Implement repository layer for message CRUD operations.",
+      "feature_dependency": ["MSG-001"],
+      "ai_prompt": "Create message repository:\n\n1. Create services/messaging-service/src/messages/message.repository.ts:\n   ```typescript\n   export class MessageRepository {\n     constructor(private db: Db) {}\n\n     async create(message: CreateMessageDto): Promise<Message> {\n       const doc = {\n         ...message,\n         id: generateUUID(),\n         status: MessageStatus.SENDING,\n         edited: false,\n         deleted: false,\n         created_at: new Date(),\n         updated_at: new Date(),\n       };\n       await this.collection.insertOne(doc);\n       return doc;\n     }\n\n     async findById(id: string, tenantId: string): Promise<Message | null>;\n\n     async findByConversation(\n       conversationId: string,\n       tenantId: string,\n       options: MessageQueryOptions\n     ): Promise<Message[]>;\n\n     async update(id: string, tenantId: string, updates: Partial<Message>): Promise<Message>;\n\n     async softDelete(id: string, tenantId: string): Promise<void>;\n\n     async findByMention(userId: string, tenantId: string, pagination: PaginationOptions): Promise<Message[]>;\n   }\n\n   interface MessageQueryOptions {\n     before?: string;  // cursor-based pagination\n     after?: string;\n     limit?: number;\n     include_deleted?: boolean;\n   }\n   ```\n\n2. Implement pagination:\n   - Cursor-based pagination for infinite scroll\n   - Use message ID or timestamp as cursor\n   - Efficient queries with covered indexes\n\n3. Query optimization:\n   - Project only needed fields\n   - Use explain() to verify index usage\n   - Batch operations for bulk updates\n\n4. Tenant isolation:\n   - Always include tenant_id in queries\n   - Never return cross-tenant data\n   - Audit cross-tenant attempts",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test CRUD operations",
+          "Test pagination",
+          "Test soft delete"
+        ],
+        "integration_tests": [
+          "Test with real MongoDB",
+          "Test cursor pagination",
+          "Test tenant isolation"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Messages can be created",
+        "Messages can be queried",
+        "Pagination works",
+        "Soft delete works",
+        "Tenant isolation enforced"
+      ],
+      "files_to_create": [
+        "services/messaging-service/src/messages/message.repository.ts",
+        "services/messaging-service/src/messages/message.dto.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["messaging", "repository", "mongodb"]
+    },
+    {
+      "id": "MSG-003",
+      "task_name": "Message Service Layer",
+      "feature_details": "Implement business logic for message operations.",
+      "feature_dependency": ["MSG-002", "CONV-003"],
+      "ai_prompt": "Create message service:\n\n1. Create services/messaging-service/src/messages/message.service.ts:\n   ```typescript\n   export class MessageService {\n     constructor(\n       private messageRepo: MessageRepository,\n       private conversationService: ConversationService,\n       private kafkaProducer: KafkaProducer,\n       private socketEmitter: SocketEmitter,\n     ) {}\n\n     async sendMessage(senderId: string, dto: SendMessageDto): Promise<Message> {\n       // 1. Validate conversation access\n       const conversation = await this.conversationService.getById(dto.conversation_id);\n       if (!this.canSendMessage(senderId, conversation)) {\n         throw new ForbiddenException('Cannot send message to this conversation');\n       }\n\n       // 2. Process content (mentions, links)\n       const processedContent = await this.processContent(dto.content);\n\n       // 3. Create message\n       const message = await this.messageRepo.create({\n         conversation_id: dto.conversation_id,\n         tenant_id: dto.tenant_id,\n         sender_id: senderId,\n         type: dto.type,\n         content: processedContent,\n         reply_to: dto.reply_to,\n         mentions: this.extractMentions(processedContent.text),\n       });\n\n       // 4. Update conversation last_message_at\n       await this.conversationService.updateLastMessage(dto.conversation_id, message);\n\n       // 5. Emit real-time event\n       await this.socketEmitter.emit('message:new', {\n         conversation_id: dto.conversation_id,\n         message,\n       });\n\n       // 6. Publish to Kafka for async processing\n       await this.kafkaProducer.send('messages', {\n         type: 'message.created',\n         data: message,\n       });\n\n       return message;\n     }\n\n     async getMessages(userId: string, conversationId: string, options: MessageQueryOptions): Promise<MessageListResponse>;\n\n     async editMessage(userId: string, messageId: string, newContent: string): Promise<Message>;\n\n     async deleteMessage(userId: string, messageId: string): Promise<void>;\n   }\n   ```\n\n2. Content processing:\n   - Extract mentions (@username)\n   - Generate link previews\n   - Validate content length\n   - Sanitize HTML if allowed\n\n3. Message validation:\n   - Check conversation membership\n   - Check if user is muted in group\n   - Rate limiting per user\n   - Content length limits\n\n4. Event emission:\n   - Real-time via Socket.IO\n   - Async via Kafka",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test send message flow",
+          "Test content processing",
+          "Test permission checks"
+        ],
+        "integration_tests": [
+          "Test with Kafka",
+          "Test with Socket.IO",
+          "Test conversation update"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Messages can be sent",
+        "Permissions are checked",
+        "Events are emitted",
+        "Conversation is updated",
+        "Content is processed"
+      ],
+      "files_to_create": [
+        "services/messaging-service/src/messages/message.service.ts",
+        "services/messaging-service/src/messages/content-processor.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb", "kafka", "redis"],
+        "environment_variables": [
+          "MAX_MESSAGE_LENGTH"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["messaging", "service", "business-logic"]
+    },
+    {
+      "id": "MSG-004",
+      "task_name": "Message API Routes",
+      "feature_details": "Implement REST API endpoints for message operations.",
+      "feature_dependency": ["MSG-003", "GW-001"],
+      "ai_prompt": "Create message API routes:\n\n1. Create services/gateway/src/routes/v1/messages/index.ts:\n   ```typescript\n   export async function messageRoutes(fastify: FastifyInstance) {\n     // Send message\n     fastify.post<{ Body: SendMessageBody }>('/', {\n       schema: {\n         body: sendMessageSchema,\n         response: { 201: messageSchema },\n       },\n       handler: async (request, reply) => {\n         const message = await messageService.sendMessage(\n           request.user.id,\n           request.body,\n         );\n         return reply.status(201).send(message);\n       },\n     });\n\n     // Get messages in conversation\n     fastify.get<{ Params: { conversationId: string }; Querystring: MessageQueryParams }>(\n       '/conversations/:conversationId',\n       {\n         handler: async (request, reply) => {\n           const messages = await messageService.getMessages(\n             request.user.id,\n             request.params.conversationId,\n             request.query,\n           );\n           return messages;\n         },\n       },\n     );\n\n     // Get single message\n     fastify.get<{ Params: { id: string } }>('/:id', { ... });\n\n     // Edit message\n     fastify.put<{ Params: { id: string }; Body: EditMessageBody }>('/:id', { ... });\n\n     // Delete message\n     fastify.delete<{ Params: { id: string } }>('/:id', { ... });\n   }\n   ```\n\n2. Create services/gateway/src/routes/v1/messages/schemas.ts:\n   - Zod schemas for request/response validation\n   - OpenAPI documentation\n\n3. Rate limiting:\n   - Per-user message rate limit\n   - Per-conversation rate limit\n   - Burst protection\n\n4. Response format:\n   ```typescript\n   interface MessageListResponse {\n     messages: Message[];\n     cursor: {\n       before?: string;\n       after?: string;\n     };\n     has_more: boolean;\n   }\n   ```\n\n5. Error handling:\n   - 400 for invalid content\n   - 403 for permission denied\n   - 404 for not found\n   - 429 for rate limited",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test schema validation",
+          "Test route handlers"
+        ],
+        "integration_tests": [
+          "Test full API flow",
+          "Test rate limiting",
+          "Test pagination"
+        ],
+        "e2e_tests": [
+          "Test send and receive message",
+          "Test edit message",
+          "Test delete message"
+        ]
+      },
+      "acceptance_criteria": [
+        "All endpoints work",
+        "Validation is enforced",
+        "Rate limiting works",
+        "Pagination works",
+        "Errors are handled"
+      ],
+      "files_to_create": [
+        "services/gateway/src/routes/v1/messages/index.ts",
+        "services/gateway/src/routes/v1/messages/schemas.ts"
+      ],
+      "files_to_modify": [
+        "services/gateway/src/routes/v1/index.ts"
+      ],
+      "docker_requirements": {
+        "services": ["gateway", "messaging-service"],
+        "environment_variables": [
+          "MESSAGE_RATE_LIMIT"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/v1/messages",
+          "description": "Send a message"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/messages/conversations/:conversationId",
+          "description": "Get messages in conversation"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/messages/:id",
+          "description": "Get single message"
+        },
+        {
+          "method": "PUT",
+          "path": "/v1/messages/:id",
+          "description": "Edit message"
+        },
+        {
+          "method": "DELETE",
+          "path": "/v1/messages/:id",
+          "description": "Delete message"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["messaging", "api", "gateway"]
+    }
+  ]
+}

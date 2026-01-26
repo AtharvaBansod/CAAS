@@ -1,0 +1,204 @@
+{
+  "task_group": "media-processing",
+  "description": "Image, video, and audio processing pipelines",
+  "priority": "high",
+  "estimated_hours": 16,
+  "phase": 4,
+  "feature_area": "media",
+  "tasks": [
+    {
+      "id": "MEDIA-005",
+      "task_name": "Image Processing Pipeline",
+      "feature_details": "Implement image processing with Sharp for thumbnails and optimization.",
+      "feature_dependency": ["MEDIA-002"],
+      "ai_prompt": "Implement image processing:\n\n1. Create services/media-service/src/processing/image-processor.ts:\n   ```typescript\n   import sharp from 'sharp';\n\n   export class ImageProcessor {\n     async process(media: Media): Promise<ProcessedImage> {\n       // Download from S3\n       const buffer = await this.downloadFromS3(media.key);\n\n       // Process image\n       const image = sharp(buffer);\n       const metadata = await image.metadata();\n\n       // 1. Fix orientation\n       image.rotate();\n\n       // 2. Strip EXIF data (privacy)\n       image.withMetadata({\n         exif: {},\n         iptc: {},\n         xmp: {},\n       });\n\n       // 3. Generate thumbnail\n       const thumbnail = await image\n         .clone()\n         .resize(200, 200, { fit: 'cover' })\n         .jpeg({ quality: 80 })\n         .toBuffer();\n\n       // 4. Generate preview (for galleries)\n       const preview = await image\n         .clone()\n         .resize(800, 800, { fit: 'inside', withoutEnlargement: true })\n         .jpeg({ quality: 85 })\n         .toBuffer();\n\n       // 5. Optimize original\n       const optimized = await image\n         .jpeg({ quality: 90, progressive: true })\n         .toBuffer();\n\n       // Upload processed versions\n       const thumbnailKey = await this.uploadToS3(thumbnail, `${media.key}_thumb.jpg`);\n       const previewKey = await this.uploadToS3(preview, `${media.key}_preview.jpg`);\n\n       return {\n         dimensions: { width: metadata.width!, height: metadata.height! },\n         thumbnail_key: thumbnailKey,\n         preview_key: previewKey,\n       };\n     }\n   }\n   ```\n\n2. Create services/media-service/src/processing/image-consumer.ts:\n   ```typescript\n   @KafkaConsumer('media-processing')\n   export class ImageProcessingConsumer {\n     @Subscribe('media.uploaded', { filter: (m) => m.type === 'image' })\n     async processImage(event: MediaUploadedEvent) {\n       await this.imageProcessor.process(event.data);\n       await this.mediaRepo.updateStatus(event.data.id, 'ready', {\n         dimensions,\n         thumbnail_key,\n         preview_key,\n       });\n     }\n   }\n   ```\n\n3. Thumbnail sizes:\n   - Thumbnail: 200x200 (cover)\n   - Preview: 800x800 (fit inside)\n   - Original: preserved but optimized\n\n4. Format handling:\n   - JPEG: optimize quality\n   - PNG: preserve transparency\n   - GIF: extract first frame for thumb\n   - WebP: convert to JPEG for compatibility\n\n5. Error handling:\n   - Mark as failed on error\n   - Retry logic\n   - Dead letter queue",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test thumbnail generation",
+          "Test EXIF stripping",
+          "Test format handling"
+        ],
+        "integration_tests": [
+          "Test full pipeline",
+          "Test S3 upload",
+          "Test Kafka consumption"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Thumbnails generated",
+        "EXIF stripped",
+        "Orientation fixed",
+        "All formats handled",
+        "Errors handled"
+      ],
+      "files_to_create": [
+        "services/media-service/src/processing/image-processor.ts",
+        "services/media-service/src/processing/image-consumer.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["kafka"],
+        "environment_variables": [
+          "THUMBNAIL_SIZE",
+          "PREVIEW_SIZE"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["media", "processing", "image", "sharp"]
+    },
+    {
+      "id": "MEDIA-006",
+      "task_name": "Video Processing Pipeline",
+      "feature_details": "Implement video processing with FFmpeg for transcoding and thumbnails.",
+      "feature_dependency": ["MEDIA-002"],
+      "ai_prompt": "Implement video processing:\n\n1. Create services/media-service/src/processing/video-processor.ts:\n   ```typescript\n   import ffmpeg from 'fluent-ffmpeg';\n\n   export class VideoProcessor {\n     async process(media: Media): Promise<ProcessedVideo> {\n       // Download to temp file\n       const inputPath = await this.downloadToTemp(media.key);\n       const outputPath = `${inputPath}_processed.mp4`;\n\n       // Get video info\n       const probe = await this.probe(inputPath);\n       const duration = probe.format.duration!;\n       const { width, height } = probe.streams[0];\n\n       // 1. Transcode to H.264/AAC\n       await new Promise((resolve, reject) => {\n         ffmpeg(inputPath)\n           .outputOptions([\n             '-c:v libx264',\n             '-preset fast',\n             '-crf 23',\n             '-c:a aac',\n             '-b:a 128k',\n             '-movflags +faststart', // Enable streaming\n           ])\n           .output(outputPath)\n           .on('end', resolve)\n           .on('error', reject)\n           .run();\n       });\n\n       // 2. Generate thumbnail at 1 second\n       const thumbnailPath = `${inputPath}_thumb.jpg`;\n       await this.extractFrame(inputPath, thumbnailPath, 1);\n\n       // 3. Generate preview GIF (optional)\n       const previewPath = `${inputPath}_preview.gif`;\n       await this.generatePreviewGif(inputPath, previewPath);\n\n       // Upload processed files\n       const videoKey = await this.uploadToS3(outputPath, `${media.key}_processed.mp4`);\n       const thumbnailKey = await this.uploadToS3(thumbnailPath, `${media.key}_thumb.jpg`);\n\n       return {\n         dimensions: { width: width!, height: height! },\n         duration,\n         thumbnail_key: thumbnailKey,\n         processed_key: videoKey,\n       };\n     }\n\n     private async extractFrame(input: string, output: string, time: number): Promise<void> {\n       return new Promise((resolve, reject) => {\n         ffmpeg(input)\n           .screenshots({\n             timestamps: [time],\n             filename: output,\n             size: '320x180',\n           })\n           .on('end', resolve)\n           .on('error', reject);\n       });\n     }\n   }\n   ```\n\n2. Create services/media-service/src/processing/video-consumer.ts:\n   - Listen for video upload events\n   - Process asynchronously\n   - Update status and metadata\n\n3. Transcoding profiles:\n   - 720p: 1280x720, 2.5 Mbps\n   - 480p: 854x480, 1 Mbps\n   - Original: preserved\n\n4. Duration limits:\n   - Free: 5 minutes\n   - Premium: 30 minutes\n\n5. Progress tracking:\n   - Update processing progress\n   - WebSocket updates to client\n   - Estimated time remaining",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test FFmpeg configuration",
+          "Test thumbnail extraction"
+        ],
+        "integration_tests": [
+          "Test full transcoding",
+          "Test S3 upload",
+          "Test progress tracking"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Videos transcoded",
+        "Thumbnails extracted",
+        "Streaming enabled",
+        "Duration checked",
+        "Progress tracked"
+      ],
+      "files_to_create": [
+        "services/media-service/src/processing/video-processor.ts",
+        "services/media-service/src/processing/video-consumer.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["kafka"],
+        "environment_variables": [
+          "VIDEO_MAX_DURATION",
+          "VIDEO_QUALITY_PRESET"
+        ],
+        "volumes": ["/tmp/video-processing"],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["media", "processing", "video", "ffmpeg"]
+    },
+    {
+      "id": "MEDIA-007",
+      "task_name": "Audio Processing Pipeline",
+      "feature_details": "Implement audio processing for voice messages with waveform generation.",
+      "feature_dependency": ["MEDIA-002"],
+      "ai_prompt": "Implement audio processing:\n\n1. Create services/media-service/src/processing/audio-processor.ts:\n   ```typescript\n   import ffmpeg from 'fluent-ffmpeg';\n   import { audioWaveform } from 'audio-waveform';\n\n   export class AudioProcessor {\n     async process(media: Media): Promise<ProcessedAudio> {\n       const inputPath = await this.downloadToTemp(media.key);\n\n       // Get audio info\n       const probe = await this.probe(inputPath);\n       const duration = probe.format.duration!;\n\n       // 1. Normalize audio\n       const outputPath = `${inputPath}_normalized.mp3`;\n       await this.normalizeAudio(inputPath, outputPath);\n\n       // 2. Generate waveform data\n       const waveform = await this.generateWaveform(inputPath);\n\n       // Upload normalized audio\n       const audioKey = await this.uploadToS3(outputPath, `${media.key}_normalized.mp3`);\n\n       return {\n         duration,\n         waveform,\n         processed_key: audioKey,\n       };\n     }\n\n     private async generateWaveform(inputPath: string): Promise<number[]> {\n       // Generate 100 samples for visualization\n       const samples = 100;\n       const waveform = await audioWaveform(inputPath, { samples });\n       \n       // Normalize to 0-100 range\n       const max = Math.max(...waveform);\n       return waveform.map(v => Math.round((v / max) * 100));\n     }\n\n     private async normalizeAudio(input: string, output: string): Promise<void> {\n       return new Promise((resolve, reject) => {\n         ffmpeg(input)\n           .audioFilters('loudnorm=I=-16:TP=-1.5:LRA=11')\n           .audioCodec('libmp3lame')\n           .audioBitrate('128k')\n           .output(output)\n           .on('end', resolve)\n           .on('error', reject)\n           .run();\n       });\n     }\n   }\n   ```\n\n2. Voice message detection:\n   ```typescript\n   interface VoiceMessage extends Media {\n     is_voice_message: true;\n     waveform: number[];\n     duration: number;\n   }\n   ```\n\n3. Create services/media-service/src/processing/audio-consumer.ts:\n   - Process audio uploads\n   - Generate waveform\n   - Update metadata\n\n4. Audio normalization:\n   - Loudness normalization (-16 LUFS)\n   - Convert to MP3 128kbps\n   - Preserve original for quality\n\n5. Waveform visualization:\n   - 100 samples for UI\n   - Normalized 0-100 range\n   - Stored in media metadata",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test waveform generation",
+          "Test normalization"
+        ],
+        "integration_tests": [
+          "Test full pipeline",
+          "Test voice message detection"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Audio normalized",
+        "Waveform generated",
+        "Duration extracted",
+        "Voice messages detected",
+        "Metadata updated"
+      ],
+      "files_to_create": [
+        "services/media-service/src/processing/audio-processor.ts",
+        "services/media-service/src/processing/audio-consumer.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["kafka"],
+        "environment_variables": [
+          "AUDIO_MAX_DURATION",
+          "WAVEFORM_SAMPLES"
+        ],
+        "volumes": ["/tmp/audio-processing"],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["media", "processing", "audio", "voice"]
+    },
+    {
+      "id": "MEDIA-008",
+      "task_name": "Document Processing",
+      "feature_details": "Implement document processing with preview generation.",
+      "feature_dependency": ["MEDIA-002"],
+      "ai_prompt": "Implement document processing:\n\n1. Create services/media-service/src/processing/document-processor.ts:\n   ```typescript\n   export class DocumentProcessor {\n     async process(media: Media): Promise<ProcessedDocument> {\n       const inputPath = await this.downloadToTemp(media.key);\n\n       // Get document info\n       const info = await this.getDocumentInfo(inputPath, media.mime_type);\n\n       // Generate preview image (first page)\n       const previewPath = await this.generatePreview(inputPath, media.mime_type);\n       const previewKey = await this.uploadToS3(previewPath, `${media.key}_preview.jpg`);\n\n       // Extract text for search (optional)\n       const extractedText = await this.extractText(inputPath, media.mime_type);\n\n       return {\n         page_count: info.pageCount,\n         preview_key: previewKey,\n         extracted_text: extractedText,\n       };\n     }\n\n     private async generatePreview(filePath: string, mimeType: string): Promise<string> {\n       switch (mimeType) {\n         case 'application/pdf':\n           return this.pdfToImage(filePath);\n         case 'application/msword':\n         case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':\n           return this.docToImage(filePath);\n         default:\n           return this.genericPreview(mimeType);\n       }\n     }\n\n     private async pdfToImage(pdfPath: string): Promise<string> {\n       // Use pdf-poppler or similar\n       const outputPath = `${pdfPath}_preview.jpg`;\n       await pdfToImage(pdfPath, {\n         format: 'jpeg',\n         out_dir: path.dirname(outputPath),\n         page: 1,\n       });\n       return outputPath;\n     }\n   }\n   ```\n\n2. Supported document types:\n   - PDF: preview first page\n   - Word (DOC/DOCX): convert and preview\n   - Excel (XLS/XLSX): preview first sheet\n   - PowerPoint (PPT/PPTX): preview first slide\n   - Text files: syntax highlighted preview\n\n3. Text extraction:\n   - Extract text for full-text search\n   - Store in search index\n   - Limit to first N pages\n\n4. Create services/media-service/src/processing/document-consumer.ts:\n   - Process document uploads\n   - Generate previews\n   - Extract metadata\n\n5. Preview generation:\n   - Use LibreOffice for Office docs\n   - Use Poppler for PDFs\n   - Fallback to icon for unsupported",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test PDF preview",
+          "Test text extraction"
+        ],
+        "integration_tests": [
+          "Test Office document preview",
+          "Test full pipeline"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "PDF previews generated",
+        "Office doc previews generated",
+        "Text extracted",
+        "Page count extracted",
+        "Unsupported handled"
+      ],
+      "files_to_create": [
+        "services/media-service/src/processing/document-processor.ts",
+        "services/media-service/src/processing/document-consumer.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["kafka"],
+        "environment_variables": [
+          "LIBREOFFICE_PATH"
+        ],
+        "volumes": ["/tmp/doc-processing"],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["media", "processing", "documents", "pdf"]
+    }
+  ]
+}

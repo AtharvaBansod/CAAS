@@ -1,0 +1,221 @@
+{
+  "task_group": "socket-authentication",
+  "description": "Socket authentication with JWT validation and session binding",
+  "priority": "critical",
+  "estimated_hours": 16,
+  "phase": 3,
+  "feature_area": "socket-service",
+  "tasks": [
+    {
+      "id": "SOCKET-005",
+      "task_name": "Socket Authentication Middleware",
+      "feature_details": "Implement authentication middleware for Socket.IO connections using JWT tokens.",
+      "feature_dependency": ["SOCKET-002", "AUTH-001", "AUTH-002"],
+      "ai_prompt": "Implement socket authentication middleware:\n\n1. Create services/socket-service/src/middleware/auth-middleware.ts:\n   ```typescript\n   import { Socket } from 'socket.io';\n   import { ExtendedError } from 'socket.io/dist/namespace';\n\n   export function createAuthMiddleware(jwtService: JwtService) {\n     return async (socket: Socket, next: (err?: ExtendedError) => void) => {\n       try {\n         // Extract token from handshake\n         const token = extractToken(socket.handshake);\n         if (!token) {\n           return next(new Error('Authentication required'));\n         }\n\n         // Validate token\n         const payload = await jwtService.verify(token);\n\n         // Check token revocation\n         const isRevoked = await checkTokenRevocation(payload.jti);\n         if (isRevoked) {\n           return next(new Error('Token revoked'));\n         }\n\n         // Attach user to socket\n         socket.data.user = payload;\n         socket.data.tenantId = payload.tenant_id;\n         socket.data.sessionId = payload.session_id;\n\n         next();\n       } catch (error) {\n         next(new Error('Invalid token'));\n       }\n     };\n   }\n   ```\n\n2. Create services/socket-service/src/middleware/token-extractor.ts:\n   ```typescript\n   export function extractToken(handshake: Handshake): string | null {\n     // Try auth header\n     const authHeader = handshake.auth?.token;\n     if (authHeader) return authHeader;\n\n     // Try query param (for fallback)\n     if (handshake.query?.token) return handshake.query.token as string;\n\n     // Try cookie\n     const cookies = parseCookies(handshake.headers.cookie);\n     if (cookies.access_token) return cookies.access_token;\n\n     return null;\n   }\n   ```\n\n3. Create services/socket-service/src/services/jwt-service.ts:\n   - JWT verification\n   - RS256/ES256 support\n   - Public key caching\n   - Token claims extraction\n\n4. Create services/socket-service/src/middleware/tenant-middleware.ts:\n   - Validate tenant access\n   - Set tenant context\n   - Tenant-specific rate limiting\n\n5. Create services/socket-service/src/types/socket-types.ts:\n   ```typescript\n   interface SocketData {\n     user: {\n       id: string;\n       email: string;\n       roles: string[];\n     };\n     tenantId: string;\n     sessionId: string;\n     connectedAt: Date;\n   }\n   ```\n\n6. Error handling:\n   - Authentication errors\n   - Token expiration\n   - Revocation notification",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test token extraction",
+          "Test JWT validation",
+          "Test middleware flow"
+        ],
+        "integration_tests": [
+          "Test connection with valid token",
+          "Test rejection with invalid token",
+          "Test token refresh handling"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Valid tokens allow connection",
+        "Invalid tokens are rejected",
+        "Revoked tokens are rejected",
+        "User data is attached to socket",
+        "Tenant context is set"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/middleware/auth-middleware.ts",
+        "services/socket-service/src/middleware/token-extractor.ts",
+        "services/socket-service/src/middleware/tenant-middleware.ts",
+        "services/socket-service/src/services/jwt-service.ts",
+        "services/socket-service/src/types/socket-types.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["redis"],
+        "environment_variables": [
+          "JWT_PUBLIC_KEY",
+          "JWT_ISSUER",
+          "JWT_AUDIENCE"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["socket", "authentication", "jwt", "middleware"]
+    },
+    {
+      "id": "SOCKET-006",
+      "task_name": "Socket Session Binding",
+      "feature_details": "Bind socket connections to user sessions for session-based tracking and management.",
+      "feature_dependency": ["SOCKET-005", "AUTH-005"],
+      "ai_prompt": "Implement socket session binding:\n\n1. Create services/socket-service/src/session/session-binder.ts:\n   ```typescript\n   export class SessionBinder {\n     async bindSocketToSession(socket: Socket, sessionId: string): Promise<void>;\n     async unbindSocketFromSession(socketId: string): Promise<void>;\n     async getSocketsForSession(sessionId: string): Promise<string[]>;\n     async getSessionForSocket(socketId: string): Promise<string | null>;\n   }\n   ```\n\n2. Create services/socket-service/src/session/socket-session-store.ts:\n   ```typescript\n   export class SocketSessionStore {\n     // Store in Redis\n     private redis: RedisClient;\n\n     // socket:session mapping\n     async setSocketSession(socketId: string, sessionId: string): Promise<void>;\n     async getSocketSession(socketId: string): Promise<string | null>;\n     async removeSocketSession(socketId: string): Promise<void>;\n\n     // session:sockets mapping (one session, many sockets)\n     async addSocketToSession(sessionId: string, socketId: string): Promise<void>;\n     async removeSocketFromSession(sessionId: string, socketId: string): Promise<void>;\n     async getSessionSockets(sessionId: string): Promise<string[]>;\n   }\n   ```\n\n3. Create services/socket-service/src/session/session-sync.ts:\n   - Sync session state with auth service\n   - Handle session expiration\n   - Handle session logout\n   - Multi-device session tracking\n\n4. Create services/socket-service/src/events/session-events.ts:\n   - Listen for session invalidation from Kafka\n   - Disconnect sockets on session end\n   - Notify client of session changes\n\n5. Create services/socket-service/src/session/device-tracker.ts:\n   ```typescript\n   interface ConnectedDevice {\n     socket_id: string;\n     device_id: string;\n     device_type: 'web' | 'mobile' | 'desktop';\n     connected_at: Date;\n     last_activity: Date;\n   }\n   ```\n\n6. Session lifecycle:\n   - On connect: bind socket to session\n   - On activity: update last activity\n   - On disconnect: unbind and update session\n   - On session end: force disconnect all sockets",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test session binding",
+          "Test socket lookup",
+          "Test session events"
+        ],
+        "integration_tests": [
+          "Test multi-socket sessions",
+          "Test session expiration",
+          "Test forced disconnect"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Sockets are bound to sessions",
+        "Session lookups work correctly",
+        "Session expiration disconnects sockets",
+        "Multi-device tracking works",
+        "Session events are processed"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/session/session-binder.ts",
+        "services/socket-service/src/session/socket-session-store.ts",
+        "services/socket-service/src/session/session-sync.ts",
+        "services/socket-service/src/session/device-tracker.ts",
+        "services/socket-service/src/events/session-events.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["redis", "kafka"],
+        "environment_variables": [
+          "SESSION_SYNC_INTERVAL"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["socket", "session", "binding", "multi-device"]
+    },
+    {
+      "id": "SOCKET-007",
+      "task_name": "Socket Connection Lifecycle Management",
+      "feature_details": "Manage the full lifecycle of socket connections including connect, reconnect, and disconnect handling.",
+      "feature_dependency": ["SOCKET-006"],
+      "ai_prompt": "Implement connection lifecycle management:\n\n1. Create services/socket-service/src/lifecycle/connection-manager.ts:\n   ```typescript\n   export class ConnectionManager {\n     async handleConnect(socket: Socket): Promise<void>;\n     async handleDisconnect(socket: Socket, reason: string): Promise<void>;\n     async handleReconnect(socket: Socket): Promise<void>;\n     async getConnectionState(userId: string): Promise<ConnectionState>;\n   }\n   ```\n\n2. Create services/socket-service/src/lifecycle/connect-handler.ts:\n   ```typescript\n   export async function handleConnect(socket: Socket) {\n     // 1. Validate authentication (already done in middleware)\n     // 2. Bind to session\n     await sessionBinder.bindSocketToSession(socket, socket.data.sessionId);\n\n     // 3. Track connection\n     await connectionTracker.addConnection({\n       socket_id: socket.id,\n       user_id: socket.data.user.id,\n       tenant_id: socket.data.tenantId,\n       connected_at: new Date(),\n     });\n\n     // 4. Update presence\n     await presenceService.setOnline(socket.data.user.id);\n\n     // 5. Rejoin rooms (for reconnection)\n     await roomManager.rejoinRooms(socket);\n\n     // 6. Send pending events\n     await eventQueue.sendPending(socket.data.user.id, socket);\n\n     // 7. Emit connected event\n     socket.emit('connected', { session_id: socket.data.sessionId });\n   }\n   ```\n\n3. Create services/socket-service/src/lifecycle/disconnect-handler.ts:\n   - Clean up session binding\n   - Update presence (with delay for reconnection)\n   - Leave rooms\n   - Track disconnect reason\n   - Analytics\n\n4. Create services/socket-service/src/lifecycle/reconnection-handler.ts:\n   - Detect reconnection vs new connection\n   - Restore state\n   - Resume event delivery\n   - Handle connection migration\n\n5. Create services/socket-service/src/lifecycle/heartbeat-manager.ts:\n   - Client heartbeat handling\n   - Detect stale connections\n   - Force disconnect dead connections\n\n6. Connection states:\n   - connecting: Initial connection\n   - connected: Authenticated and ready\n   - reconnecting: Temporarily disconnected\n   - disconnected: Fully disconnected",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test connect handler",
+          "Test disconnect handler",
+          "Test reconnection detection"
+        ],
+        "integration_tests": [
+          "Test full connection lifecycle",
+          "Test reconnection restoration",
+          "Test presence updates"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Connections are tracked correctly",
+        "Disconnections are handled gracefully",
+        "Reconnections restore state",
+        "Presence is updated correctly",
+        "Analytics are captured"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/lifecycle/connection-manager.ts",
+        "services/socket-service/src/lifecycle/connect-handler.ts",
+        "services/socket-service/src/lifecycle/disconnect-handler.ts",
+        "services/socket-service/src/lifecycle/reconnection-handler.ts",
+        "services/socket-service/src/lifecycle/heartbeat-manager.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["redis"],
+        "environment_variables": [
+          "DISCONNECT_GRACE_PERIOD_MS",
+          "HEARTBEAT_INTERVAL_MS"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["socket", "lifecycle", "connection", "reconnection"]
+    },
+    {
+      "id": "SOCKET-008",
+      "task_name": "Socket Token Refresh Handling",
+      "feature_details": "Handle token refresh for long-lived socket connections without disconnecting users.",
+      "feature_dependency": ["SOCKET-005", "AUTH-003"],
+      "ai_prompt": "Implement socket token refresh:\n\n1. Create services/socket-service/src/auth/token-refresh-handler.ts:\n   ```typescript\n   export class TokenRefreshHandler {\n     async handleRefresh(socket: Socket, newToken: string): Promise<RefreshResult>;\n     async scheduleRefresh(socket: Socket, expiresAt: Date): Promise<void>;\n     async notifyExpiringSoon(socket: Socket): Promise<void>;\n   }\n\n   interface RefreshResult {\n     success: boolean;\n     new_expires_at?: Date;\n     error?: string;\n   }\n   ```\n\n2. Create services/socket-service/src/events/auth-events.ts:\n   ```typescript\n   // Client emits 'token_refresh' with new token\n   socket.on('token_refresh', async (data: { token: string }) => {\n     const result = await tokenRefreshHandler.handleRefresh(socket, data.token);\n     socket.emit('token_refresh_result', result);\n   });\n\n   // Server emits 'token_expiring' before expiration\n   // Client should refresh and emit 'token_refresh'\n   ```\n\n3. Create services/socket-service/src/auth/token-monitor.ts:\n   - Track token expiration times\n   - Proactive refresh reminders\n   - Grace period handling\n   - Force disconnect on expired token\n\n4. Create services/socket-service/src/auth/token-validator.ts:\n   - Validate new token\n   - Ensure same user/session\n   - Update socket data\n   - Log token rotation\n\n5. Token refresh flow:\n   ```\n   1. Server detects token expiring in 5 minutes\n   2. Server emits 'token_expiring'\n   3. Client calls refresh API to get new token\n   4. Client emits 'token_refresh' with new token\n   5. Server validates and updates socket data\n   6. Server emits 'token_refresh_result'\n   ```\n\n6. Error handling:\n   - Invalid new token\n   - Different user in new token\n   - Revoked session\n   - Network errors during refresh",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test token refresh validation",
+          "Test expiration detection",
+          "Test refresh scheduling"
+        ],
+        "integration_tests": [
+          "Test refresh flow",
+          "Test expiration handling",
+          "Test invalid token rejection"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Token refresh works without disconnect",
+        "Expiring tokens trigger notification",
+        "Invalid tokens are rejected",
+        "Session continuity is maintained",
+        "Refresh is logged for audit"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/auth/token-refresh-handler.ts",
+        "services/socket-service/src/auth/token-monitor.ts",
+        "services/socket-service/src/auth/token-validator.ts",
+        "services/socket-service/src/events/auth-events.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["redis"],
+        "environment_variables": [
+          "TOKEN_EXPIRY_WARNING_MINUTES",
+          "TOKEN_REFRESH_GRACE_PERIOD_MS"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["socket", "authentication", "token-refresh", "jwt"]
+    }
+  ]
+}

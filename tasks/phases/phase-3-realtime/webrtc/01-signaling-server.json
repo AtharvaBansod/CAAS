@@ -1,0 +1,218 @@
+{
+  "task_group": "signaling-server",
+  "description": "WebRTC signaling server for SDP and ICE exchange",
+  "priority": "medium",
+  "estimated_hours": 16,
+  "phase": 3,
+  "feature_area": "webrtc",
+  "tasks": [
+    {
+      "id": "WEBRTC-001",
+      "task_name": "Signaling Server Core",
+      "feature_details": "Implement core WebRTC signaling server for SDP offer/answer exchange.",
+      "feature_dependency": ["SOCKET-009", "SOCKET-010"],
+      "ai_prompt": "Implement WebRTC signaling core:\n\n1. Create services/socket-service/src/webrtc/signaling-handler.ts:\n   ```typescript\n   export class SignalingHandler {\n     async handleOffer(socket: Socket, offer: RTCSessionDescriptionInit, targetUserId: string): Promise<void>;\n     async handleAnswer(socket: Socket, answer: RTCSessionDescriptionInit, targetUserId: string): Promise<void>;\n     async handleIceCandidate(socket: Socket, candidate: RTCIceCandidateInit, targetUserId: string): Promise<void>;\n   }\n   ```\n\n2. Create services/socket-service/src/events/signaling-events.ts:\n   ```typescript\n   // SDP Offer\n   socket.on('webrtc:offer', async (data: { target_user_id: string; sdp: RTCSessionDescriptionInit }) => {\n     // Validate caller and target are in same call\n     await signalingHandler.handleOffer(socket, data.sdp, data.target_user_id);\n   });\n\n   // SDP Answer\n   socket.on('webrtc:answer', async (data: { target_user_id: string; sdp: RTCSessionDescriptionInit }) => {\n     await signalingHandler.handleAnswer(socket, data.sdp, data.target_user_id);\n   });\n\n   // ICE Candidate\n   socket.on('webrtc:ice-candidate', async (data: { target_user_id: string; candidate: RTCIceCandidateInit }) => {\n     await signalingHandler.handleIceCandidate(socket, data.candidate, data.target_user_id);\n   });\n   ```\n\n3. Create services/socket-service/src/webrtc/signaling-relay.ts:\n   ```typescript\n   export class SignalingRelay {\n     async relayToUser(targetUserId: string, event: string, data: unknown): Promise<void>;\n     async relayToCallParticipants(callId: string, event: string, data: unknown, excludeUserId?: string): Promise<void>;\n   }\n   ```\n\n4. Create services/socket-service/src/webrtc/signaling-types.ts:\n   - RTCSessionDescriptionInit wrapper\n   - RTCIceCandidateInit wrapper\n   - Signaling event payloads\n\n5. Signaling validation:\n   - Validate SDP format\n   - Validate ICE candidate format\n   - Prevent invalid signaling\n\n6. Error handling:\n   - Target user offline\n   - Invalid SDP\n   - Signaling timeout",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test offer handling",
+          "Test answer handling",
+          "Test ICE candidate handling"
+        ],
+        "integration_tests": [
+          "Test offer/answer exchange",
+          "Test ICE candidate relay",
+          "Test cross-node signaling"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "SDP offers are relayed",
+        "SDP answers are relayed",
+        "ICE candidates are relayed",
+        "Cross-node signaling works",
+        "Validation is enforced"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/webrtc/signaling-handler.ts",
+        "services/socket-service/src/webrtc/signaling-relay.ts",
+        "services/socket-service/src/webrtc/signaling-types.ts",
+        "services/socket-service/src/events/signaling-events.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["redis"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["webrtc", "signaling", "sdp", "ice"]
+    },
+    {
+      "id": "WEBRTC-002",
+      "task_name": "ICE Server Configuration",
+      "feature_details": "Implement ICE server configuration with STUN/TURN server provisioning.",
+      "feature_dependency": ["WEBRTC-001"],
+      "ai_prompt": "Implement ICE server configuration:\n\n1. Create services/socket-service/src/webrtc/ice-server-provider.ts:\n   ```typescript\n   export class IceServerProvider {\n     async getIceServers(userId: string, tenantId: string): Promise<RTCIceServer[]>;\n     async getTurnCredentials(userId: string): Promise<TurnCredentials>;\n   }\n\n   interface TurnCredentials {\n     username: string;\n     credential: string;\n     ttl: number;\n   }\n   ```\n\n2. ICE server configuration:\n   ```typescript\n   const iceServers: RTCIceServer[] = [\n     // STUN servers\n     { urls: 'stun:stun.l.google.com:19302' },\n     { urls: 'stun:stun1.l.google.com:19302' },\n     // TURN servers (with credentials)\n     {\n       urls: 'turn:turn.example.com:3478',\n       username: 'generated_username',\n       credential: 'generated_credential',\n     },\n     // TURNS (TLS)\n     {\n       urls: 'turns:turn.example.com:443',\n       username: 'generated_username',\n       credential: 'generated_credential',\n     },\n   ];\n   ```\n\n3. Create services/socket-service/src/webrtc/turn-credentials-generator.ts:\n   - Time-limited credentials (RFC 5766)\n   - HMAC-based authentication\n   - Credential rotation\n\n4. Create services/gateway/src/routes/v1/webrtc/ice-servers.ts:\n   - GET /v1/webrtc/ice-servers - Get ICE servers with credentials\n\n5. Create services/socket-service/src/events/ice-config-events.ts:\n   ```typescript\n   socket.on('webrtc:get-ice-servers', async (callback) => {\n     const servers = await iceServerProvider.getIceServers(\n       socket.data.user.id,\n       socket.data.tenantId\n     );\n     callback({ ice_servers: servers });\n   });\n   ```\n\n6. Tenant-specific TURN:\n   - Allow tenants to provide own TURN servers\n   - Fallback to platform TURN\n   - Monitor TURN usage",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test credential generation",
+          "Test server list generation",
+          "Test TTL handling"
+        ],
+        "integration_tests": [
+          "Test API endpoint",
+          "Test socket event",
+          "Test TURN authentication"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "ICE servers are provided",
+        "TURN credentials are generated",
+        "Credentials are time-limited",
+        "API endpoint works",
+        "Socket event works"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/webrtc/ice-server-provider.ts",
+        "services/socket-service/src/webrtc/turn-credentials-generator.ts",
+        "services/socket-service/src/events/ice-config-events.ts",
+        "services/gateway/src/routes/v1/webrtc/ice-servers.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [
+          "STUN_SERVERS",
+          "TURN_SERVER",
+          "TURN_SECRET",
+          "TURN_CREDENTIAL_TTL"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/v1/webrtc/ice-servers",
+          "description": "Get ICE servers with credentials"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["webrtc", "ice", "stun", "turn"]
+    },
+    {
+      "id": "WEBRTC-003",
+      "task_name": "Connection State Tracking",
+      "feature_details": "Track WebRTC connection state for monitoring and troubleshooting.",
+      "feature_dependency": ["WEBRTC-001"],
+      "ai_prompt": "Implement connection state tracking:\n\n1. Create services/socket-service/src/webrtc/connection-tracker.ts:\n   ```typescript\n   export class WebRTCConnectionTracker {\n     async updateConnectionState(callId: string, userId: string, state: RTCPeerConnectionState): Promise<void>;\n     async updateIceState(callId: string, userId: string, state: RTCIceConnectionState): Promise<void>;\n     async getConnectionState(callId: string): Promise<CallConnectionState>;\n   }\n\n   interface CallConnectionState {\n     call_id: string;\n     participants: ParticipantConnectionState[];\n   }\n\n   interface ParticipantConnectionState {\n     user_id: string;\n     connection_state: RTCPeerConnectionState;\n     ice_state: RTCIceConnectionState;\n     last_update: Date;\n   }\n   ```\n\n2. Create services/socket-service/src/events/connection-state-events.ts:\n   ```typescript\n   socket.on('webrtc:connection-state', async (data: { call_id: string; state: RTCPeerConnectionState }) => {\n     await connectionTracker.updateConnectionState(data.call_id, socket.data.user.id, data.state);\n\n     // Notify other participants of state change\n     socket.to(`call:${data.call_id}`).emit('webrtc:peer-connection-state', {\n       user_id: socket.data.user.id,\n       state: data.state,\n     });\n   });\n\n   socket.on('webrtc:ice-state', async (data: { call_id: string; state: RTCIceConnectionState }) => {\n     await connectionTracker.updateIceState(data.call_id, socket.data.user.id, data.state);\n   });\n   ```\n\n3. Connection states to track:\n   - new, connecting, connected, disconnected, failed, closed\n   - ICE: new, checking, connected, completed, failed, disconnected, closed\n\n4. Create services/socket-service/src/webrtc/connection-quality-monitor.ts:\n   - Track connection quality metrics\n   - Detect poor connections\n   - Suggest connection improvements\n\n5. Create services/socket-service/src/webrtc/connection-failure-handler.ts:\n   - Handle ICE failures\n   - Trigger ICE restart\n   - Fallback to TURN-only\n   - Notify users of connection issues\n\n6. Metrics:\n   - Connection success rate\n   - Average connection time\n   - ICE candidate types used\n   - TURN usage percentage",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test state updates",
+          "Test state retrieval",
+          "Test failure detection"
+        ],
+        "integration_tests": [
+          "Test state broadcasting",
+          "Test failure handling",
+          "Test ICE restart"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Connection state is tracked",
+        "State changes are broadcast",
+        "Failures are detected",
+        "ICE restart works",
+        "Metrics are collected"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/webrtc/connection-tracker.ts",
+        "services/socket-service/src/webrtc/connection-quality-monitor.ts",
+        "services/socket-service/src/webrtc/connection-failure-handler.ts",
+        "services/socket-service/src/events/connection-state-events.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["redis"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["webrtc", "connection", "monitoring", "ice"]
+    },
+    {
+      "id": "WEBRTC-004",
+      "task_name": "Media Constraints Negotiation",
+      "feature_details": "Implement media constraints negotiation for audio/video calls.",
+      "feature_dependency": ["WEBRTC-001"],
+      "ai_prompt": "Implement media constraints negotiation:\n\n1. Create services/socket-service/src/webrtc/media-negotiator.ts:\n   ```typescript\n   export class MediaNegotiator {\n     async negotiateMediaType(callId: string, participants: string[], mediaTypes: MediaType[]): Promise<MediaConstraints>;\n     async updateMediaState(callId: string, userId: string, state: MediaState): Promise<void>;\n   }\n\n   interface MediaConstraints {\n     audio: boolean | MediaTrackConstraints;\n     video: boolean | MediaTrackConstraints;\n   }\n\n   interface MediaState {\n     audio_enabled: boolean;\n     video_enabled: boolean;\n     screen_sharing: boolean;\n   }\n   ```\n\n2. Create services/socket-service/src/events/media-events.ts:\n   ```typescript\n   // Toggle audio\n   socket.on('webrtc:toggle-audio', async (data: { call_id: string; enabled: boolean }) => {\n     await mediaTracker.updateAudio(data.call_id, socket.data.user.id, data.enabled);\n\n     socket.to(`call:${data.call_id}`).emit('webrtc:peer-audio-changed', {\n       user_id: socket.data.user.id,\n       enabled: data.enabled,\n     });\n   });\n\n   // Toggle video\n   socket.on('webrtc:toggle-video', async (data: { call_id: string; enabled: boolean }) => {\n     await mediaTracker.updateVideo(data.call_id, socket.data.user.id, data.enabled);\n\n     socket.to(`call:${data.call_id}`).emit('webrtc:peer-video-changed', {\n       user_id: socket.data.user.id,\n       enabled: data.enabled,\n     });\n   });\n\n   // Screen sharing\n   socket.on('webrtc:start-screen-share', async (data: { call_id: string }) => {\n     socket.to(`call:${data.call_id}`).emit('webrtc:screen-share-started', {\n       user_id: socket.data.user.id,\n     });\n   });\n   ```\n\n3. Create services/socket-service/src/webrtc/media-state-tracker.ts:\n   - Track audio/video state per participant\n   - Track screen sharing state\n   - Notify on state changes\n\n4. Media type support:\n   - Audio only\n   - Audio + Video\n   - Screen sharing\n   - Screen sharing with audio\n\n5. Create services/socket-service/src/webrtc/bandwidth-estimator.ts:\n   - Estimate available bandwidth\n   - Suggest video quality\n   - Adapt constraints dynamically\n\n6. Create services/socket-service/src/webrtc/codec-preferences.ts:\n   - Preferred codecs (VP8, VP9, H264, Opus)\n   - Codec negotiation\n   - Fallback codecs",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test media negotiation",
+          "Test state tracking",
+          "Test toggle handling"
+        ],
+        "integration_tests": [
+          "Test media toggle broadcast",
+          "Test screen share events",
+          "Test constraint updates"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Media constraints are negotiated",
+        "Audio toggle works",
+        "Video toggle works",
+        "Screen sharing works",
+        "State changes are broadcast"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/webrtc/media-negotiator.ts",
+        "services/socket-service/src/webrtc/media-state-tracker.ts",
+        "services/socket-service/src/webrtc/bandwidth-estimator.ts",
+        "services/socket-service/src/webrtc/codec-preferences.ts",
+        "services/socket-service/src/events/media-events.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["redis"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["webrtc", "media", "audio", "video", "screen-share"]
+    }
+  ]
+}

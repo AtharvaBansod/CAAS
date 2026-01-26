@@ -1,0 +1,254 @@
+{
+  "task_group": "dashboard-pages",
+  "description": "Main dashboard pages for admin portal",
+  "priority": "high",
+  "estimated_hours": 20,
+  "phase": 6,
+  "feature_area": "admin-portal",
+  "tasks": [
+    {
+      "id": "PORTAL-008",
+      "task_name": "Dashboard Home Page",
+      "feature_details": "Create the main dashboard home page with overview metrics.",
+      "feature_dependency": ["PORTAL-002", "PORTAL-003"],
+      "ai_prompt": "Create dashboard home page:\n\n1. Create apps/admin-portal/src/app/(dashboard)/dashboard/page.tsx:\n   ```tsx\n   import { Suspense } from 'react';\n   import { MetricsCards } from './components/MetricsCards';\n   import { RecentActivity } from './components/RecentActivity';\n   import { QuickActions } from './components/QuickActions';\n   import { UsageChart } from './components/UsageChart';\n\n   export default function DashboardPage() {\n     return (\n       <div className=\"space-y-6\">\n         <div>\n           <h1 className=\"text-2xl font-bold\">Dashboard</h1>\n           <p className=\"text-gray-600\">Welcome back! Here's what's happening.</p>\n         </div>\n\n         <Suspense fallback={<MetricsCardsSkeleton />}>\n           <MetricsCards />\n         </Suspense>\n\n         <div className=\"grid gap-6 lg:grid-cols-3\">\n           <div className=\"lg:col-span-2\">\n             <Suspense fallback={<ChartSkeleton />}>\n               <UsageChart />\n             </Suspense>\n           </div>\n           <QuickActions />\n         </div>\n\n         <Suspense fallback={<ActivitySkeleton />}>\n           <RecentActivity />\n         </Suspense>\n       </div>\n     );\n   }\n   ```\n\n2. Create apps/admin-portal/src/app/(dashboard)/dashboard/components/MetricsCards.tsx:\n   ```tsx\n   import { Card } from '@/components/ui/Card';\n   import { useQuery } from '@tanstack/react-query';\n   import { api } from '@/lib/api';\n   import { MessageSquare, Users, Zap, TrendingUp } from 'lucide-react';\n\n   export function MetricsCards() {\n     const { data: metrics } = useQuery({\n       queryKey: ['dashboard', 'metrics'],\n       queryFn: () => api.get('/analytics/dashboard/summary'),\n     });\n\n     const cards = [\n       {\n         title: 'Total Messages',\n         value: metrics?.totalMessages?.toLocaleString() || '0',\n         change: metrics?.messagesChange || 0,\n         icon: MessageSquare,\n         color: 'blue',\n       },\n       {\n         title: 'Active Users',\n         value: metrics?.activeUsers?.toLocaleString() || '0',\n         change: metrics?.usersChange || 0,\n         icon: Users,\n         color: 'green',\n       },\n       {\n         title: 'API Calls',\n         value: metrics?.apiCalls?.toLocaleString() || '0',\n         change: metrics?.apiChange || 0,\n         icon: Zap,\n         color: 'purple',\n       },\n       {\n         title: 'Success Rate',\n         value: `${metrics?.successRate || 99.9}%`,\n         change: metrics?.successChange || 0,\n         icon: TrendingUp,\n         color: 'orange',\n       },\n     ];\n\n     return (\n       <div className=\"grid gap-4 sm:grid-cols-2 lg:grid-cols-4\">\n         {cards.map((card) => (\n           <Card key={card.title} className=\"p-6\">\n             <div className=\"flex items-center justify-between\">\n               <div>\n                 <p className=\"text-sm text-gray-500\">{card.title}</p>\n                 <p className=\"mt-1 text-3xl font-bold\">{card.value}</p>\n                 <p className={`mt-1 text-sm ${\n                   card.change >= 0 ? 'text-green-600' : 'text-red-600'\n                 }`}>\n                   {card.change >= 0 ? '+' : ''}{card.change}% from last week\n                 </p>\n               </div>\n               <div className={`rounded-full bg-${card.color}-100 p-3`}>\n                 <card.icon className={`h-6 w-6 text-${card.color}-600`} />\n               </div>\n             </div>\n           </Card>\n         ))}\n       </div>\n     );\n   }\n   ```\n\n3. Create apps/admin-portal/src/app/(dashboard)/dashboard/components/UsageChart.tsx:\n   ```tsx\n   'use client';\n\n   import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';\n   import { useQuery } from '@tanstack/react-query';\n   import { api } from '@/lib/api';\n   import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';\n\n   export function UsageChart() {\n     const { data } = useQuery({\n       queryKey: ['dashboard', 'usage'],\n       queryFn: () => api.get('/analytics/messages/volume?days=30'),\n     });\n\n     return (\n       <Card>\n         <CardHeader>\n           <CardTitle>Message Volume (Last 30 Days)</CardTitle>\n         </CardHeader>\n         <CardContent>\n           <ResponsiveContainer width=\"100%\" height={300}>\n             <AreaChart data={data}>\n               <CartesianGrid strokeDasharray=\"3 3\" />\n               <XAxis \n                 dataKey=\"date\" \n                 tickFormatter={(val) => new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}\n               />\n               <YAxis />\n               <Tooltip />\n               <Area\n                 type=\"monotone\"\n                 dataKey=\"messageCount\"\n                 stroke=\"#8884d8\"\n                 fill=\"#8884d8\"\n                 fillOpacity={0.3}\n               />\n             </AreaChart>\n           </ResponsiveContainer>\n         </CardContent>\n       </Card>\n     );\n   }\n   ```\n\n4. Create QuickActions and RecentActivity components similarly",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test metrics rendering",
+          "Test chart rendering"
+        ],
+        "integration_tests": [
+          "Test data fetching",
+          "Test loading states"
+        ],
+        "e2e_tests": [
+          "Test dashboard page load"
+        ]
+      },
+      "acceptance_criteria": [
+        "Dashboard loads correctly",
+        "Metrics cards display data",
+        "Chart renders with data",
+        "Recent activity shows"
+      ],
+      "files_to_create": [
+        "apps/admin-portal/src/app/(dashboard)/dashboard/page.tsx",
+        "apps/admin-portal/src/app/(dashboard)/dashboard/components/MetricsCards.tsx",
+        "apps/admin-portal/src/app/(dashboard)/dashboard/components/UsageChart.tsx",
+        "apps/admin-portal/src/app/(dashboard)/dashboard/components/QuickActions.tsx",
+        "apps/admin-portal/src/app/(dashboard)/dashboard/components/RecentActivity.tsx"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["portal", "dashboard", "analytics"]
+    },
+    {
+      "id": "PORTAL-009",
+      "task_name": "Applications Management",
+      "feature_details": "Create application management pages (list, create, edit).",
+      "feature_dependency": ["PORTAL-002", "PORTAL-003"],
+      "ai_prompt": "Create applications management pages:\n\n1. Create apps/admin-portal/src/app/(dashboard)/applications/page.tsx:\n   ```tsx\n   'use client';\n\n   import { useState } from 'react';\n   import { useApplications, useDeleteApplication } from '@/hooks/useApplications';\n   import { Button } from '@/components/ui/Button';\n   import { DataTable } from '@/components/ui/DataTable';\n   import { CreateApplicationDialog } from './components/CreateApplicationDialog';\n   import { Plus, MoreVertical, Trash2, Edit, Key } from 'lucide-react';\n   import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';\n   import { createColumnHelper } from '@tanstack/react-table';\n   import Link from 'next/link';\n\n   const columnHelper = createColumnHelper<Application>();\n\n   export default function ApplicationsPage() {\n     const { data: applications, isLoading } = useApplications();\n     const deleteApp = useDeleteApplication();\n     const [createOpen, setCreateOpen] = useState(false);\n\n     const columns = [\n       columnHelper.accessor('name', {\n         header: 'Name',\n         cell: (info) => (\n           <Link href={`/applications/${info.row.original.id}`} className=\"font-medium hover:underline\">\n             {info.getValue()}\n           </Link>\n         ),\n       }),\n       columnHelper.accessor('description', {\n         header: 'Description',\n       }),\n       columnHelper.accessor('apiKeyCount', {\n         header: 'API Keys',\n       }),\n       columnHelper.accessor('userCount', {\n         header: 'Users',\n       }),\n       columnHelper.accessor('createdAt', {\n         header: 'Created',\n         cell: (info) => new Date(info.getValue()).toLocaleDateString(),\n       }),\n       columnHelper.display({\n         id: 'actions',\n         cell: (info) => (\n           <DropdownMenu>\n             <DropdownMenuTrigger asChild>\n               <Button variant=\"ghost\" size=\"icon\">\n                 <MoreVertical className=\"h-4 w-4\" />\n               </Button>\n             </DropdownMenuTrigger>\n             <DropdownMenuContent align=\"end\">\n               <DropdownMenuItem asChild>\n                 <Link href={`/applications/${info.row.original.id}`}>\n                   <Edit className=\"mr-2 h-4 w-4\" /> Edit\n                 </Link>\n               </DropdownMenuItem>\n               <DropdownMenuItem asChild>\n                 <Link href={`/applications/${info.row.original.id}/api-keys`}>\n                   <Key className=\"mr-2 h-4 w-4\" /> API Keys\n                 </Link>\n               </DropdownMenuItem>\n               <DropdownMenuItem\n                 className=\"text-red-600\"\n                 onClick={() => deleteApp.mutate(info.row.original.id)}\n               >\n                 <Trash2 className=\"mr-2 h-4 w-4\" /> Delete\n               </DropdownMenuItem>\n             </DropdownMenuContent>\n           </DropdownMenu>\n         ),\n       }),\n     ];\n\n     return (\n       <div className=\"space-y-6\">\n         <div className=\"flex items-center justify-between\">\n           <div>\n             <h1 className=\"text-2xl font-bold\">Applications</h1>\n             <p className=\"text-gray-600\">Manage your chat applications</p>\n           </div>\n           <Button onClick={() => setCreateOpen(true)}>\n             <Plus className=\"mr-2 h-4 w-4\" /> New Application\n           </Button>\n         </div>\n\n         <DataTable\n           data={applications || []}\n           columns={columns}\n           loading={isLoading}\n         />\n\n         <CreateApplicationDialog\n           open={createOpen}\n           onOpenChange={setCreateOpen}\n         />\n       </div>\n     );\n   }\n   ```\n\n2. Create apps/admin-portal/src/app/(dashboard)/applications/components/CreateApplicationDialog.tsx:\n   ```tsx\n   'use client';\n\n   import { useForm } from 'react-hook-form';\n   import { zodResolver } from '@hookform/resolvers/zod';\n   import { z } from 'zod';\n   import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@radix-ui/react-dialog';\n   import { Button } from '@/components/ui/Button';\n   import { Input } from '@/components/ui/Input';\n   import { useCreateApplication } from '@/hooks/useApplications';\n\n   const schema = z.object({\n     name: z.string().min(3, 'Name must be at least 3 characters'),\n     description: z.string().optional(),\n   });\n\n   type FormData = z.infer<typeof schema>;\n\n   export function CreateApplicationDialog({ open, onOpenChange }: {\n     open: boolean;\n     onOpenChange: (open: boolean) => void;\n   }) {\n     const createApp = useCreateApplication();\n     const { register, handleSubmit, reset, formState: { errors, isSubmitting }} = useForm<FormData>({\n       resolver: zodResolver(schema),\n     });\n\n     const onSubmit = async (data: FormData) => {\n       await createApp.mutateAsync(data);\n       reset();\n       onOpenChange(false);\n     };\n\n     return (\n       <Dialog open={open} onOpenChange={onOpenChange}>\n         <DialogContent className=\"sm:max-w-md\">\n           <DialogHeader>\n             <DialogTitle>Create Application</DialogTitle>\n           </DialogHeader>\n           <form onSubmit={handleSubmit(onSubmit)} className=\"space-y-4\">\n             <Input\n               id=\"name\"\n               label=\"Application Name\"\n               error={errors.name?.message}\n               {...register('name')}\n             />\n             <Input\n               id=\"description\"\n               label=\"Description (optional)\"\n               {...register('description')}\n             />\n             <div className=\"flex justify-end gap-2\">\n               <Button type=\"button\" variant=\"outline\" onClick={() => onOpenChange(false)}>\n                 Cancel\n               </Button>\n               <Button type=\"submit\" loading={isSubmitting}>\n                 Create\n               </Button>\n             </div>\n           </form>\n         </DialogContent>\n       </Dialog>\n     );\n   }\n   ```\n\n3. Create application detail page:\n   ```tsx\n   // apps/admin-portal/src/app/(dashboard)/applications/[id]/page.tsx\n   ```",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test table rendering",
+          "Test dialog form"
+        ],
+        "integration_tests": [
+          "Test CRUD operations",
+          "Test navigation"
+        ],
+        "e2e_tests": [
+          "Test create application flow"
+        ]
+      },
+      "acceptance_criteria": [
+        "Applications list displays",
+        "Create dialog works",
+        "Edit/delete work",
+        "Navigation works"
+      ],
+      "files_to_create": [
+        "apps/admin-portal/src/app/(dashboard)/applications/page.tsx",
+        "apps/admin-portal/src/app/(dashboard)/applications/components/CreateApplicationDialog.tsx",
+        "apps/admin-portal/src/app/(dashboard)/applications/[id]/page.tsx",
+        "apps/admin-portal/src/app/(dashboard)/applications/[id]/api-keys/page.tsx"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["portal", "applications", "crud"]
+    },
+    {
+      "id": "PORTAL-010",
+      "task_name": "Users Management Page",
+      "feature_details": "Create user management pages with search and filters.",
+      "feature_dependency": ["PORTAL-002", "PORTAL-003"],
+      "ai_prompt": "Create users management page:\n\n1. Create apps/admin-portal/src/app/(dashboard)/users/page.tsx:\n   ```tsx\n   'use client';\n\n   import { useState } from 'react';\n   import { useUsers } from '@/hooks/useUsers';\n   import { Button } from '@/components/ui/Button';\n   import { Input } from '@/components/ui/Input';\n   import { DataTable } from '@/components/ui/DataTable';\n   import { UserFilters } from './components/UserFilters';\n   import { UserDetails } from './components/UserDetails';\n   import { Search, Download } from 'lucide-react';\n   import { createColumnHelper } from '@tanstack/react-table';\n   import { debounce } from 'lodash';\n\n   const columnHelper = createColumnHelper<User>();\n\n   export default function UsersPage() {\n     const [search, setSearch] = useState('');\n     const [filters, setFilters] = useState({ status: 'all', role: 'all' });\n     const [selectedUser, setSelectedUser] = useState<User | null>(null);\n\n     const { data: users, isLoading } = useUsers({ search, ...filters });\n\n     const debouncedSearch = debounce((value: string) => setSearch(value), 300);\n\n     const columns = [\n       columnHelper.accessor('displayName', {\n         header: 'Name',\n         cell: (info) => (\n           <button\n             onClick={() => setSelectedUser(info.row.original)}\n             className=\"flex items-center gap-3 hover:underline\"\n           >\n             <div className=\"h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center\">\n               {info.getValue()[0].toUpperCase()}\n             </div>\n             <span className=\"font-medium\">{info.getValue()}</span>\n           </button>\n         ),\n       }),\n       columnHelper.accessor('email', {\n         header: 'Email',\n       }),\n       columnHelper.accessor('status', {\n         header: 'Status',\n         cell: (info) => (\n           <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${\n             info.getValue() === 'active' \n               ? 'bg-green-100 text-green-700' \n               : 'bg-gray-100 text-gray-700'\n           }`}>\n             {info.getValue()}\n           </span>\n         ),\n       }),\n       columnHelper.accessor('messageCount', {\n         header: 'Messages',\n         cell: (info) => info.getValue().toLocaleString(),\n       }),\n       columnHelper.accessor('lastActive', {\n         header: 'Last Active',\n         cell: (info) => formatRelativeTime(new Date(info.getValue())),\n       }),\n       columnHelper.accessor('createdAt', {\n         header: 'Joined',\n         cell: (info) => new Date(info.getValue()).toLocaleDateString(),\n       }),\n     ];\n\n     return (\n       <div className=\"space-y-6\">\n         <div className=\"flex items-center justify-between\">\n           <div>\n             <h1 className=\"text-2xl font-bold\">Users</h1>\n             <p className=\"text-gray-600\">Manage your registered users</p>\n           </div>\n           <Button variant=\"outline\">\n             <Download className=\"mr-2 h-4 w-4\" /> Export\n           </Button>\n         </div>\n\n         <div className=\"flex items-center gap-4\">\n           <div className=\"relative flex-1\">\n             <Search className=\"absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400\" />\n             <Input\n               placeholder=\"Search users by name or email...\"\n               className=\"pl-10\"\n               onChange={(e) => debouncedSearch(e.target.value)}\n             />\n           </div>\n           <UserFilters filters={filters} onChange={setFilters} />\n         </div>\n\n         <DataTable\n           data={users || []}\n           columns={columns}\n           loading={isLoading}\n         />\n\n         {selectedUser && (\n           <UserDetails\n             user={selectedUser}\n             onClose={() => setSelectedUser(null)}\n           />\n         )}\n       </div>\n     );\n   }\n   ```\n\n2. Create apps/admin-portal/src/app/(dashboard)/users/components/UserDetails.tsx:\n   ```tsx\n   // Slide-out panel showing user details, activity, and actions\n   ```\n\n3. Create apps/admin-portal/src/app/(dashboard)/users/components/UserFilters.tsx:\n   ```tsx\n   // Filter dropdowns for status, role, date range\n   ```",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test search debouncing",
+          "Test filter changes"
+        ],
+        "integration_tests": [
+          "Test with API",
+          "Test pagination"
+        ],
+        "e2e_tests": [
+          "Test user search"
+        ]
+      },
+      "acceptance_criteria": [
+        "Users list displays",
+        "Search works",
+        "Filters work",
+        "User details panel works"
+      ],
+      "files_to_create": [
+        "apps/admin-portal/src/app/(dashboard)/users/page.tsx",
+        "apps/admin-portal/src/app/(dashboard)/users/components/UserFilters.tsx",
+        "apps/admin-portal/src/app/(dashboard)/users/components/UserDetails.tsx"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["portal", "users", "management"]
+    },
+    {
+      "id": "PORTAL-011",
+      "task_name": "Analytics Dashboard Page",
+      "feature_details": "Create analytics dashboard with charts and metrics (in-app, not Grafana).",
+      "feature_dependency": ["PORTAL-002", "ANALYTICS-004"],
+      "ai_prompt": "Create analytics dashboard page (NOT Grafana - React components):\n\n1. Create apps/admin-portal/src/app/(dashboard)/analytics/page.tsx:\n   ```tsx\n   'use client';\n\n   import { useState } from 'react';\n   import { DateRangePicker } from '@/components/DateRangePicker';\n   import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';\n   import { MessageVolumeChart } from './components/MessageVolumeChart';\n   import { ActiveUsersChart } from './components/ActiveUsersChart';\n   import { MessageTypesChart } from './components/MessageTypesChart';\n   import { HourlyActivityChart } from './components/HourlyActivityChart';\n   import { TopConversationsTable } from './components/TopConversationsTable';\n   import { TopUsersTable } from './components/TopUsersTable';\n   import { ExportButton } from './components/ExportButton';\n\n   export default function AnalyticsPage() {\n     const [dateRange, setDateRange] = useState({\n       startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),\n       endDate: new Date(),\n     });\n\n     return (\n       <div className=\"space-y-6\">\n         <div className=\"flex items-center justify-between\">\n           <div>\n             <h1 className=\"text-2xl font-bold\">Analytics</h1>\n             <p className=\"text-gray-600\">Insights into your messaging platform</p>\n           </div>\n           <div className=\"flex items-center gap-4\">\n             <DateRangePicker value={dateRange} onChange={setDateRange} />\n             <ExportButton dateRange={dateRange} />\n           </div>\n         </div>\n\n         {/* Summary metrics */}\n         <div className=\"grid gap-4 sm:grid-cols-2 lg:grid-cols-4\">\n           <MetricCard\n             title=\"Total Messages\"\n             value=\"1,234,567\"\n             change={12.5}\n           />\n           <MetricCard\n             title=\"Active Users\"\n             value=\"45,678\"\n             change={8.2}\n           />\n           <MetricCard\n             title=\"Avg Messages/User\"\n             value=\"27.1\"\n             change={-2.3}\n           />\n           <MetricCard\n             title=\"Response Time\"\n             value=\"1.2s\"\n             change={-15.0}\n           />\n         </div>\n\n         {/* Charts row 1 */}\n         <div className=\"grid gap-6 lg:grid-cols-2\">\n           <Card>\n             <CardHeader>\n               <CardTitle>Message Volume</CardTitle>\n             </CardHeader>\n             <CardContent>\n               <MessageVolumeChart dateRange={dateRange} />\n             </CardContent>\n           </Card>\n\n           <Card>\n             <CardHeader>\n               <CardTitle>Daily Active Users</CardTitle>\n             </CardHeader>\n             <CardContent>\n               <ActiveUsersChart dateRange={dateRange} />\n             </CardContent>\n           </Card>\n         </div>\n\n         {/* Charts row 2 */}\n         <div className=\"grid gap-6 lg:grid-cols-3\">\n           <Card>\n             <CardHeader>\n               <CardTitle>Message Types</CardTitle>\n             </CardHeader>\n             <CardContent>\n               <MessageTypesChart dateRange={dateRange} />\n             </CardContent>\n           </Card>\n\n           <Card className=\"lg:col-span-2\">\n             <CardHeader>\n               <CardTitle>Activity by Hour</CardTitle>\n             </CardHeader>\n             <CardContent>\n               <HourlyActivityChart dateRange={dateRange} />\n             </CardContent>\n           </Card>\n         </div>\n\n         {/* Tables */}\n         <div className=\"grid gap-6 lg:grid-cols-2\">\n           <Card>\n             <CardHeader>\n               <CardTitle>Top Conversations</CardTitle>\n             </CardHeader>\n             <CardContent>\n               <TopConversationsTable />\n             </CardContent>\n           </Card>\n\n           <Card>\n             <CardHeader>\n               <CardTitle>Most Active Users</CardTitle>\n             </CardHeader>\n             <CardContent>\n               <TopUsersTable dateRange={dateRange} />\n             </CardContent>\n           </Card>\n         </div>\n       </div>\n     );\n   }\n   ```\n\n2. Create chart components using Recharts (same as Phase 5 analytics but for admin portal)\n\n3. Create apps/admin-portal/src/app/(dashboard)/analytics/components/ExportButton.tsx:\n   ```tsx\n   'use client';\n\n   import { useState } from 'react';\n   import { Button } from '@/components/ui/Button';\n   import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';\n   import { Download, FileText, FileSpreadsheet } from 'lucide-react';\n   import { api } from '@/lib/api';\n\n   export function ExportButton({ dateRange }: { dateRange: { startDate: Date; endDate: Date } }) {\n     const [loading, setLoading] = useState(false);\n\n     const exportCSV = async () => {\n       setLoading(true);\n       try {\n         const blob = await api.getBlob('/analytics/export/messages', {\n           startDate: dateRange.startDate.toISOString(),\n           endDate: dateRange.endDate.toISOString(),\n           format: 'csv',\n         });\n         downloadBlob(blob, 'analytics.csv');\n       } finally {\n         setLoading(false);\n       }\n     };\n\n     const exportPDF = async () => {\n       setLoading(true);\n       try {\n         const blob = await api.getBlob('/analytics/export/report', {\n           startDate: dateRange.startDate.toISOString(),\n           endDate: dateRange.endDate.toISOString(),\n         });\n         downloadBlob(blob, 'analytics-report.pdf');\n       } finally {\n         setLoading(false);\n       }\n     };\n\n     return (\n       <DropdownMenu>\n         <DropdownMenuTrigger asChild>\n           <Button variant=\"outline\" loading={loading}>\n             <Download className=\"mr-2 h-4 w-4\" /> Export\n           </Button>\n         </DropdownMenuTrigger>\n         <DropdownMenuContent align=\"end\">\n           <DropdownMenuItem onClick={exportCSV}>\n             <FileSpreadsheet className=\"mr-2 h-4 w-4\" /> Export CSV\n           </DropdownMenuItem>\n           <DropdownMenuItem onClick={exportPDF}>\n             <FileText className=\"mr-2 h-4 w-4\" /> Export PDF Report\n           </DropdownMenuItem>\n         </DropdownMenuContent>\n       </DropdownMenu>\n     );\n   }\n   ```\n\nNote: This is NOT Grafana. These are React components built into clientFacingUI using Recharts for charts and TanStack Table for data tables. The data comes from the analytics service API.",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test chart rendering",
+          "Test export functionality"
+        ],
+        "integration_tests": [
+          "Test with analytics API",
+          "Test date range changes"
+        ],
+        "e2e_tests": [
+          "Test full analytics page"
+        ]
+      },
+      "acceptance_criteria": [
+        "All charts render",
+        "Date range filter works",
+        "Export works (CSV/PDF)",
+        "Data refreshes correctly"
+      ],
+      "files_to_create": [
+        "apps/admin-portal/src/app/(dashboard)/analytics/page.tsx",
+        "apps/admin-portal/src/app/(dashboard)/analytics/components/MessageVolumeChart.tsx",
+        "apps/admin-portal/src/app/(dashboard)/analytics/components/ActiveUsersChart.tsx",
+        "apps/admin-portal/src/app/(dashboard)/analytics/components/MessageTypesChart.tsx",
+        "apps/admin-portal/src/app/(dashboard)/analytics/components/HourlyActivityChart.tsx",
+        "apps/admin-portal/src/app/(dashboard)/analytics/components/TopConversationsTable.tsx",
+        "apps/admin-portal/src/app/(dashboard)/analytics/components/TopUsersTable.tsx",
+        "apps/admin-portal/src/app/(dashboard)/analytics/components/ExportButton.tsx"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["portal", "analytics", "charts", "NOT-GRAFANA"]
+    },
+    {
+      "id": "PORTAL-012",
+      "task_name": "API Keys Management Page",
+      "feature_details": "Create API key management with generation and scoping.",
+      "feature_dependency": ["PORTAL-002", "PORTAL-003"],
+      "ai_prompt": "Create API keys management page:\n\n1. Create apps/admin-portal/src/app/(dashboard)/api-keys/page.tsx:\n   ```tsx\n   'use client';\n\n   import { useState } from 'react';\n   import { useApiKeys, useCreateApiKey, useRevokeApiKey } from '@/hooks/useApiKeys';\n   import { Button } from '@/components/ui/Button';\n   import { DataTable } from '@/components/ui/DataTable';\n   import { CreateApiKeyDialog } from './components/CreateApiKeyDialog';\n   import { ApiKeyCreatedDialog } from './components/ApiKeyCreatedDialog';\n   import { Plus, Copy, Trash2, Eye, EyeOff } from 'lucide-react';\n   import { createColumnHelper } from '@tanstack/react-table';\n\n   const columnHelper = createColumnHelper<ApiKey>();\n\n   export default function ApiKeysPage() {\n     const { data: apiKeys, isLoading } = useApiKeys();\n     const revokeKey = useRevokeApiKey();\n     const [createOpen, setCreateOpen] = useState(false);\n     const [newKey, setNewKey] = useState<string | null>(null);\n\n     const columns = [\n       columnHelper.accessor('name', {\n         header: 'Name',\n         cell: (info) => <span className=\"font-medium\">{info.getValue()}</span>,\n       }),\n       columnHelper.accessor('prefix', {\n         header: 'Key',\n         cell: (info) => (\n           <code className=\"rounded bg-gray-100 px-2 py-1 font-mono text-sm\">\n             {info.getValue()}...****\n           </code>\n         ),\n       }),\n       columnHelper.accessor('scopes', {\n         header: 'Scopes',\n         cell: (info) => (\n           <div className=\"flex gap-1\">\n             {info.getValue().map((scope) => (\n               <span key={scope} className=\"rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700\">\n                 {scope}\n               </span>\n             ))}\n           </div>\n         ),\n       }),\n       columnHelper.accessor('lastUsed', {\n         header: 'Last Used',\n         cell: (info) => info.getValue() \n           ? formatRelativeTime(new Date(info.getValue()))\n           : 'Never',\n       }),\n       columnHelper.accessor('expiresAt', {\n         header: 'Expires',\n         cell: (info) => info.getValue()\n           ? new Date(info.getValue()).toLocaleDateString()\n           : 'Never',\n       }),\n       columnHelper.display({\n         id: 'actions',\n         cell: (info) => (\n           <Button\n             variant=\"ghost\"\n             size=\"sm\"\n             className=\"text-red-600\"\n             onClick={() => revokeKey.mutate(info.row.original.id)}\n           >\n             <Trash2 className=\"h-4 w-4\" />\n           </Button>\n         ),\n       }),\n     ];\n\n     return (\n       <div className=\"space-y-6\">\n         <div className=\"flex items-center justify-between\">\n           <div>\n             <h1 className=\"text-2xl font-bold\">API Keys</h1>\n             <p className=\"text-gray-600\">Manage API keys for your applications</p>\n           </div>\n           <Button onClick={() => setCreateOpen(true)}>\n             <Plus className=\"mr-2 h-4 w-4\" /> Create API Key\n           </Button>\n         </div>\n\n         <div className=\"rounded-lg border bg-yellow-50 p-4\">\n           <p className=\"text-sm text-yellow-800\">\n             <strong>Security Note:</strong> API keys grant access to your account. \n             Keep them secret and never commit them to version control.\n           </p>\n         </div>\n\n         <DataTable\n           data={apiKeys || []}\n           columns={columns}\n           loading={isLoading}\n         />\n\n         <CreateApiKeyDialog\n           open={createOpen}\n           onOpenChange={setCreateOpen}\n           onCreated={(key) => {\n             setCreateOpen(false);\n             setNewKey(key);\n           }}\n         />\n\n         <ApiKeyCreatedDialog\n           apiKey={newKey}\n           onClose={() => setNewKey(null)}\n         />\n       </div>\n     );\n   }\n   ```\n\n2. Create apps/admin-portal/src/app/(dashboard)/api-keys/components/CreateApiKeyDialog.tsx:\n   ```tsx\n   // Dialog for creating new API key with name, expiration, and scope selection\n   ```\n\n3. Create apps/admin-portal/src/app/(dashboard)/api-keys/components/ApiKeyCreatedDialog.tsx:\n   ```tsx\n   // Dialog showing the newly created API key (only shown once)\n   ```",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test key masking",
+          "Test scope display"
+        ],
+        "integration_tests": [
+          "Test key creation",
+          "Test key revocation"
+        ],
+        "e2e_tests": [
+          "Test full key lifecycle"
+        ]
+      },
+      "acceptance_criteria": [
+        "API keys list displays",
+        "Create key dialog works",
+        "Key only shown once after creation",
+        "Revoke key works"
+      ],
+      "files_to_create": [
+        "apps/admin-portal/src/app/(dashboard)/api-keys/page.tsx",
+        "apps/admin-portal/src/app/(dashboard)/api-keys/components/CreateApiKeyDialog.tsx",
+        "apps/admin-portal/src/app/(dashboard)/api-keys/components/ApiKeyCreatedDialog.tsx",
+        "apps/admin-portal/src/hooks/useApiKeys.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["portal", "api-keys", "security"]
+    }
+  ]
+}

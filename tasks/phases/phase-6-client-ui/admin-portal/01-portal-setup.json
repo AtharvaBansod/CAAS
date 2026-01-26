@@ -1,0 +1,199 @@
+{
+  "task_group": "portal-setup",
+  "description": "Admin portal project setup and core layout",
+  "priority": "high",
+  "estimated_hours": 16,
+  "phase": 6,
+  "feature_area": "admin-portal",
+  "tasks": [
+    {
+      "id": "PORTAL-001",
+      "task_name": "Next.js Project Setup",
+      "feature_details": "Set up Next.js 14 project with App Router for admin portal.",
+      "feature_dependency": [],
+      "ai_prompt": "Create Next.js admin portal project:\n\n1. Initialize project:\n   ```bash\n   npx create-next-app@latest apps/admin-portal --typescript --tailwind --eslint --app --src-dir\n   ```\n\n2. Create apps/admin-portal/package.json:\n   ```json\n   {\n     \"name\": \"@caas/admin-portal\",\n     \"version\": \"0.1.0\",\n     \"private\": true,\n     \"scripts\": {\n       \"dev\": \"next dev -p 3100\",\n       \"build\": \"next build\",\n       \"start\": \"next start\",\n       \"lint\": \"next lint\",\n       \"test\": \"vitest\"\n     },\n     \"dependencies\": {\n       \"next\": \"14.x\",\n       \"react\": \"18.x\",\n       \"react-dom\": \"18.x\",\n       \"@tanstack/react-query\": \"^5.0.0\",\n       \"@radix-ui/react-dialog\": \"^1.0.0\",\n       \"@radix-ui/react-dropdown-menu\": \"^2.0.0\",\n       \"@radix-ui/react-toast\": \"^1.0.0\",\n       \"zustand\": \"^4.4.0\",\n       \"react-hook-form\": \"^7.48.0\",\n       \"@hookform/resolvers\": \"^3.3.0\",\n       \"zod\": \"^3.22.0\",\n       \"recharts\": \"^2.10.0\",\n       \"@tanstack/react-table\": \"^8.10.0\",\n       \"date-fns\": \"^2.30.0\",\n       \"clsx\": \"^2.0.0\",\n       \"tailwind-merge\": \"^2.0.0\",\n       \"lucide-react\": \"^0.294.0\"\n     },\n     \"devDependencies\": {\n       \"typescript\": \"^5.3.0\",\n       \"@types/node\": \"^20.10.0\",\n       \"@types/react\": \"^18.2.0\",\n       \"tailwindcss\": \"^3.3.0\",\n       \"postcss\": \"^8.4.0\",\n       \"autoprefixer\": \"^10.4.0\",\n       \"vitest\": \"^1.0.0\",\n       \"@testing-library/react\": \"^14.1.0\"\n     }\n   }\n   ```\n\n3. Create apps/admin-portal/next.config.js:\n   ```javascript\n   /** @type {import('next').NextConfig} */\n   const nextConfig = {\n     reactStrictMode: true,\n     transpilePackages: ['@caas/ui-components'],\n     images: {\n       remotePatterns: [\n         {\n           protocol: 'https',\n           hostname: '*.caas.io',\n         },\n       ],\n     },\n     async rewrites() {\n       return [\n         {\n           source: '/api/:path*',\n           destination: `${process.env.API_URL}/:path*`,\n         },\n       ];\n     },\n   };\n\n   module.exports = nextConfig;\n   ```\n\n4. Create Tailwind config with design tokens:\n   ```javascript\n   // apps/admin-portal/tailwind.config.js\n   const { fontFamily } = require('tailwindcss/defaultTheme');\n\n   module.exports = {\n     darkMode: ['class'],\n     content: ['./src/**/*.{ts,tsx}'],\n     theme: {\n       extend: {\n         colors: {\n           border: 'hsl(var(--border))',\n           background: 'hsl(var(--background))',\n           foreground: 'hsl(var(--foreground))',\n           primary: {\n             DEFAULT: 'hsl(var(--primary))',\n             foreground: 'hsl(var(--primary-foreground))',\n           },\n           // ... more semantic colors\n         },\n         fontFamily: {\n           sans: ['var(--font-sans)', ...fontFamily.sans],\n         },\n       },\n     },\n     plugins: [require('tailwindcss-animate')],\n   };\n   ```\n\n5. Create utility functions:\n   ```typescript\n   // apps/admin-portal/src/lib/utils.ts\n   import { type ClassValue, clsx } from 'clsx';\n   import { twMerge } from 'tailwind-merge';\n\n   export function cn(...inputs: ClassValue[]) {\n     return twMerge(clsx(inputs));\n   }\n   ```",
+      "testing_instructions": {
+        "unit_tests": [],
+        "integration_tests": [
+          "Test dev server starts",
+          "Test build succeeds"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Project initialized",
+        "Dependencies installed",
+        "Dev server runs",
+        "Build succeeds"
+      ],
+      "files_to_create": [
+        "apps/admin-portal/package.json",
+        "apps/admin-portal/next.config.js",
+        "apps/admin-portal/tailwind.config.js",
+        "apps/admin-portal/tsconfig.json",
+        "apps/admin-portal/src/lib/utils.ts",
+        "apps/admin-portal/src/styles/globals.css"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["admin-portal"],
+        "environment_variables": [
+          "API_URL",
+          "NEXT_PUBLIC_API_URL"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["portal", "nextjs", "setup"]
+    },
+    {
+      "id": "PORTAL-002",
+      "task_name": "Dashboard Layout",
+      "feature_details": "Create the main dashboard layout with sidebar and header.",
+      "feature_dependency": ["PORTAL-001"],
+      "ai_prompt": "Create dashboard layout:\n\n1. Create apps/admin-portal/src/app/(dashboard)/layout.tsx:\n   ```tsx\n   import { Sidebar } from '@/components/layout/Sidebar';\n   import { Header } from '@/components/layout/Header';\n   import { Providers } from '@/components/providers';\n\n   export default function DashboardLayout({\n     children,\n   }: {\n     children: React.ReactNode;\n   }) {\n     return (\n       <Providers>\n         <div className=\"flex h-screen\">\n           <Sidebar />\n           <div className=\"flex flex-1 flex-col overflow-hidden\">\n             <Header />\n             <main className=\"flex-1 overflow-auto bg-gray-50 p-6\">\n               {children}\n             </main>\n           </div>\n         </div>\n       </Providers>\n     );\n   }\n   ```\n\n2. Create apps/admin-portal/src/components/layout/Sidebar.tsx:\n   ```tsx\n   'use client';\n\n   import Link from 'next/link';\n   import { usePathname } from 'next/navigation';\n   import {\n     LayoutDashboard,\n     MessageSquare,\n     Users,\n     BarChart3,\n     Key,\n     CreditCard,\n     Settings,\n   } from 'lucide-react';\n   import { cn } from '@/lib/utils';\n\n   const navigation = [\n     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },\n     { name: 'Applications', href: '/applications', icon: MessageSquare },\n     { name: 'Users', href: '/users', icon: Users },\n     { name: 'Analytics', href: '/analytics', icon: BarChart3 },\n     { name: 'API Keys', href: '/api-keys', icon: Key },\n     { name: 'Billing', href: '/billing', icon: CreditCard },\n     { name: 'Settings', href: '/settings', icon: Settings },\n   ];\n\n   export function Sidebar() {\n     const pathname = usePathname();\n\n     return (\n       <aside className=\"w-64 bg-gray-900 text-white\">\n         <div className=\"flex h-16 items-center px-6\">\n           <span className=\"text-xl font-bold\">CAAS</span>\n         </div>\n         <nav className=\"mt-6 px-3\">\n           {navigation.map((item) => {\n             const isActive = pathname.startsWith(item.href);\n             return (\n               <Link\n                 key={item.name}\n                 href={item.href}\n                 className={cn(\n                   'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium',\n                   isActive\n                     ? 'bg-gray-800 text-white'\n                     : 'text-gray-400 hover:bg-gray-800 hover:text-white'\n                 )}\n               >\n                 <item.icon className=\"h-5 w-5\" />\n                 {item.name}\n               </Link>\n             );\n           })}\n         </nav>\n       </aside>\n     );\n   }\n   ```\n\n3. Create apps/admin-portal/src/components/layout/Header.tsx:\n   ```tsx\n   'use client';\n\n   import { Bell, Search, User } from 'lucide-react';\n   import { useUser } from '@/hooks/useUser';\n   import {\n     DropdownMenu,\n     DropdownMenuContent,\n     DropdownMenuItem,\n     DropdownMenuTrigger,\n   } from '@radix-ui/react-dropdown-menu';\n\n   export function Header() {\n     const { user, logout } = useUser();\n\n     return (\n       <header className=\"flex h-16 items-center justify-between border-b bg-white px-6\">\n         <div className=\"flex items-center gap-4\">\n           <div className=\"relative\">\n             <Search className=\"absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400\" />\n             <input\n               type=\"search\"\n               placeholder=\"Search...\"\n               className=\"h-10 w-80 rounded-lg border pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-primary\"\n             />\n           </div>\n         </div>\n\n         <div className=\"flex items-center gap-4\">\n           <button className=\"relative rounded-lg p-2 hover:bg-gray-100\">\n             <Bell className=\"h-5 w-5 text-gray-600\" />\n             <span className=\"absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500\" />\n           </button>\n\n           <DropdownMenu>\n             <DropdownMenuTrigger asChild>\n               <button className=\"flex items-center gap-2 rounded-lg p-2 hover:bg-gray-100\">\n                 <div className=\"flex h-8 w-8 items-center justify-center rounded-full bg-primary text-white\">\n                   <User className=\"h-4 w-4\" />\n                 </div>\n                 <span className=\"text-sm font-medium\">{user?.name}</span>\n               </button>\n             </DropdownMenuTrigger>\n             <DropdownMenuContent align=\"end\">\n               <DropdownMenuItem>Profile</DropdownMenuItem>\n               <DropdownMenuItem>Settings</DropdownMenuItem>\n               <DropdownMenuItem onClick={logout}>Logout</DropdownMenuItem>\n             </DropdownMenuContent>\n           </DropdownMenu>\n         </div>\n       </header>\n     );\n   }\n   ```\n\n4. Create providers wrapper:\n   ```tsx\n   // apps/admin-portal/src/components/providers.tsx\n   'use client';\n\n   import { QueryClient, QueryClientProvider } from '@tanstack/react-query';\n   import { ReactQueryDevtools } from '@tanstack/react-query-devtools';\n   import { useState } from 'react';\n\n   export function Providers({ children }: { children: React.ReactNode }) {\n     const [queryClient] = useState(\n       () =>\n         new QueryClient({\n           defaultOptions: {\n             queries: {\n               staleTime: 60 * 1000,\n               refetchOnWindowFocus: false,\n             },\n           },\n         })\n     );\n\n     return (\n       <QueryClientProvider client={queryClient}>\n         {children}\n         <ReactQueryDevtools />\n       </QueryClientProvider>\n     );\n   }\n   ```",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test navigation rendering",
+          "Test active state"
+        ],
+        "integration_tests": [
+          "Test layout renders",
+          "Test navigation works"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Sidebar renders",
+        "Header renders",
+        "Navigation works",
+        "Active states shown"
+      ],
+      "files_to_create": [
+        "apps/admin-portal/src/app/(dashboard)/layout.tsx",
+        "apps/admin-portal/src/components/layout/Sidebar.tsx",
+        "apps/admin-portal/src/components/layout/Header.tsx",
+        "apps/admin-portal/src/components/providers.tsx"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["portal", "layout", "components"]
+    },
+    {
+      "id": "PORTAL-003",
+      "task_name": "API Client Setup",
+      "feature_details": "Set up API client and authentication handling.",
+      "feature_dependency": ["PORTAL-001"],
+      "ai_prompt": "Create API client:\n\n1. Create apps/admin-portal/src/lib/api.ts:\n   ```typescript\n   import { getSession, signOut } from 'next-auth/react';\n\n   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';\n\n   class ApiClient {\n     private baseUrl: string;\n\n     constructor(baseUrl: string) {\n       this.baseUrl = baseUrl;\n     }\n\n     private async getHeaders(): Promise<HeadersInit> {\n       const session = await getSession();\n       const headers: HeadersInit = {\n         'Content-Type': 'application/json',\n       };\n\n       if (session?.accessToken) {\n         headers['Authorization'] = `Bearer ${session.accessToken}`;\n       }\n\n       return headers;\n     }\n\n     private async handleResponse<T>(response: Response): Promise<T> {\n       if (response.status === 401) {\n         await signOut({ redirect: true, callbackUrl: '/login' });\n         throw new Error('Unauthorized');\n       }\n\n       if (!response.ok) {\n         const error = await response.json().catch(() => ({}));\n         throw new Error(error.message || `HTTP ${response.status}`);\n       }\n\n       return response.json();\n     }\n\n     async get<T>(path: string, params?: Record<string, any>): Promise<T> {\n       const url = new URL(path, this.baseUrl);\n       if (params) {\n         Object.entries(params).forEach(([key, value]) => {\n           if (value !== undefined) {\n             url.searchParams.append(key, String(value));\n           }\n         });\n       }\n\n       const response = await fetch(url.toString(), {\n         method: 'GET',\n         headers: await this.getHeaders(),\n       });\n\n       return this.handleResponse<T>(response);\n     }\n\n     async post<T>(path: string, data?: any): Promise<T> {\n       const response = await fetch(`${this.baseUrl}${path}`, {\n         method: 'POST',\n         headers: await this.getHeaders(),\n         body: data ? JSON.stringify(data) : undefined,\n       });\n\n       return this.handleResponse<T>(response);\n     }\n\n     async put<T>(path: string, data?: any): Promise<T> {\n       const response = await fetch(`${this.baseUrl}${path}`, {\n         method: 'PUT',\n         headers: await this.getHeaders(),\n         body: data ? JSON.stringify(data) : undefined,\n       });\n\n       return this.handleResponse<T>(response);\n     }\n\n     async delete<T>(path: string): Promise<T> {\n       const response = await fetch(`${this.baseUrl}${path}`, {\n         method: 'DELETE',\n         headers: await this.getHeaders(),\n       });\n\n       return this.handleResponse<T>(response);\n     }\n   }\n\n   export const api = new ApiClient(API_URL);\n   ```\n\n2. Create feature-specific API modules:\n   ```typescript\n   // apps/admin-portal/src/lib/api/applications.ts\n   import { api } from '../api';\n\n   export interface Application {\n     id: string;\n     name: string;\n     description: string;\n     apiKeyCount: number;\n     userCount: number;\n     createdAt: string;\n   }\n\n   export const applicationsApi = {\n     list: () => api.get<Application[]>('/applications'),\n     get: (id: string) => api.get<Application>(`/applications/${id}`),\n     create: (data: Partial<Application>) => api.post<Application>('/applications', data),\n     update: (id: string, data: Partial<Application>) => api.put<Application>(`/applications/${id}`, data),\n     delete: (id: string) => api.delete(`/applications/${id}`),\n   };\n   ```\n\n3. Create TanStack Query hooks:\n   ```typescript\n   // apps/admin-portal/src/hooks/useApplications.ts\n   import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';\n   import { applicationsApi, Application } from '@/lib/api/applications';\n\n   export function useApplications() {\n     return useQuery({\n       queryKey: ['applications'],\n       queryFn: applicationsApi.list,\n     });\n   }\n\n   export function useApplication(id: string) {\n     return useQuery({\n       queryKey: ['applications', id],\n       queryFn: () => applicationsApi.get(id),\n       enabled: !!id,\n     });\n   }\n\n   export function useCreateApplication() {\n     const queryClient = useQueryClient();\n\n     return useMutation({\n       mutationFn: applicationsApi.create,\n       onSuccess: () => {\n         queryClient.invalidateQueries({ queryKey: ['applications'] });\n       },\n     });\n   }\n\n   export function useDeleteApplication() {\n     const queryClient = useQueryClient();\n\n     return useMutation({\n       mutationFn: applicationsApi.delete,\n       onSuccess: () => {\n         queryClient.invalidateQueries({ queryKey: ['applications'] });\n       },\n     });\n   }\n   ```",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test API client methods",
+          "Test error handling"
+        ],
+        "integration_tests": [
+          "Test with mock API",
+          "Test auth token handling"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "API client works",
+        "Auth headers added",
+        "Error handling works",
+        "Query hooks work"
+      ],
+      "files_to_create": [
+        "apps/admin-portal/src/lib/api.ts",
+        "apps/admin-portal/src/lib/api/applications.ts",
+        "apps/admin-portal/src/lib/api/users.ts",
+        "apps/admin-portal/src/lib/api/analytics.ts",
+        "apps/admin-portal/src/hooks/useApplications.ts",
+        "apps/admin-portal/src/hooks/useUsers.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["portal", "api", "hooks"]
+    },
+    {
+      "id": "PORTAL-004",
+      "task_name": "Base UI Components",
+      "feature_details": "Create base UI components for the admin portal.",
+      "feature_dependency": ["PORTAL-001"],
+      "ai_prompt": "Create base UI components:\n\n1. Create apps/admin-portal/src/components/ui/Button.tsx:\n   ```tsx\n   import { forwardRef } from 'react';\n   import { cva, type VariantProps } from 'class-variance-authority';\n   import { cn } from '@/lib/utils';\n   import { Loader2 } from 'lucide-react';\n\n   const buttonVariants = cva(\n     'inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',\n     {\n       variants: {\n         variant: {\n           default: 'bg-primary text-white hover:bg-primary/90',\n           secondary: 'bg-gray-100 text-gray-900 hover:bg-gray-200',\n           outline: 'border border-gray-300 bg-transparent hover:bg-gray-100',\n           ghost: 'hover:bg-gray-100',\n           destructive: 'bg-red-600 text-white hover:bg-red-700',\n         },\n         size: {\n           default: 'h-10 px-4 py-2',\n           sm: 'h-8 px-3 text-xs',\n           lg: 'h-12 px-6',\n           icon: 'h-10 w-10',\n         },\n       },\n       defaultVariants: {\n         variant: 'default',\n         size: 'default',\n       },\n     }\n   );\n\n   export interface ButtonProps\n     extends React.ButtonHTMLAttributes<HTMLButtonElement>,\n       VariantProps<typeof buttonVariants> {\n     loading?: boolean;\n   }\n\n   export const Button = forwardRef<HTMLButtonElement, ButtonProps>(\n     ({ className, variant, size, loading, children, disabled, ...props }, ref) => {\n       return (\n         <button\n           className={cn(buttonVariants({ variant, size, className }))}\n           ref={ref}\n           disabled={disabled || loading}\n           {...props}\n         >\n           {loading && <Loader2 className=\"mr-2 h-4 w-4 animate-spin\" />}\n           {children}\n         </button>\n       );\n     }\n   );\n   Button.displayName = 'Button';\n   ```\n\n2. Create apps/admin-portal/src/components/ui/Input.tsx:\n   ```tsx\n   import { forwardRef } from 'react';\n   import { cn } from '@/lib/utils';\n\n   export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {\n     label?: string;\n     error?: string;\n   }\n\n   export const Input = forwardRef<HTMLInputElement, InputProps>(\n     ({ className, label, error, id, ...props }, ref) => {\n       return (\n         <div className=\"space-y-1\">\n           {label && (\n             <label htmlFor={id} className=\"block text-sm font-medium text-gray-700\">\n               {label}\n             </label>\n           )}\n           <input\n             className={cn(\n               'flex h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',\n               error && 'border-red-500 focus:ring-red-500',\n               className\n             )}\n             ref={ref}\n             id={id}\n             {...props}\n           />\n           {error && <p className=\"text-sm text-red-600\">{error}</p>}\n         </div>\n       );\n     }\n   );\n   Input.displayName = 'Input';\n   ```\n\n3. Create apps/admin-portal/src/components/ui/Card.tsx:\n   ```tsx\n   import { cn } from '@/lib/utils';\n\n   interface CardProps extends React.HTMLAttributes<HTMLDivElement> {\n     children: React.ReactNode;\n   }\n\n   export function Card({ className, children, ...props }: CardProps) {\n     return (\n       <div\n         className={cn('rounded-lg border bg-white p-6 shadow-sm', className)}\n         {...props}\n       >\n         {children}\n       </div>\n     );\n   }\n\n   export function CardHeader({ className, children, ...props }: CardProps) {\n     return (\n       <div className={cn('mb-4', className)} {...props}>\n         {children}\n       </div>\n     );\n   }\n\n   export function CardTitle({ className, children, ...props }: CardProps) {\n     return (\n       <h3 className={cn('text-lg font-semibold', className)} {...props}>\n         {children}\n       </h3>\n     );\n   }\n\n   export function CardDescription({ className, children, ...props }: CardProps) {\n     return (\n       <p className={cn('text-sm text-gray-500', className)} {...props}>\n         {children}\n       </p>\n     );\n   }\n\n   export function CardContent({ className, children, ...props }: CardProps) {\n     return (\n       <div className={cn('', className)} {...props}>\n         {children}\n       </div>\n     );\n   }\n   ```\n\n4. Create apps/admin-portal/src/components/ui/DataTable.tsx:\n   ```tsx\n   import {\n     useReactTable,\n     getCoreRowModel,\n     getSortedRowModel,\n     getPaginationRowModel,\n     flexRender,\n     type ColumnDef,\n   } from '@tanstack/react-table';\n   import { Button } from './Button';\n\n   interface DataTableProps<TData> {\n     data: TData[];\n     columns: ColumnDef<TData>[];\n     loading?: boolean;\n   }\n\n   export function DataTable<TData>({ data, columns, loading }: DataTableProps<TData>) {\n     const table = useReactTable({\n       data,\n       columns,\n       getCoreRowModel: getCoreRowModel(),\n       getSortedRowModel: getSortedRowModel(),\n       getPaginationRowModel: getPaginationRowModel(),\n     });\n\n     if (loading) return <TableSkeleton />;\n\n     return (\n       <div>\n         <div className=\"rounded-lg border\">\n           <table className=\"w-full\">\n             <thead className=\"bg-gray-50\">\n               {table.getHeaderGroups().map((headerGroup) => (\n                 <tr key={headerGroup.id}>\n                   {headerGroup.headers.map((header) => (\n                     <th\n                       key={header.id}\n                       className=\"px-4 py-3 text-left text-sm font-medium text-gray-600\"\n                     >\n                       {flexRender(header.column.columnDef.header, header.getContext())}\n                     </th>\n                   ))}\n                 </tr>\n               ))}\n             </thead>\n             <tbody>\n               {table.getRowModel().rows.map((row) => (\n                 <tr key={row.id} className=\"border-t hover:bg-gray-50\">\n                   {row.getVisibleCells().map((cell) => (\n                     <td key={cell.id} className=\"px-4 py-3 text-sm\">\n                       {flexRender(cell.column.columnDef.cell, cell.getContext())}\n                     </td>\n                   ))}\n                 </tr>\n               ))}\n             </tbody>\n           </table>\n         </div>\n\n         <div className=\"mt-4 flex items-center justify-between\">\n           <span className=\"text-sm text-gray-600\">\n             Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}\n           </span>\n           <div className=\"flex gap-2\">\n             <Button\n               variant=\"outline\"\n               size=\"sm\"\n               onClick={() => table.previousPage()}\n               disabled={!table.getCanPreviousPage()}\n             >\n               Previous\n             </Button>\n             <Button\n               variant=\"outline\"\n               size=\"sm\"\n               onClick={() => table.nextPage()}\n               disabled={!table.getCanNextPage()}\n             >\n               Next\n             </Button>\n           </div>\n         </div>\n       </div>\n     );\n   }\n   ```",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test component rendering",
+          "Test variant classes"
+        ],
+        "integration_tests": [
+          "Test form integration",
+          "Test table with data"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Button component works",
+        "Input component works",
+        "Card component works",
+        "DataTable works with pagination"
+      ],
+      "files_to_create": [
+        "apps/admin-portal/src/components/ui/Button.tsx",
+        "apps/admin-portal/src/components/ui/Input.tsx",
+        "apps/admin-portal/src/components/ui/Card.tsx",
+        "apps/admin-portal/src/components/ui/DataTable.tsx",
+        "apps/admin-portal/src/components/ui/index.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["portal", "ui", "components"]
+    }
+  ]
+}

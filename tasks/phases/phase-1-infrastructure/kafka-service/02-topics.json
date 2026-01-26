@@ -1,0 +1,186 @@
+{
+  "task_group": "kafka-topics",
+  "description": "Topic architecture, schema registry, and message schema implementation",
+  "priority": "critical",
+  "estimated_hours": 20,
+  "phase": 1,
+  "feature_area": "kafka-service",
+  "tasks": [
+    {
+      "id": "KAFKA-005",
+      "task_name": "Topic Architecture Implementation",
+      "feature_details": "Implement the complete topic architecture with proper partitioning, replication, and retention policies for all CAAS event types.",
+      "feature_dependency": ["KAFKA-002"],
+      "ai_prompt": "Create the complete Kafka topic architecture:\n\n1. Create src/topics/topic-manager.ts:\n   - TopicManager class\n   - Methods:\n     * createTopic(config: TopicConfig): Promise<void>\n     * createTenantTopics(tenantId: string): Promise<void>\n     * deleteTenantTopics(tenantId: string): Promise<void>\n     * listTopics(): Promise<TopicInfo[]>\n     * getTopicConfig(topic: string): Promise<TopicConfig>\n     * updateTopicConfig(topic: string, config: Partial<TopicConfig>): Promise<void>\n\n2. Create src/topics/topic-definitions.ts:\n   Define all topics:\n   ```typescript\n   // Platform topics (single instance)\n   'platform.events'           - Platform-wide events\n   'platform.audit'            - Audit log events\n   'platform.notifications'    - Admin notifications\n\n   // Tenant topics (created per tenant)\n   'chat.messages.{tenant_id}' - Chat messages (partitioned by conversation_id)\n   'chat.events.{tenant_id}'   - Reactions, typing, read receipts\n   'presence.{tenant_id}'      - User presence updates\n   'analytics.{tenant_id}'     - Tenant analytics events\n   'notifications.{tenant_id}' - User notifications\n\n   // Internal topics\n   'internal.dlq'              - Dead letter queue\n   'internal.retry'            - Retry queue\n   ```\n\n3. Topic configuration matrix:\n   | Topic Pattern | Partitions | Retention | Compaction |\n   |---------------|------------|-----------|------------|\n   | chat.messages.* | 16 | 30 days | No |\n   | chat.events.* | 8 | 7 days | No |\n   | presence.* | 4 | 1 day | Yes (compact) |\n   | analytics.* | 8 | 90 days | No |\n   | notifications.* | 4 | 7 days | No |\n   | platform.audit | 8 | 365 days | No |\n   | internal.dlq | 4 | 30 days | No |\n\n4. Create src/topics/partition-strategy.ts:\n   - Partition key strategies:\n     * Messages: conversation_id (ensures message ordering per conversation)\n     * Events: user_id\n     * Presence: user_id\n     * Analytics: random (load distribution)\n\n5. Create initialization script:\n   - tasks/docker/kafka/create-topics.sh\n   - Create all platform topics on startup\n\nTopics should be created automatically on tenant provisioning.",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test topic name generation",
+          "Test partition key calculation",
+          "Test configuration parsing"
+        ],
+        "integration_tests": [
+          "Test platform topic creation",
+          "Test tenant topic creation",
+          "Test topic deletion",
+          "Test configuration updates"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "All platform topics created on startup",
+        "Tenant topics created during provisioning",
+        "Partition keys ensure correct ordering",
+        "Retention policies are applied",
+        "Topic deletion works for tenant cleanup"
+      ],
+      "files_to_create": [
+        "services/kafka-service/src/topics/topic-manager.ts",
+        "services/kafka-service/src/topics/topic-definitions.ts",
+        "services/kafka-service/src/topics/partition-strategy.ts",
+        "services/kafka-service/src/topics/types.ts",
+        "services/kafka-service/src/topics/index.ts",
+        "tasks/docker/kafka/create-topics.sh"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [
+          "DEFAULT_PARTITIONS",
+          "DEFAULT_REPLICATION_FACTOR",
+          "MESSAGE_RETENTION_DAYS"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 6,
+      "tags": ["kafka", "topics", "partitioning", "architecture"]
+    },
+    {
+      "id": "KAFKA-006",
+      "task_name": "Schema Registry Integration",
+      "feature_details": "Integrate Confluent Schema Registry for Avro/JSON schema management with schema evolution and compatibility checking.",
+      "feature_dependency": ["KAFKA-005"],
+      "ai_prompt": "Implement Schema Registry integration:\n\n1. Create src/schemas/registry-client.ts:\n   - SchemaRegistryClient class\n   - Methods:\n     * registerSchema(subject: string, schema: Schema): Promise<number>\n     * getSchema(subject: string, version?: number): Promise<Schema>\n     * getLatestSchema(subject: string): Promise<Schema>\n     * checkCompatibility(subject: string, schema: Schema): Promise<boolean>\n     * deleteSchema(subject: string): Promise<void>\n\n2. Create src/schemas/schema-definitions/ directory:\n   Define schemas for all message types:\n\n   - message-envelope.schema.ts:\n     ```typescript\n     {\n       id: string,\n       type: string,\n       timestamp: number,\n       tenant_id: string,\n       version: string,\n       trace_id: string,\n       payload: T\n     }\n     ```\n\n   - chat-message.schema.ts (payload for chat messages)\n   - chat-event.schema.ts (reactions, typing, read receipts)\n   - presence-update.schema.ts\n   - notification.schema.ts\n   - analytics-event.schema.ts\n   - audit-log.schema.ts\n\n3. Create src/schemas/schema-validator.ts:\n   - Validate messages against schemas\n   - Runtime type checking\n   - Schema migration helpers\n\n4. Create src/schemas/compatibility.ts:\n   - Compatibility modes: BACKWARD, FORWARD, FULL\n   - Enforce BACKWARD compatibility by default\n   - Schema evolution rules\n\n5. Create src/schemas/serializer.ts:\n   - AvroSerializer / JsonSchemaSerializer\n   - Serialize/deserialize messages with schema ID\n   - Handle schema resolution\n\n6. Subject naming convention:\n   - {topic}-key\n   - {topic}-value\n\nSchemas should be registered on application startup.",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test schema validation",
+          "Test serialization/deserialization",
+          "Test compatibility checking"
+        ],
+        "integration_tests": [
+          "Test schema registration",
+          "Test schema retrieval",
+          "Test compatibility enforcement",
+          "Test schema evolution"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "All schemas registered in registry",
+        "Messages are validated before production",
+        "Incompatible schemas are rejected",
+        "Serialization adds minimal overhead",
+        "Schema evolution works correctly"
+      ],
+      "files_to_create": [
+        "services/kafka-service/src/schemas/registry-client.ts",
+        "services/kafka-service/src/schemas/schema-validator.ts",
+        "services/kafka-service/src/schemas/compatibility.ts",
+        "services/kafka-service/src/schemas/serializer.ts",
+        "services/kafka-service/src/schemas/index.ts",
+        "services/kafka-service/src/schemas/definitions/message-envelope.schema.ts",
+        "services/kafka-service/src/schemas/definitions/chat-message.schema.ts",
+        "services/kafka-service/src/schemas/definitions/chat-event.schema.ts",
+        "services/kafka-service/src/schemas/definitions/presence-update.schema.ts",
+        "services/kafka-service/src/schemas/definitions/notification.schema.ts",
+        "services/kafka-service/src/schemas/definitions/analytics-event.schema.ts",
+        "services/kafka-service/src/schemas/definitions/audit-log.schema.ts",
+        "services/kafka-service/src/schemas/definitions/index.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["schema-registry"],
+        "environment_variables": [
+          "SCHEMA_REGISTRY_URL",
+          "SCHEMA_COMPATIBILITY_MODE"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 7,
+      "tags": ["kafka", "schema-registry", "avro", "serialization"]
+    },
+    {
+      "id": "KAFKA-007",
+      "task_name": "Message Envelope and Event Types",
+      "feature_details": "Define the complete message envelope structure and all event types used throughout the CAAS platform.",
+      "feature_dependency": ["KAFKA-006"],
+      "ai_prompt": "Create comprehensive message and event type definitions:\n\n1. Create src/types/message-envelope.ts:\n   ```typescript\n   interface KafkaMessage<T> {\n     id: string;                    // UUID v7 for ordering\n     type: string;                  // Event type\n     version: string;               // Schema version\n     timestamp: number;             // Unix timestamp ms\n     tenant_id: string;             // Tenant identifier\n     source: string;                // Service that produced\n     correlation_id?: string;       // For request tracing\n     trace_id?: string;             // Distributed tracing\n     payload: T;\n     metadata: {\n       retry_count?: number;\n       original_timestamp?: number;\n       user_agent?: string;\n       ip_address?: string;\n     };\n   }\n   ```\n\n2. Create src/types/events/ directory with all event types:\n\n   Chat Events:\n   - MessageSent, MessageEdited, MessageDeleted\n   - ReactionAdded, ReactionRemoved\n   - MessageRead, MessageDelivered\n   - TypingStarted, TypingStopped\n\n   Conversation Events:\n   - ConversationCreated, ConversationUpdated, ConversationDeleted\n   - ParticipantAdded, ParticipantRemoved, ParticipantRoleChanged\n\n   User Events:\n   - UserCreated, UserUpdated, UserDeleted\n   - UserOnline, UserOffline, UserStatusChanged\n   - DeviceRegistered, DeviceRemoved\n\n   File Events:\n   - FileUploaded, FileDeleted, FileShared\n   - FileProcessingStarted, FileProcessingCompleted, FileProcessingFailed\n\n   Group Events:\n   - GroupCreated, GroupUpdated, GroupDeleted\n   - MemberJoined, MemberLeft, MemberRoleChanged\n\n   Notification Events:\n   - NotificationQueued, NotificationSent, NotificationFailed\n\n   Analytics Events:\n   - UserActivity, FeatureUsage, ErrorOccurred\n\n3. Create src/types/payloads/ directory:\n   - Define payload types for each event\n   - Include all necessary data for event processing\n\n4. Create src/utils/event-builder.ts:\n   - EventBuilder class for constructing events\n   - Auto-generate IDs and timestamps\n   - Validate payloads\n\n5. Create src/utils/event-parser.ts:\n   - Parse and validate incoming events\n   - Type narrowing for event types\n\nAll events should be strongly typed with TypeScript.",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test event construction",
+          "Test payload validation",
+          "Test type narrowing"
+        ],
+        "integration_tests": [
+          "Test event serialization round-trip",
+          "Test all event types can be produced/consumed"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "All event types are defined",
+        "Event builder creates valid events",
+        "Type narrowing works correctly",
+        "Payloads are properly validated",
+        "Events serialize/deserialize correctly"
+      ],
+      "files_to_create": [
+        "services/kafka-service/src/types/message-envelope.ts",
+        "services/kafka-service/src/types/events/chat.events.ts",
+        "services/kafka-service/src/types/events/conversation.events.ts",
+        "services/kafka-service/src/types/events/user.events.ts",
+        "services/kafka-service/src/types/events/file.events.ts",
+        "services/kafka-service/src/types/events/group.events.ts",
+        "services/kafka-service/src/types/events/notification.events.ts",
+        "services/kafka-service/src/types/events/analytics.events.ts",
+        "services/kafka-service/src/types/events/index.ts",
+        "services/kafka-service/src/types/payloads/index.ts",
+        "services/kafka-service/src/types/index.ts",
+        "services/kafka-service/src/utils/event-builder.ts",
+        "services/kafka-service/src/utils/event-parser.ts",
+        "services/kafka-service/src/utils/index.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 7,
+      "tags": ["kafka", "events", "types", "typescript"]
+    }
+  ]
+}

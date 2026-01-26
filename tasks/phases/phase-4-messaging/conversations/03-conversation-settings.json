@@ -1,0 +1,304 @@
+{
+  "task_group": "conversation-settings",
+  "description": "User-specific conversation settings like muting, archiving, and pinning",
+  "priority": "medium",
+  "estimated_hours": 16,
+  "phase": 4,
+  "feature_area": "conversations",
+  "tasks": [
+    {
+      "id": "CONV-009",
+      "task_name": "Conversation Muting",
+      "feature_details": "Implement user-specific muting of conversations with duration options.",
+      "feature_dependency": ["CONV-003"],
+      "ai_prompt": "Implement conversation muting:\n\n1. Create services/messaging-service/src/conversations/user-settings.service.ts:\n   ```typescript\n   export class UserSettingsService {\n     async muteConversation(userId: string, conversationId: string, options: MuteOptions): Promise<void>;\n     async unmuteConversation(userId: string, conversationId: string): Promise<void>;\n     async getMuteStatus(userId: string, conversationId: string): Promise<MuteStatus | null>;\n     async getMutedConversations(userId: string): Promise<MuteStatus[]>;\n   }\n\n   interface MuteOptions {\n     duration?: number; // milliseconds, null for permanent\n     show_notifications?: boolean;\n     mention_exceptions?: boolean; // Still notify on mentions\n   }\n\n   interface MuteStatus {\n     conversation_id: string;\n     muted_at: Date;\n     muted_until?: Date;\n     show_notifications: boolean;\n     mention_exceptions: boolean;\n   }\n   ```\n\n2. Create services/messaging-service/src/conversations/user-settings.repository.ts:\n   - Store in conversation_user_settings collection\n   - Compound index on user_id + conversation_id\n   - TTL index on muted_until for auto-unmute\n\n3. Create services/gateway/src/routes/v1/conversations/mute.ts:\n   - POST /:id/mute - Mute conversation\n   - DELETE /:id/mute - Unmute conversation\n   - GET /muted - List muted conversations\n\n4. Mute durations:\n   - 1 hour, 8 hours, 1 day, 1 week, always\n   - Custom duration support\n   - Auto-unmute via TTL or scheduled job\n\n5. Integration with notifications:\n   - Check mute status before sending push\n   - Respect mention exceptions\n   - Update unread badge calculation\n\n6. UI state:\n   - Return mute status in conversation details\n   - Include in conversation list response",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test mute with duration",
+          "Test permanent mute",
+          "Test mention exceptions"
+        ],
+        "integration_tests": [
+          "Test mute status check",
+          "Test auto-unmute",
+          "Test notification filtering"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Conversations can be muted",
+        "Duration options work",
+        "Auto-unmute works",
+        "Mention exceptions work",
+        "Mute status visible in API"
+      ],
+      "files_to_create": [
+        "services/messaging-service/src/conversations/user-settings.service.ts",
+        "services/messaging-service/src/conversations/user-settings.repository.ts",
+        "services/gateway/src/routes/v1/conversations/mute.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/v1/conversations/:id/mute",
+          "description": "Mute conversation"
+        },
+        {
+          "method": "DELETE",
+          "path": "/v1/conversations/:id/mute",
+          "description": "Unmute conversation"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/conversations/muted",
+          "description": "List muted conversations"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "conversation_user_settings",
+            "description": "User-specific conversation settings"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "conversation_user_settings",
+            "fields": ["user_id", "conversation_id"],
+            "unique": true
+          },
+          {
+            "collection": "conversation_user_settings",
+            "fields": ["muted_until"],
+            "options": {
+              "expireAfterSeconds": 0
+            }
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["messaging", "settings", "mute", "notifications"]
+    },
+    {
+      "id": "CONV-010",
+      "task_name": "Conversation Archiving",
+      "feature_details": "Implement archiving of conversations to hide from main list.",
+      "feature_dependency": ["CONV-009"],
+      "ai_prompt": "Implement conversation archiving:\n\n1. Extend services/messaging-service/src/conversations/user-settings.service.ts:\n   ```typescript\n   async archiveConversation(userId: string, conversationId: string): Promise<void>;\n   async unarchiveConversation(userId: string, conversationId: string): Promise<void>;\n   async getArchivedConversations(userId: string, pagination: PaginationOptions): Promise<Conversation[]>;\n   async isArchived(userId: string, conversationId: string): Promise<boolean>;\n   ```\n\n2. Create services/gateway/src/routes/v1/conversations/archive.ts:\n   - POST /:id/archive - Archive conversation\n   - DELETE /:id/archive - Unarchive conversation\n   - GET /archived - List archived conversations\n\n3. Archive behavior:\n   - Hidden from main conversation list\n   - New messages auto-unarchive (configurable)\n   - Archived conversations still searchable\n   - Separate archived list with pagination\n\n4. Update conversation list query:\n   - Filter out archived by default\n   - Include filter param to show archived\n   - Return archive status in response\n\n5. Archive settings:\n   - Auto-unarchive on new message\n   - Keep archived on new message\n   - Per-conversation setting\n\n6. Bulk operations:\n   - Archive multiple conversations\n   - Unarchive multiple conversations\n   - Archive all read conversations",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test archive logic",
+          "Test unarchive logic",
+          "Test auto-unarchive"
+        ],
+        "integration_tests": [
+          "Test list filtering",
+          "Test new message behavior",
+          "Test bulk operations"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Conversations can be archived",
+        "Archived hidden from main list",
+        "Auto-unarchive on new message works",
+        "Archived list is paginated",
+        "Bulk operations work"
+      ],
+      "files_to_create": [
+        "services/gateway/src/routes/v1/conversations/archive.ts"
+      ],
+      "files_to_modify": [
+        "services/messaging-service/src/conversations/user-settings.service.ts"
+      ],
+      "docker_requirements": {
+        "services": ["mongodb"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/v1/conversations/:id/archive",
+          "description": "Archive conversation"
+        },
+        {
+          "method": "DELETE",
+          "path": "/v1/conversations/:id/archive",
+          "description": "Unarchive conversation"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/conversations/archived",
+          "description": "List archived conversations"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [
+          {
+            "collection": "conversation_user_settings",
+            "fields": ["user_id", "is_archived"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["messaging", "settings", "archive"]
+    },
+    {
+      "id": "CONV-011",
+      "task_name": "Conversation Pinning",
+      "feature_details": "Implement pinning of conversations to keep them at the top of the list.",
+      "feature_dependency": ["CONV-009"],
+      "ai_prompt": "Implement conversation pinning:\n\n1. Extend services/messaging-service/src/conversations/user-settings.service.ts:\n   ```typescript\n   async pinConversation(userId: string, conversationId: string, order?: number): Promise<void>;\n   async unpinConversation(userId: string, conversationId: string): Promise<void>;\n   async reorderPinnedConversations(userId: string, orderedIds: string[]): Promise<void>;\n   async getPinnedConversations(userId: string): Promise<Conversation[]>;\n   ```\n\n2. Create services/gateway/src/routes/v1/conversations/pin.ts:\n   - POST /:id/pin - Pin conversation\n   - DELETE /:id/pin - Unpin conversation\n   - PUT /pinned/reorder - Reorder pinned conversations\n   - GET /pinned - List pinned conversations\n\n3. Pin behavior:\n   - Pinned conversations appear at top\n   - Maintain custom order for pinned\n   - Limit number of pinned (e.g., 5)\n\n4. Ordering:\n   - User can reorder pinned conversations\n   - New pins go to top by default\n   - Drag-and-drop reordering support\n\n5. Update conversation list query:\n   - Return pinned first, then by last_message_at\n   - Include pin status and order in response\n   - Efficient query with compound index\n\n6. Per-device pinning (optional):\n   - Consider device-specific pins\n   - Or sync across devices",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test pin logic",
+          "Test unpin logic",
+          "Test reorder logic"
+        ],
+        "integration_tests": [
+          "Test list ordering",
+          "Test pin limit",
+          "Test concurrent pins"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Conversations can be pinned",
+        "Pinned appear at top",
+        "Custom ordering works",
+        "Pin limit enforced",
+        "Reordering works"
+      ],
+      "files_to_create": [
+        "services/gateway/src/routes/v1/conversations/pin.ts"
+      ],
+      "files_to_modify": [
+        "services/messaging-service/src/conversations/user-settings.service.ts"
+      ],
+      "docker_requirements": {
+        "services": ["mongodb"],
+        "environment_variables": [
+          "MAX_PINNED_CONVERSATIONS"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/v1/conversations/:id/pin",
+          "description": "Pin conversation"
+        },
+        {
+          "method": "DELETE",
+          "path": "/v1/conversations/:id/pin",
+          "description": "Unpin conversation"
+        },
+        {
+          "method": "PUT",
+          "path": "/v1/conversations/pinned/reorder",
+          "description": "Reorder pinned conversations"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [
+          {
+            "collection": "conversation_user_settings",
+            "fields": ["user_id", "is_pinned", "pin_order"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["messaging", "settings", "pin"]
+    },
+    {
+      "id": "CONV-012",
+      "task_name": "Conversation Deletion and Cleanup",
+      "feature_details": "Implement soft delete and cleanup of conversations.",
+      "feature_dependency": ["CONV-009"],
+      "ai_prompt": "Implement conversation deletion:\n\n1. Extend services/messaging-service/src/conversations/user-settings.service.ts:\n   ```typescript\n   async deleteConversation(userId: string, conversationId: string): Promise<void>;\n   async clearHistory(userId: string, conversationId: string, beforeDate?: Date): Promise<void>;\n   async getDeletedConversations(userId: string): Promise<string[]>;\n   ```\n\n2. Create services/gateway/src/routes/v1/conversations/delete.ts:\n   - DELETE /:id - Delete conversation for user\n   - DELETE /:id/history - Clear message history\n   - POST /:id/restore - Restore deleted conversation\n\n3. Deletion behavior:\n   - Soft delete for user only\n   - Other participants unaffected\n   - Hide from all lists\n   - Can restore if new message received\n\n4. Clear history options:\n   - Clear all messages\n   - Clear messages before date\n   - Keep messages but mark as cleared\n\n5. Hard delete (group owners only):\n   - Completely remove group\n   - Notify all members\n   - Clean up all resources\n\n6. Cleanup job:\n   ```typescript\n   // Scheduled job to clean up\n   async cleanupDeletedConversations(): Promise<void> {\n     // Find conversations deleted > 30 days\n     // Remove user from participant list\n     // Delete orphaned messages if all users deleted\n   }\n   ```\n\n7. Data retention:\n   - Respect retention policies\n   - GDPR compliance for deletion\n   - Audit trail for deletions",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test soft delete",
+          "Test clear history",
+          "Test restore"
+        ],
+        "integration_tests": [
+          "Test deletion isolation",
+          "Test cleanup job",
+          "Test GDPR compliance"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Conversations can be deleted",
+        "Deletion is per-user",
+        "History can be cleared",
+        "Restore works on new message",
+        "Cleanup job runs"
+      ],
+      "files_to_create": [
+        "services/gateway/src/routes/v1/conversations/delete.ts",
+        "services/messaging-service/src/jobs/conversation-cleanup.job.ts"
+      ],
+      "files_to_modify": [
+        "services/messaging-service/src/conversations/user-settings.service.ts"
+      ],
+      "docker_requirements": {
+        "services": ["mongodb"],
+        "environment_variables": [
+          "CONVERSATION_CLEANUP_DAYS"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "DELETE",
+          "path": "/v1/conversations/:id",
+          "description": "Delete conversation for user"
+        },
+        {
+          "method": "DELETE",
+          "path": "/v1/conversations/:id/history",
+          "description": "Clear message history"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/conversations/:id/restore",
+          "description": "Restore deleted conversation"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [
+          {
+            "collection": "conversation_user_settings",
+            "fields": ["user_id", "deleted_at"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["messaging", "settings", "delete", "cleanup"]
+    }
+  ]
+}

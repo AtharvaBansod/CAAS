@@ -1,0 +1,255 @@
+{
+  "task_group": "call-management",
+  "description": "Call lifecycle management including 1:1 and group calls",
+  "priority": "medium",
+  "estimated_hours": 16,
+  "phase": 3,
+  "feature_area": "webrtc",
+  "tasks": [
+    {
+      "id": "WEBRTC-005",
+      "task_name": "Call Initiation and Answer",
+      "feature_details": "Implement call initiation, ringing, and answer flow for 1:1 calls.",
+      "feature_dependency": ["WEBRTC-001", "PRESENCE-001"],
+      "ai_prompt": "Implement call initiation:\n\n1. Create services/socket-service/src/webrtc/call-manager.ts:\n   ```typescript\n   export class CallManager {\n     async initiateCall(callerId: string, calleeId: string, mediaType: MediaType): Promise<Call>;\n     async answerCall(callId: string, userId: string): Promise<Call>;\n     async rejectCall(callId: string, userId: string, reason?: string): Promise<void>;\n     async getCall(callId: string): Promise<Call | null>;\n   }\n\n   interface Call {\n     id: string;\n     type: 'one_to_one' | 'group';\n     status: CallStatus;\n     caller_id: string;\n     participants: CallParticipant[];\n     media_type: MediaType;\n     started_at?: Date;\n     ended_at?: Date;\n   }\n\n   type CallStatus = 'initiating' | 'ringing' | 'answered' | 'connected' | 'ended';\n   type MediaType = 'audio' | 'video';\n   ```\n\n2. Create services/socket-service/src/events/call-events.ts:\n   ```typescript\n   // Initiate call\n   socket.on('call:initiate', async (data: { callee_id: string; media_type: MediaType }, callback) => {\n     const call = await callManager.initiateCall(socket.data.user.id, data.callee_id, data.media_type);\n\n     // Join call room\n     socket.join(`call:${call.id}`);\n\n     // Notify callee\n     const calleeSockets = await getSocketsForUser(data.callee_id);\n     io.to(calleeSockets).emit('call:incoming', {\n       call_id: call.id,\n       caller: await getUserInfo(socket.data.user.id),\n       media_type: data.media_type,\n     });\n\n     callback({ call_id: call.id });\n   });\n\n   // Answer call\n   socket.on('call:answer', async (data: { call_id: string }) => {\n     await callManager.answerCall(data.call_id, socket.data.user.id);\n     socket.join(`call:${data.call_id}`);\n\n     socket.to(`call:${data.call_id}`).emit('call:answered', {\n       user_id: socket.data.user.id,\n     });\n   });\n\n   // Reject call\n   socket.on('call:reject', async (data: { call_id: string; reason?: string }) => {\n     await callManager.rejectCall(data.call_id, socket.data.user.id, data.reason);\n\n     socket.to(`call:${data.call_id}`).emit('call:rejected', {\n       user_id: socket.data.user.id,\n       reason: data.reason,\n     });\n   });\n   ```\n\n3. Create services/socket-service/src/webrtc/call-store.ts:\n   - Store active calls in Redis\n   - Track call participants\n   - Call timeout handling\n\n4. Ringing timeout:\n   - Auto-end call after 30 seconds of ringing\n   - Busy signal if callee is in another call\n   - Offline handling\n\n5. Call validation:\n   - Check user can call target\n   - Check target is online (or allow voicemail)\n   - Rate limit calls",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test call initiation",
+          "Test call answer",
+          "Test call rejection"
+        ],
+        "integration_tests": [
+          "Test ringing notification",
+          "Test answer flow",
+          "Test timeout"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Calls can be initiated",
+        "Callees receive incoming call",
+        "Calls can be answered",
+        "Calls can be rejected",
+        "Ringing timeout works"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/webrtc/call-manager.ts",
+        "services/socket-service/src/webrtc/call-store.ts",
+        "services/socket-service/src/events/call-events.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["redis"],
+        "environment_variables": [
+          "CALL_RINGING_TIMEOUT_MS"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "calls",
+            "description": "Store call history"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "calls",
+            "fields": ["participants.user_id", "started_at"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["webrtc", "calls", "initiate", "answer"]
+    },
+    {
+      "id": "WEBRTC-006",
+      "task_name": "Call End and Cleanup",
+      "feature_details": "Implement call termination and resource cleanup.",
+      "feature_dependency": ["WEBRTC-005"],
+      "ai_prompt": "Implement call end and cleanup:\n\n1. Create services/socket-service/src/webrtc/call-terminator.ts:\n   ```typescript\n   export class CallTerminator {\n     async endCall(callId: string, endedBy: string, reason: EndReason): Promise<void>;\n     async endCallForUser(callId: string, userId: string): Promise<void>;\n     async handleDisconnect(userId: string): Promise<void>;\n   }\n\n   type EndReason = 'user_hangup' | 'timeout' | 'error' | 'network_failure' | 'rejected';\n   ```\n\n2. Create services/socket-service/src/events/call-end-events.ts:\n   ```typescript\n   // Hang up\n   socket.on('call:hangup', async (data: { call_id: string }) => {\n     await callTerminator.endCall(data.call_id, socket.data.user.id, 'user_hangup');\n\n     socket.to(`call:${data.call_id}`).emit('call:ended', {\n       call_id: data.call_id,\n       ended_by: socket.data.user.id,\n       reason: 'user_hangup',\n     });\n\n     // Leave call room\n     socket.leave(`call:${data.call_id}`);\n   });\n   ```\n\n3. Create services/socket-service/src/webrtc/call-cleanup.ts:\n   ```typescript\n   export class CallCleanup {\n     async cleanup(callId: string): Promise<void> {\n       // 1. Close all peer connections (client-side via event)\n       // 2. Remove from active calls\n       // 3. Save call record to MongoDB\n       // 4. Remove call room\n       // 5. Notify all participants\n     }\n   }\n   ```\n\n4. Automatic call end:\n   - On disconnect (with grace period for reconnection)\n   - On max duration reached\n   - On all participants left\n   - On connection failure\n\n5. Create services/socket-service/src/webrtc/call-history-saver.ts:\n   - Save call to MongoDB\n   - Call duration\n   - Participants\n   - Quality metrics\n\n6. Missed call handling:\n   - Create missed call notification\n   - Track missed call count\n   - Allow callback",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test call end",
+          "Test cleanup logic",
+          "Test history save"
+        ],
+        "integration_tests": [
+          "Test hangup broadcast",
+          "Test disconnect handling",
+          "Test missed call notification"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Calls can be ended",
+        "Resources are cleaned up",
+        "Call history is saved",
+        "Disconnect ends call",
+        "Missed calls are tracked"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/webrtc/call-terminator.ts",
+        "services/socket-service/src/webrtc/call-cleanup.ts",
+        "services/socket-service/src/webrtc/call-history-saver.ts",
+        "services/socket-service/src/events/call-end-events.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["redis", "mongodb"],
+        "environment_variables": [
+          "MAX_CALL_DURATION_MS",
+          "CALL_DISCONNECT_GRACE_PERIOD_MS"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["webrtc", "calls", "hangup", "cleanup"]
+    },
+    {
+      "id": "WEBRTC-007",
+      "task_name": "Group Call Support",
+      "feature_details": "Implement group call support with multiple participants using SFU or mesh topology.",
+      "feature_dependency": ["WEBRTC-005", "WEBRTC-006"],
+      "ai_prompt": "Implement group calls:\n\n1. Create services/socket-service/src/webrtc/group-call-manager.ts:\n   ```typescript\n   export class GroupCallManager {\n     async createGroupCall(creatorId: string, conversationId: string, mediaType: MediaType): Promise<GroupCall>;\n     async joinGroupCall(callId: string, userId: string): Promise<void>;\n     async leaveGroupCall(callId: string, userId: string): Promise<void>;\n     async getActiveCall(conversationId: string): Promise<GroupCall | null>;\n   }\n\n   interface GroupCall extends Call {\n     conversation_id: string;\n     max_participants: number;\n     topology: 'mesh' | 'sfu';\n   }\n   ```\n\n2. Topology options:\n   - Mesh: Each participant connects to all others (small groups)\n   - SFU: Central media server (large groups, future)\n\n3. Create services/socket-service/src/events/group-call-events.ts:\n   ```typescript\n   // Start group call\n   socket.on('group-call:start', async (data: { conversation_id: string; media_type: MediaType }, callback) => {\n     const call = await groupCallManager.createGroupCall(\n       socket.data.user.id,\n       data.conversation_id,\n       data.media_type\n     );\n\n     socket.join(`call:${call.id}`);\n\n     // Notify conversation members\n     socket.to(`conversation:${data.conversation_id}`).emit('group-call:started', {\n       call_id: call.id,\n       conversation_id: data.conversation_id,\n       started_by: socket.data.user.id,\n     });\n\n     callback({ call_id: call.id });\n   });\n\n   // Join group call\n   socket.on('group-call:join', async (data: { call_id: string }) => {\n     await groupCallManager.joinGroupCall(data.call_id, socket.data.user.id);\n     socket.join(`call:${data.call_id}`);\n\n     // Notify other participants\n     socket.to(`call:${data.call_id}`).emit('group-call:participant-joined', {\n       user_id: socket.data.user.id,\n     });\n   });\n   ```\n\n4. Create services/socket-service/src/webrtc/mesh-topology-manager.ts:\n   - Manage peer connections between all participants\n   - Optimize connection order\n   - Handle participant join/leave\n\n5. Participant limits:\n   - Mesh: 4-6 participants max\n   - SFU: Higher limits (future)\n   - Per-tenant configuration\n\n6. Group call UI events:\n   - Participant list updates\n   - Active speaker detection\n   - Dominant speaker",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test group call creation",
+          "Test join/leave",
+          "Test participant tracking"
+        ],
+        "integration_tests": [
+          "Test multi-participant calls",
+          "Test participant notifications",
+          "Test mesh connections"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Group calls can be created",
+        "Participants can join",
+        "Participants can leave",
+        "All participants are connected",
+        "Participant limits are enforced"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/webrtc/group-call-manager.ts",
+        "services/socket-service/src/webrtc/mesh-topology-manager.ts",
+        "services/socket-service/src/events/group-call-events.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["redis"],
+        "environment_variables": [
+          "MAX_GROUP_CALL_PARTICIPANTS"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["webrtc", "group-calls", "mesh", "multiparty"]
+    },
+    {
+      "id": "WEBRTC-008",
+      "task_name": "Call History and Analytics",
+      "feature_details": "Implement call history storage and call analytics for reporting.",
+      "feature_dependency": ["WEBRTC-006"],
+      "ai_prompt": "Implement call history and analytics:\n\n1. Create services/socket-service/src/webrtc/call-history.ts:\n   ```typescript\n   export class CallHistoryService {\n     async saveCall(call: Call): Promise<void>;\n     async getCallHistory(userId: string, options: QueryOptions): Promise<Call[]>;\n     async getCall(callId: string): Promise<Call | null>;\n     async getCallsBetweenUsers(userId1: string, userId2: string): Promise<Call[]>;\n   }\n   ```\n\n2. Create services/gateway/src/routes/v1/calls/history.ts:\n   - GET /v1/calls/history - Get call history\n   - GET /v1/calls/:id - Get call details\n   - GET /v1/calls/missed - Get missed calls\n   - DELETE /v1/calls/:id - Delete call from history\n\n3. Create services/socket-service/src/webrtc/call-analytics.ts:\n   ```typescript\n   export class CallAnalytics {\n     async recordCallMetrics(callId: string, metrics: CallMetrics): Promise<void>;\n     async getCallStats(tenantId: string, timeRange: TimeRange): Promise<CallStats>;\n   }\n\n   interface CallMetrics {\n     call_id: string;\n     duration_ms: number;\n     participants: number;\n     media_type: MediaType;\n     quality: CallQuality;\n     ice_candidates_used: string[];\n     turn_used: boolean;\n   }\n\n   interface CallStats {\n     total_calls: number;\n     total_duration_ms: number;\n     average_duration_ms: number;\n     calls_by_type: { audio: number; video: number };\n     success_rate: number;\n     turn_usage_rate: number;\n   }\n   ```\n\n4. Create services/gateway/src/routes/v1/analytics/calls.ts:\n   - GET /v1/analytics/calls - Get call analytics\n   - GET /v1/analytics/calls/quality - Get quality metrics\n\n5. Quality metrics:\n   - Connection success rate\n   - Average setup time\n   - Average duration\n   - TURN usage percentage\n   - Media quality (if reported by client)\n\n6. Dashboard data (for clientFacingUI):\n   - Calls per day/week/month\n   - Call duration distribution\n   - Peak calling hours\n   - Quality trends",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test history save",
+          "Test history retrieval",
+          "Test analytics calculation"
+        ],
+        "integration_tests": [
+          "Test API endpoints",
+          "Test time range queries",
+          "Test quality metrics"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Call history is saved",
+        "History is queryable",
+        "Missed calls are tracked",
+        "Analytics are calculated",
+        "Dashboard data is available"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/webrtc/call-history.ts",
+        "services/socket-service/src/webrtc/call-analytics.ts",
+        "services/gateway/src/routes/v1/calls/history.ts",
+        "services/gateway/src/routes/v1/analytics/calls.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/v1/calls/history",
+          "description": "Get call history"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/calls/missed",
+          "description": "Get missed calls"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/analytics/calls",
+          "description": "Get call analytics"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "call_history",
+            "description": "Store call history"
+          },
+          {
+            "name": "call_metrics",
+            "description": "Store call quality metrics"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "call_history",
+            "fields": ["participants.user_id", "started_at"]
+          },
+          {
+            "collection": "call_metrics",
+            "fields": ["tenant_id", "created_at"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["webrtc", "history", "analytics", "metrics"]
+    }
+  ]
+}

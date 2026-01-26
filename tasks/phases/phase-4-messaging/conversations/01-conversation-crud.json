@@ -1,0 +1,254 @@
+{
+  "task_group": "conversation-crud",
+  "description": "Core conversation CRUD operations",
+  "priority": "critical",
+  "estimated_hours": 16,
+  "phase": 4,
+  "feature_area": "conversations",
+  "tasks": [
+    {
+      "id": "CONV-001",
+      "task_name": "Conversation Service Setup",
+      "feature_details": "Set up the conversation service with Docker configuration and project structure.",
+      "feature_dependency": ["MONGO-001", "GATEWAY-002"],
+      "ai_prompt": "Set up conversation service:\n\n1. Create services/messaging-service/Dockerfile:\n   ```dockerfile\n   FROM node:20-alpine AS builder\n   WORKDIR /app\n   COPY package*.json ./\n   RUN npm ci --only=production\n\n   FROM node:20-alpine\n   RUN apk add --no-cache dumb-init\n   WORKDIR /app\n   COPY --from=builder /app/node_modules ./node_modules\n   COPY . .\n   RUN npm run build\n   USER node\n   EXPOSE 3003\n   ENTRYPOINT [\"dumb-init\", \"--\"]\n   CMD [\"node\", \"dist/index.js\"]\n   ```\n\n2. Create services/messaging-service/package.json:\n   ```json\n   {\n     \"name\": \"@caas/messaging-service\",\n     \"dependencies\": {\n       \"mongodb\": \"^6.x\",\n       \"kafkajs\": \"^2.x\",\n       \"ioredis\": \"^5.x\",\n       \"zod\": \"^3.x\"\n     }\n   }\n   ```\n\n3. Create project structure:\n   ```\n   services/messaging-service/\n   ├── src/\n   │   ├── conversations/\n   │   │   ├── conversation.service.ts\n   │   │   ├── conversation.repository.ts\n   │   │   ├── conversation.types.ts\n   │   │   └── conversation.validation.ts\n   │   ├── messages/\n   │   ├── media/\n   │   ├── search/\n   │   └── index.ts\n   ```\n\n4. Create services/messaging-service/src/conversations/conversation.types.ts:\n   ```typescript\n   export interface Conversation {\n     _id: ObjectId;\n     type: 'direct' | 'group' | 'channel';\n     tenant_id: string;\n     participants: Participant[];\n     name?: string;\n     avatar_url?: string;\n     settings: ConversationSettings;\n     last_message?: MessageSummary;\n     created_at: Date;\n     updated_at: Date;\n   }\n\n   export interface Participant {\n     user_id: string;\n     role: 'admin' | 'member';\n     joined_at: Date;\n     notifications: 'all' | 'mentions' | 'none';\n   }\n   ```\n\n5. Create services/messaging-service/src/conversations/conversation.validation.ts:\n   - Zod schemas for conversation creation\n   - Validation for updates\n   - Input sanitization",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test validation schemas",
+          "Test type definitions"
+        ],
+        "integration_tests": [
+          "Test Docker build",
+          "Test service startup"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Docker image builds",
+        "Service starts successfully",
+        "Project structure is correct",
+        "Types are defined",
+        "Validation schemas work"
+      ],
+      "files_to_create": [
+        "services/messaging-service/Dockerfile",
+        "services/messaging-service/.dockerignore",
+        "services/messaging-service/package.json",
+        "services/messaging-service/tsconfig.json",
+        "services/messaging-service/src/index.ts",
+        "services/messaging-service/src/conversations/conversation.types.ts",
+        "services/messaging-service/src/conversations/conversation.validation.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb", "kafka", "redis"],
+        "environment_variables": [
+          "SERVICE_PORT",
+          "MONGODB_URI",
+          "KAFKA_BROKERS",
+          "REDIS_URL"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "conversations",
+            "description": "Store conversations"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "conversations",
+            "fields": ["tenant_id", "participants.user_id"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["messaging", "conversations", "setup"]
+    },
+    {
+      "id": "CONV-002",
+      "task_name": "Conversation Repository Layer",
+      "feature_details": "Implement conversation repository for database operations.",
+      "feature_dependency": ["CONV-001", "MONGO-005"],
+      "ai_prompt": "Implement conversation repository:\n\n1. Create services/messaging-service/src/conversations/conversation.repository.ts:\n   ```typescript\n   export class ConversationRepository {\n     constructor(private db: Db) {}\n\n     async create(data: CreateConversationDTO): Promise<Conversation>;\n     async findById(id: ObjectId): Promise<Conversation | null>;\n     async findByParticipants(userId1: string, userId2: string, tenantId: string): Promise<Conversation | null>;\n     async findByUser(userId: string, tenantId: string, options: QueryOptions): Promise<Conversation[]>;\n     async update(id: ObjectId, data: UpdateConversationDTO): Promise<Conversation>;\n     async delete(id: ObjectId): Promise<void>;\n     async addParticipant(id: ObjectId, participant: Participant): Promise<void>;\n     async removeParticipant(id: ObjectId, userId: string): Promise<void>;\n     async updateLastMessage(id: ObjectId, message: MessageSummary): Promise<void>;\n   }\n   ```\n\n2. Create indexes:\n   ```typescript\n   // Compound index for user's conversations\n   { tenant_id: 1, 'participants.user_id': 1, updated_at: -1 }\n   // Index for direct conversation lookup\n   { tenant_id: 1, type: 1, 'participants.user_id': 1 }\n   // Index for conversation by ID\n   { _id: 1, tenant_id: 1 }\n   ```\n\n3. Query optimization:\n   - Pagination with cursor-based pagination\n   - Projection for list views\n   - Efficient participant lookup\n\n4. Create services/messaging-service/src/conversations/conversation.queries.ts:\n   ```typescript\n   export const getUserConversationsQuery = (userId: string, tenantId: string) => ({\n     tenant_id: tenantId,\n     'participants.user_id': userId,\n   });\n\n   export const getDirectConversationQuery = (userId1: string, userId2: string, tenantId: string) => ({\n     tenant_id: tenantId,\n     type: 'direct',\n     'participants.user_id': { $all: [userId1, userId2] },\n     'participants': { $size: 2 },\n   });\n   ```\n\n5. Transaction support:\n   - Use transactions for multi-document updates\n   - Rollback on failure\n\n6. Soft delete support:\n   - deleted_at timestamp\n   - Filter in queries",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test CRUD operations",
+          "Test query building",
+          "Test pagination"
+        ],
+        "integration_tests": [
+          "Test with real MongoDB",
+          "Test indexes",
+          "Test transactions"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "All CRUD operations work",
+        "Indexes are created",
+        "Pagination is efficient",
+        "Transactions are used",
+        "Soft delete works"
+      ],
+      "files_to_create": [
+        "services/messaging-service/src/conversations/conversation.repository.ts",
+        "services/messaging-service/src/conversations/conversation.queries.ts",
+        "services/messaging-service/src/conversations/conversation.indexes.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [
+          {
+            "collection": "conversations",
+            "fields": ["tenant_id", "participants.user_id", "updated_at"]
+          },
+          {
+            "collection": "conversations",
+            "fields": ["tenant_id", "type", "participants.user_id"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["messaging", "conversations", "repository", "mongodb"]
+    },
+    {
+      "id": "CONV-003",
+      "task_name": "Conversation Service Layer",
+      "feature_details": "Implement conversation service with business logic.",
+      "feature_dependency": ["CONV-002"],
+      "ai_prompt": "Implement conversation service:\n\n1. Create services/messaging-service/src/conversations/conversation.service.ts:\n   ```typescript\n   export class ConversationService {\n     constructor(\n       private repo: ConversationRepository,\n       private eventProducer: EventProducer,\n     ) {}\n\n     async createConversation(dto: CreateConversationDTO, creatorId: string): Promise<Conversation> {\n       // 1. Validate participants exist\n       // 2. Check for existing direct conversation\n       // 3. Create conversation\n       // 4. Emit conversation.created event\n       return conversation;\n     }\n\n     async getConversation(id: string, userId: string): Promise<Conversation> {\n       // 1. Get conversation\n       // 2. Verify user is participant\n       // 3. Return with enriched data\n     }\n\n     async listConversations(userId: string, tenantId: string, options: ListOptions): Promise<PaginatedResult<Conversation>> {\n       // 1. Query user's conversations\n       // 2. Include last message preview\n       // 3. Include unread counts\n       // 4. Return paginated\n     }\n\n     async updateConversation(id: string, userId: string, dto: UpdateConversationDTO): Promise<Conversation> {\n       // 1. Verify user can update\n       // 2. Update conversation\n       // 3. Emit conversation.updated event\n     }\n\n     async deleteConversation(id: string, userId: string): Promise<void> {\n       // For groups: leave conversation\n       // For direct: soft delete for user\n     }\n   }\n   ```\n\n2. Create services/messaging-service/src/conversations/conversation.events.ts:\n   ```typescript\n   export const ConversationEvents = {\n     CREATED: 'conversation.created',\n     UPDATED: 'conversation.updated',\n     DELETED: 'conversation.deleted',\n     PARTICIPANT_ADDED: 'conversation.participant.added',\n     PARTICIPANT_REMOVED: 'conversation.participant.removed',\n   };\n   ```\n\n3. Business logic:\n   - Prevent duplicate direct conversations\n   - Enforce participant limits\n   - Validate names and settings\n   - Handle encryption setup\n\n4. Create services/messaging-service/src/conversations/conversation.enricher.ts:\n   - Add participant details\n   - Add unread counts\n   - Add last message\n   - Add typing indicators\n\n5. Authorization checks:\n   - isParticipant\n   - isAdmin\n   - canInvite\n   - canUpdate",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test business logic",
+          "Test authorization",
+          "Test event emission"
+        ],
+        "integration_tests": [
+          "Test full create flow",
+          "Test list with enrichment",
+          "Test delete behavior"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Create conversation works",
+        "Duplicate direct prevention",
+        "Authorization is enforced",
+        "Events are emitted",
+        "Enrichment works"
+      ],
+      "files_to_create": [
+        "services/messaging-service/src/conversations/conversation.service.ts",
+        "services/messaging-service/src/conversations/conversation.events.ts",
+        "services/messaging-service/src/conversations/conversation.enricher.ts",
+        "services/messaging-service/src/conversations/conversation.authorization.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb", "kafka"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["messaging", "conversations", "service", "business-logic"]
+    },
+    {
+      "id": "CONV-004",
+      "task_name": "Conversation API Routes",
+      "feature_details": "Implement API routes for conversation operations.",
+      "feature_dependency": ["CONV-003", "GATEWAY-010"],
+      "ai_prompt": "Implement conversation API routes:\n\n1. Create services/gateway/src/routes/v1/conversations/index.ts:\n   ```typescript\n   import { FastifyInstance } from 'fastify';\n\n   export async function conversationRoutes(fastify: FastifyInstance) {\n     // Create conversation\n     fastify.post('/', {\n       schema: createConversationSchema,\n       preHandler: [authenticate],\n       handler: async (request, reply) => {\n         const conversation = await conversationService.createConversation(\n           request.body,\n           request.user.id,\n         );\n         return reply.status(201).send(conversation);\n       },\n     });\n\n     // List conversations\n     fastify.get('/', {\n       schema: listConversationsSchema,\n       preHandler: [authenticate],\n       handler: async (request, reply) => {\n         const result = await conversationService.listConversations(\n           request.user.id,\n           request.user.tenant_id,\n           request.query,\n         );\n         return result;\n       },\n     });\n\n     // Get conversation\n     fastify.get('/:id', {\n       schema: getConversationSchema,\n       preHandler: [authenticate],\n       handler: async (request, reply) => {\n         const conversation = await conversationService.getConversation(\n           request.params.id,\n           request.user.id,\n         );\n         return conversation;\n       },\n     });\n\n     // Update conversation\n     fastify.put('/:id', { ... });\n\n     // Delete/leave conversation\n     fastify.delete('/:id', { ... });\n   }\n   ```\n\n2. Create services/gateway/src/routes/v1/conversations/schemas.ts:\n   - JSON Schema for all endpoints\n   - Request validation\n   - Response serialization\n\n3. Create services/gateway/src/routes/v1/conversations/types.ts:\n   - DTOs for requests\n   - Response types\n\n4. Error handling:\n   - 404 for not found\n   - 403 for unauthorized\n   - 400 for validation errors\n   - 409 for conflicts\n\n5. Pagination:\n   - Cursor-based for infinite scroll\n   - Include next_cursor in response\n   - Limit parameter",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test schema validation",
+          "Test error handling"
+        ],
+        "integration_tests": [
+          "Test all endpoints",
+          "Test pagination",
+          "Test error responses"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "All CRUD endpoints work",
+        "Validation is enforced",
+        "Errors are handled properly",
+        "Pagination works",
+        "OpenAPI schema is generated"
+      ],
+      "files_to_create": [
+        "services/gateway/src/routes/v1/conversations/index.ts",
+        "services/gateway/src/routes/v1/conversations/schemas.ts",
+        "services/gateway/src/routes/v1/conversations/types.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/v1/conversations",
+          "description": "Create a new conversation"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/conversations",
+          "description": "List user's conversations"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/conversations/:id",
+          "description": "Get conversation details"
+        },
+        {
+          "method": "PUT",
+          "path": "/v1/conversations/:id",
+          "description": "Update conversation"
+        },
+        {
+          "method": "DELETE",
+          "path": "/v1/conversations/:id",
+          "description": "Delete/leave conversation"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["messaging", "conversations", "api", "routes"]
+    }
+  ]
+}

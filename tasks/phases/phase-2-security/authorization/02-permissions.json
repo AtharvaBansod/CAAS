@@ -1,0 +1,401 @@
+{
+  "task_group": "permissions",
+  "description": "Permission system, roles, and resource hierarchy",
+  "priority": "critical",
+  "estimated_hours": 17,
+  "phase": 2,
+  "feature_area": "authorization",
+  "tasks": [
+    {
+      "id": "AUTHZ-006",
+      "task_name": "Permission Definition System",
+      "feature_details": "Define the complete permission system with resource-action pairs and hierarchical organization.",
+      "feature_dependency": ["AUTHZ-001"],
+      "ai_prompt": "Create the permission definition system:\n\n1. Create services/auth-service/src/authorization/permissions/permission-registry.ts:\n   ```typescript\n   export class PermissionRegistry {\n     register(permission: PermissionDefinition): void;\n     get(permissionId: string): PermissionDefinition | null;\n     getByResource(resourceType: string): PermissionDefinition[];\n     getAll(): PermissionDefinition[];\n     validate(permissionId: string): boolean;\n   }\n   ```\n\n2. Permission definition structure:\n   ```typescript\n   interface PermissionDefinition {\n     id: string;              // 'message.send'\n     resource: string;        // 'message'\n     action: string;          // 'send'\n     description: string;\n     scope: 'global' | 'tenant' | 'resource';\n     requires?: string[];     // Prerequisites\n     implies?: string[];      // Implied permissions\n   }\n   ```\n\n3. Define all platform permissions:\n   ```typescript\n   // Message permissions\n   'message.send', 'message.read', 'message.update', 'message.delete'\n   'message.react', 'message.pin', 'message.forward'\n\n   // Conversation permissions  \n   'conversation.create', 'conversation.read', 'conversation.update', 'conversation.delete'\n   'conversation.add_member', 'conversation.remove_member', 'conversation.set_admin'\n\n   // Group permissions\n   'group.create', 'group.read', 'group.update', 'group.delete'\n   'group.join', 'group.leave', 'group.invite', 'group.kick', 'group.ban'\n\n   // User permissions\n   'user.create', 'user.read', 'user.update', 'user.delete'\n   'user.ban', 'user.unban', 'user.impersonate'\n\n   // File permissions\n   'file.upload', 'file.download', 'file.delete', 'file.share'\n\n   // Admin permissions\n   'admin.tenant.manage', 'admin.users.manage', 'admin.settings.manage'\n   'admin.policies.manage', 'admin.audit.view'\n   ```\n\n4. Create services/auth-service/src/authorization/permissions/permission-resolver.ts:\n   - Resolve implied permissions\n   - Handle permission inheritance\n   - Expand wildcard permissions (e.g., 'message.*')\n\n5. Create services/auth-service/src/authorization/permissions/permission-hierarchy.ts:\n   - Define resource hierarchy:\n     * tenant > group > conversation > message\n   - Permissions cascade down hierarchy\n\n6. Create permission seed data for default setup",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test permission registration",
+          "Test permission lookup",
+          "Test implication resolution"
+        ],
+        "integration_tests": [
+          "Test permission hierarchy",
+          "Test wildcard expansion"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "All permissions are registered",
+        "Permission lookup is fast (<1ms)",
+        "Implications are resolved correctly",
+        "Hierarchy is enforced",
+        "Wildcards expand correctly"
+      ],
+      "files_to_create": [
+        "services/auth-service/src/authorization/permissions/permission-registry.ts",
+        "services/auth-service/src/authorization/permissions/permission-resolver.ts",
+        "services/auth-service/src/authorization/permissions/permission-hierarchy.ts",
+        "services/auth-service/src/authorization/permissions/definitions/index.ts",
+        "services/auth-service/src/authorization/permissions/definitions/message-permissions.ts",
+        "services/auth-service/src/authorization/permissions/definitions/conversation-permissions.ts",
+        "services/auth-service/src/authorization/permissions/definitions/group-permissions.ts",
+        "services/auth-service/src/authorization/permissions/definitions/user-permissions.ts",
+        "services/auth-service/src/authorization/permissions/definitions/admin-permissions.ts",
+        "services/auth-service/src/authorization/permissions/types.ts",
+        "services/auth-service/src/authorization/permissions/index.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 3,
+      "tags": ["authorization", "permissions", "definitions"]
+    },
+    {
+      "id": "AUTHZ-007",
+      "task_name": "Role System Implementation",
+      "feature_details": "Implement the role system with predefined and custom roles that bundle permissions together.",
+      "feature_dependency": ["AUTHZ-006"],
+      "ai_prompt": "Implement the role system:\n\n1. Create services/auth-service/src/authorization/roles/role-repository.ts:\n   ```typescript\n   export class RoleRepository {\n     create(role: CreateRoleDTO): Promise<Role>;\n     update(id: string, role: UpdateRoleDTO): Promise<Role>;\n     delete(id: string): Promise<void>;\n     getById(id: string): Promise<Role | null>;\n     getByTenant(tenantId: string): Promise<Role[]>;\n     getSystemRoles(): Promise<Role[]>;\n   }\n   ```\n\n2. Role structure:\n   ```typescript\n   interface Role {\n     id: string;\n     name: string;\n     description: string;\n     tenant_id: string | null;  // null for system roles\n     is_system: boolean;\n     permissions: string[];\n     inherits?: string[];  // Inherit from other roles\n     metadata: {\n       created_at: Date;\n       updated_at: Date;\n       created_by: string;\n     };\n   }\n   ```\n\n3. Define system roles:\n   ```typescript\n   // System roles (cannot be modified)\n   'platform_admin': all permissions\n   'tenant_admin': all tenant permissions\n   'tenant_member': basic member permissions\n\n   // Configurable default roles\n   'moderator': moderation permissions\n   'member': standard permissions\n   'guest': read-only permissions\n   ```\n\n4. Create services/auth-service/src/authorization/roles/role-service.ts:\n   - RoleService class\n   - Create/update/delete roles\n   - Assign roles to users\n   - Check role permissions\n\n5. Create services/auth-service/src/authorization/roles/role-assignment.ts:\n   - Assign role to user:\n     * Global scope (tenant-wide)\n     * Resource scope (specific resource)\n   - Handle role inheritance\n   - Time-bound assignments\n\n6. Create services/gateway/src/routes/v1/admin/roles.ts:\n   - CRUD endpoints for roles\n   - GET /v1/admin/roles\n   - POST /v1/admin/roles\n   - PUT /v1/admin/roles/:id\n   - DELETE /v1/admin/roles/:id\n   - GET /v1/admin/users/:id/roles\n   - POST /v1/admin/users/:id/roles\n   - DELETE /v1/admin/users/:id/roles/:roleId\n\n7. Role constraints:\n   - Cannot delete system roles\n   - Cannot remove last admin role\n   - Role hierarchy validation",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test role CRUD",
+          "Test permission bundling",
+          "Test role inheritance"
+        ],
+        "integration_tests": [
+          "Test role storage",
+          "Test role assignment",
+          "Test API endpoints"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "System roles are predefined",
+        "Custom roles can be created",
+        "Roles bundle permissions",
+        "Role inheritance works",
+        "Role constraints are enforced"
+      ],
+      "files_to_create": [
+        "services/auth-service/src/authorization/roles/role-repository.ts",
+        "services/auth-service/src/authorization/roles/role-service.ts",
+        "services/auth-service/src/authorization/roles/role-assignment.ts",
+        "services/auth-service/src/authorization/roles/system-roles.ts",
+        "services/auth-service/src/authorization/roles/types.ts",
+        "services/auth-service/src/authorization/roles/index.ts",
+        "services/gateway/src/routes/v1/admin/roles.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/v1/admin/roles",
+          "description": "List all roles"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/admin/roles",
+          "description": "Create custom role"
+        },
+        {
+          "method": "PUT",
+          "path": "/v1/admin/roles/:id",
+          "description": "Update role"
+        },
+        {
+          "method": "DELETE",
+          "path": "/v1/admin/roles/:id",
+          "description": "Delete role"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/admin/users/:id/roles",
+          "description": "Assign role to user"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "roles",
+            "description": "Store role definitions"
+          },
+          {
+            "name": "user_roles",
+            "description": "Store user-role assignments"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "roles",
+            "fields": ["tenant_id", "name"],
+            "options": { "unique": true }
+          },
+          {
+            "collection": "user_roles",
+            "fields": ["user_id", "role_id"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["authorization", "roles", "rbac"]
+    },
+    {
+      "id": "AUTHZ-008",
+      "task_name": "Resource-Level Permissions",
+      "feature_details": "Implement resource-level (instance-level) permissions for fine-grained access control on specific resources.",
+      "feature_dependency": ["AUTHZ-006", "AUTHZ-007"],
+      "ai_prompt": "Implement resource-level permissions:\n\n1. Create services/auth-service/src/authorization/resource-permissions/resource-permission-service.ts:\n   ```typescript\n   export class ResourcePermissionService {\n     grant(params: GrantParams): Promise<void>;\n     revoke(params: RevokeParams): Promise<void>;\n     check(params: CheckParams): Promise<boolean>;\n     getPermissions(userId: string, resourceType: string, resourceId: string): Promise<string[]>;\n     getResourceUsers(resourceType: string, resourceId: string): Promise<ResourceUser[]>;\n   }\n\n   interface GrantParams {\n     user_id: string;\n     resource_type: string;\n     resource_id: string;\n     permissions: string[];\n     granted_by: string;\n     expires_at?: Date;\n   }\n   ```\n\n2. Resource permission storage:\n   ```typescript\n   {\n     user_id: string,\n     resource_type: string,\n     resource_id: string,\n     permissions: string[],\n     granted_by: string,\n     granted_at: Date,\n     expires_at: Date | null\n   }\n   ```\n\n3. Create services/auth-service/src/authorization/resource-permissions/permission-propagation.ts:\n   - Propagate permissions down hierarchy\n   - Example: conversation.admin grants message.* in that conversation\n   - Cache propagated permissions\n\n4. Create services/auth-service/src/authorization/resource-permissions/owner-permissions.ts:\n   - Resource owners have implicit permissions\n   - Owner lookup by resource type\n   - Owner permission set per resource type\n\n5. Combine permission sources:\n   - System policies (AUTHZ-002)\n   - Role permissions (AUTHZ-007)\n   - Resource permissions (this task)\n   - Owner permissions\n   - Priority: explicit deny > explicit allow > inherited\n\n6. Create services/gateway/src/routes/v1/resources/permissions.ts:\n   - GET /v1/resources/:type/:id/permissions - List permissions on resource\n   - POST /v1/resources/:type/:id/permissions - Grant permission\n   - DELETE /v1/resources/:type/:id/permissions/:userId - Revoke permission\n   - GET /v1/users/:id/permissions - List user's resource permissions\n\n7. Permission templates:\n   - Predefined permission sets for common scenarios:\n     * 'reader': read-only access\n     * 'contributor': read + write\n     * 'admin': full access",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test permission grant/revoke",
+          "Test permission checking",
+          "Test propagation"
+        ],
+        "integration_tests": [
+          "Test resource permission storage",
+          "Test with ABAC engine",
+          "Test API endpoints"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Permissions can be granted on specific resources",
+        "Permissions can be revoked",
+        "Expiration works correctly",
+        "Propagation respects hierarchy",
+        "Owner permissions are applied"
+      ],
+      "files_to_create": [
+        "services/auth-service/src/authorization/resource-permissions/resource-permission-service.ts",
+        "services/auth-service/src/authorization/resource-permissions/permission-propagation.ts",
+        "services/auth-service/src/authorization/resource-permissions/owner-permissions.ts",
+        "services/auth-service/src/authorization/resource-permissions/permission-templates.ts",
+        "services/auth-service/src/authorization/resource-permissions/types.ts",
+        "services/auth-service/src/authorization/resource-permissions/index.ts",
+        "services/gateway/src/routes/v1/resources/permissions.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb", "redis"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/v1/resources/:type/:id/permissions",
+          "description": "List permissions on resource"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/resources/:type/:id/permissions",
+          "description": "Grant permission to user"
+        },
+        {
+          "method": "DELETE",
+          "path": "/v1/resources/:type/:id/permissions/:userId",
+          "description": "Revoke user's permission"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "resource_permissions",
+            "description": "Store resource-level permissions"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "resource_permissions",
+            "fields": ["user_id", "resource_type", "resource_id"],
+            "options": { "unique": true }
+          },
+          {
+            "collection": "resource_permissions",
+            "fields": ["resource_type", "resource_id"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["authorization", "permissions", "resource-level"]
+    },
+    {
+      "id": "AUTHZ-009",
+      "task_name": "Permission Check API",
+      "feature_details": "Create the API for checking permissions both server-side and from client applications via SDK.",
+      "feature_dependency": ["AUTHZ-008"],
+      "ai_prompt": "Create the permission check API:\n\n1. Create services/gateway/src/routes/v1/permissions/check.ts:\n   ```typescript\n   // POST /v1/permissions/check - Check single permission\n   Request:\n   {\n     resource: { type: 'conversation', id: 'conv-123' },\n     action: 'message.send'\n   }\n\n   Response:\n   {\n     allowed: true,\n     reason: 'role:member grants message.send',\n     cached: true\n   }\n\n   // POST /v1/permissions/check-batch - Check multiple permissions\n   Request:\n   {\n     checks: [\n       { resource: { type: 'conversation', id: 'conv-123' }, action: 'message.send' },\n       { resource: { type: 'conversation', id: 'conv-123' }, action: 'message.delete' }\n     ]\n   }\n\n   Response:\n   {\n     results: [\n       { allowed: true, reason: '...' },\n       { allowed: false, reason: 'insufficient permissions' }\n     ]\n   }\n   ```\n\n2. Create services/gateway/src/routes/v1/permissions/my-permissions.ts:\n   - GET /v1/permissions - Get current user's permissions\n   - Response includes:\n     * Global permissions (from roles)\n     * Resource-specific permissions (summarized)\n\n3. Create services/gateway/src/services/permission-check-service.ts:\n   - PermissionCheckService class\n   - Batch permission checking\n   - Efficient caching\n   - Optimize for common patterns\n\n4. Create services/auth-service/src/authorization/check/bulk-checker.ts:\n   - Process multiple checks efficiently\n   - Share context between checks\n   - Parallel policy evaluation\n\n5. SDK integration:\n   - Sync permissions on connect\n   - Cache permissions client-side\n   - Real-time permission updates via socket\n   - Optimistic UI with permission checks\n\n6. Permission change notifications:\n   - Publish to Kafka when permissions change\n   - Push to connected clients via Socket.IO\n   - Update cached permissions\n\n7. Create services/auth-service/src/authorization/check/permission-snapshot.ts:\n   - Generate permission snapshot for user\n   - Include in JWT (if size allows)\n   - Or provide via API",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test single permission check",
+          "Test batch checking",
+          "Test caching"
+        ],
+        "integration_tests": [
+          "Test API endpoints",
+          "Test with real policies",
+          "Test permission notifications"
+        ],
+        "e2e_tests": [
+          "Test SDK permission checking"
+        ]
+      },
+      "acceptance_criteria": [
+        "Single permission check works",
+        "Batch checking is efficient",
+        "My-permissions endpoint works",
+        "SDK receives permission updates",
+        "Caching improves performance"
+      ],
+      "files_to_create": [
+        "services/gateway/src/routes/v1/permissions/check.ts",
+        "services/gateway/src/routes/v1/permissions/my-permissions.ts",
+        "services/gateway/src/routes/v1/permissions/index.ts",
+        "services/gateway/src/services/permission-check-service.ts",
+        "services/auth-service/src/authorization/check/bulk-checker.ts",
+        "services/auth-service/src/authorization/check/permission-snapshot.ts",
+        "services/auth-service/src/authorization/check/types.ts",
+        "services/auth-service/src/authorization/check/index.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/v1/permissions/check",
+          "description": "Check single permission"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/permissions/check-batch",
+          "description": "Check multiple permissions"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/permissions",
+          "description": "Get current user's permissions"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 3,
+      "tags": ["authorization", "api", "permissions", "sdk"]
+    },
+    {
+      "id": "AUTHZ-010",
+      "task_name": "Tenant Permission Configuration",
+      "feature_details": "Allow tenants to configure default permissions, role presets, and permission rules for their applications.",
+      "feature_dependency": ["AUTHZ-007", "AUTHZ-008"],
+      "ai_prompt": "Implement tenant permission configuration:\n\n1. Create services/auth-service/src/authorization/tenant-config/tenant-permission-config.ts:\n   ```typescript\n   export class TenantPermissionConfig {\n     getConfig(tenantId: string): Promise<PermissionConfig>;\n     updateConfig(tenantId: string, config: Partial<PermissionConfig>): Promise<void>;\n     getDefaultRoles(tenantId: string): Promise<Role[]>;\n     setDefaultRoles(tenantId: string, roles: string[]): Promise<void>;\n   }\n\n   interface PermissionConfig {\n     default_role: string;  // Role assigned to new users\n     role_presets: RolePreset[];\n     auto_permissions: AutoPermissionRule[];\n     restriction_rules: RestrictionRule[];\n   }\n   ```\n\n2. Auto-permission rules:\n   - Automatically grant permissions based on conditions:\n     ```typescript\n     {\n       condition: { user_attribute: 'department', value: 'engineering' },\n       grant: ['repository.read', 'repository.write']\n     }\n     ```\n\n3. Create services/auth-service/src/authorization/tenant-config/restriction-rules.ts:\n   - Tenant-wide restrictions:\n     * Disable certain features\n     * Require admin approval for actions\n     * Time-based restrictions\n\n4. Create services/auth-service/src/authorization/tenant-config/role-presets.ts:\n   - Configurable role templates\n   - Tenant can customize without starting from scratch\n   - Apply preset as new role\n\n5. Create services/gateway/src/routes/v1/tenant/permissions.ts:\n   - GET /v1/tenant/permissions/config - Get config\n   - PUT /v1/tenant/permissions/config - Update config\n   - GET /v1/tenant/permissions/presets - Get available presets\n   - POST /v1/tenant/permissions/apply-preset - Apply preset\n\n6. Default configuration by plan:\n   - Free: Limited customization\n   - Startup: Role customization\n   - Business: Full policy customization\n   - Enterprise: Advanced ABAC\n\n7. Configuration validation:\n   - Validate rules don't conflict\n   - Warn about security implications\n   - Prevent lockout scenarios",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test config CRUD",
+          "Test auto-permission rules",
+          "Test restriction rules"
+        ],
+        "integration_tests": [
+          "Test config storage",
+          "Test rule application",
+          "Test API endpoints"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Tenants can configure default roles",
+        "Auto-permission rules work",
+        "Restrictions are enforced",
+        "Presets can be applied",
+        "Configuration is validated"
+      ],
+      "files_to_create": [
+        "services/auth-service/src/authorization/tenant-config/tenant-permission-config.ts",
+        "services/auth-service/src/authorization/tenant-config/auto-permission-rules.ts",
+        "services/auth-service/src/authorization/tenant-config/restriction-rules.ts",
+        "services/auth-service/src/authorization/tenant-config/role-presets.ts",
+        "services/auth-service/src/authorization/tenant-config/config-validator.ts",
+        "services/auth-service/src/authorization/tenant-config/types.ts",
+        "services/auth-service/src/authorization/tenant-config/index.ts",
+        "services/gateway/src/routes/v1/tenant/permissions.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/v1/tenant/permissions/config",
+          "description": "Get tenant permission configuration"
+        },
+        {
+          "method": "PUT",
+          "path": "/v1/tenant/permissions/config",
+          "description": "Update tenant permission configuration"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/tenant/permissions/presets",
+          "description": "Get available role presets"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/tenant/permissions/apply-preset",
+          "description": "Apply role preset"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "tenant_permission_configs",
+            "description": "Store tenant permission configurations"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "tenant_permission_configs",
+            "fields": ["tenant_id"],
+            "options": { "unique": true }
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 3,
+      "tags": ["authorization", "tenant", "configuration"]
+    }
+  ]
+}

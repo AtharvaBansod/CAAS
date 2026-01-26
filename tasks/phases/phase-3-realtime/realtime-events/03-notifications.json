@@ -1,0 +1,316 @@
+{
+  "task_group": "notifications",
+  "description": "Push notifications and in-app notification system",
+  "priority": "high",
+  "estimated_hours": 16,
+  "phase": 3,
+  "feature_area": "realtime-events",
+  "tasks": [
+    {
+      "id": "NOTIFY-001",
+      "task_name": "Push Notification Service",
+      "feature_details": "Implement push notification service supporting FCM and APNS.",
+      "feature_dependency": ["KAFKA-008"],
+      "ai_prompt": "Implement push notification service:\n\n1. Create services/notification-service/src/push/push-notification-service.ts:\n   ```typescript\n   export class PushNotificationService {\n     async send(notification: PushNotification): Promise<SendResult>;\n     async sendBatch(notifications: PushNotification[]): Promise<BatchSendResult>;\n     async sendToUser(userId: string, notification: NotificationPayload): Promise<SendResult>;\n   }\n\n   interface PushNotification {\n     device_token: string;\n     platform: 'fcm' | 'apns' | 'web';\n     payload: NotificationPayload;\n     options?: PushOptions;\n   }\n\n   interface NotificationPayload {\n     title: string;\n     body: string;\n     data?: Record<string, string>;\n     badge?: number;\n     sound?: string;\n     image?: string;\n   }\n   ```\n\n2. Create services/notification-service/src/push/fcm-provider.ts:\n   ```typescript\n   import * as admin from 'firebase-admin';\n\n   export class FCMProvider {\n     async send(token: string, payload: NotificationPayload): Promise<void>;\n     async sendMulticast(tokens: string[], payload: NotificationPayload): Promise<MulticastResult>;\n   }\n   ```\n\n3. Create services/notification-service/src/push/apns-provider.ts:\n   - Apple Push Notification Service\n   - HTTP/2 based\n   - Token-based authentication\n   - Payload formatting\n\n4. Create services/notification-service/src/push/web-push-provider.ts:\n   - Web Push API\n   - VAPID keys\n   - Service worker integration\n\n5. Create services/notification-service/src/device/device-registry.ts:\n   ```typescript\n   export class DeviceRegistry {\n     async registerDevice(userId: string, device: DeviceRegistration): Promise<void>;\n     async unregisterDevice(deviceToken: string): Promise<void>;\n     async getDevices(userId: string): Promise<Device[]>;\n     async updateToken(oldToken: string, newToken: string): Promise<void>;\n   }\n   ```\n\n6. Create services/gateway/src/routes/v1/devices.ts:\n   - POST /v1/devices - Register device\n   - DELETE /v1/devices/:token - Unregister device\n   - GET /v1/devices - List user's devices",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test FCM provider",
+          "Test APNS provider",
+          "Test device registry"
+        ],
+        "integration_tests": [
+          "Test notification sending",
+          "Test batch sending",
+          "Test device registration"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Push notifications are sent via FCM",
+        "Push notifications are sent via APNS",
+        "Web push works",
+        "Device registration works",
+        "Batch sending is efficient"
+      ],
+      "files_to_create": [
+        "services/notification-service/package.json",
+        "services/notification-service/tsconfig.json",
+        "services/notification-service/src/push/push-notification-service.ts",
+        "services/notification-service/src/push/fcm-provider.ts",
+        "services/notification-service/src/push/apns-provider.ts",
+        "services/notification-service/src/push/web-push-provider.ts",
+        "services/notification-service/src/device/device-registry.ts",
+        "services/gateway/src/routes/v1/devices.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb"],
+        "environment_variables": [
+          "FCM_SERVICE_ACCOUNT_KEY",
+          "APNS_KEY_ID",
+          "APNS_TEAM_ID",
+          "APNS_KEY_FILE",
+          "VAPID_PUBLIC_KEY",
+          "VAPID_PRIVATE_KEY"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/v1/devices",
+          "description": "Register device for push notifications"
+        },
+        {
+          "method": "DELETE",
+          "path": "/v1/devices/:token",
+          "description": "Unregister device"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "device_registrations",
+            "description": "Store registered devices"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "device_registrations",
+            "fields": ["user_id"]
+          },
+          {
+            "collection": "device_registrations",
+            "fields": ["device_token"],
+            "unique": true
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 5,
+      "tags": ["notifications", "push", "fcm", "apns"]
+    },
+    {
+      "id": "NOTIFY-002",
+      "task_name": "In-App Notification System",
+      "feature_details": "Implement in-app notification system for real-time notifications delivered via socket.",
+      "feature_dependency": ["SOCKET-010", "NOTIFY-001"],
+      "ai_prompt": "Implement in-app notifications:\n\n1. Create services/notification-service/src/inapp/notification-manager.ts:\n   ```typescript\n   export class InAppNotificationManager {\n     async createNotification(notification: CreateNotificationDTO): Promise<Notification>;\n     async getNotifications(userId: string, options: QueryOptions): Promise<Notification[]>;\n     async markAsRead(notificationId: string): Promise<void>;\n     async markAllAsRead(userId: string): Promise<void>;\n     async deleteNotification(notificationId: string): Promise<void>;\n   }\n\n   interface Notification {\n     id: string;\n     user_id: string;\n     type: NotificationType;\n     title: string;\n     body: string;\n     data: Record<string, unknown>;\n     read: boolean;\n     created_at: Date;\n     expires_at?: Date;\n   }\n   ```\n\n2. Notification types:\n   - new_message: New message in conversation\n   - mention: User mentioned in message\n   - reaction: Reaction to user's message\n   - system: System announcements\n   - call_missed: Missed call\n   - group_invite: Group conversation invite\n\n3. Create services/socket-service/src/events/notification-events.ts:\n   ```typescript\n   // Send notification via socket\n   export async function sendSocketNotification(userId: string, notification: Notification) {\n     const sockets = await getSocketsForUser(userId);\n     io.to(sockets).emit('notification', notification);\n   }\n   ```\n\n4. Create services/gateway/src/routes/v1/notifications.ts:\n   - GET /v1/notifications - List notifications\n   - GET /v1/notifications/unread - Get unread notifications\n   - PUT /v1/notifications/:id/read - Mark as read\n   - PUT /v1/notifications/read-all - Mark all as read\n   - DELETE /v1/notifications/:id - Delete notification\n\n5. Create services/notification-service/src/inapp/notification-store.ts:\n   - MongoDB storage\n   - TTL for auto-cleanup\n   - Efficient pagination\n   - Unread count tracking\n\n6. Real-time delivery:\n   - Socket first for online users\n   - Fall back to push for offline\n   - Store for later retrieval",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test notification creation",
+          "Test mark as read",
+          "Test filtering"
+        ],
+        "integration_tests": [
+          "Test socket delivery",
+          "Test persistence",
+          "Test API endpoints"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Notifications are created correctly",
+        "Socket delivery works",
+        "Notifications persist",
+        "Mark as read works",
+        "API endpoints function"
+      ],
+      "files_to_create": [
+        "services/notification-service/src/inapp/notification-manager.ts",
+        "services/notification-service/src/inapp/notification-store.ts",
+        "services/notification-service/src/inapp/notification-types.ts",
+        "services/socket-service/src/events/notification-events.ts",
+        "services/gateway/src/routes/v1/notifications.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb", "redis"],
+        "environment_variables": [
+          "NOTIFICATION_TTL_DAYS"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/v1/notifications",
+          "description": "List notifications"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/notifications/unread",
+          "description": "Get unread notifications"
+        },
+        {
+          "method": "PUT",
+          "path": "/v1/notifications/:id/read",
+          "description": "Mark notification as read"
+        },
+        {
+          "method": "PUT",
+          "path": "/v1/notifications/read-all",
+          "description": "Mark all as read"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "notifications",
+            "description": "Store in-app notifications"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "notifications",
+            "fields": ["user_id", "created_at"]
+          },
+          {
+            "collection": "notifications",
+            "fields": ["user_id", "read"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["notifications", "inapp", "socket", "realtime"]
+    },
+    {
+      "id": "NOTIFY-003",
+      "task_name": "Notification Preferences",
+      "feature_details": "Implement user notification preferences for controlling what notifications they receive.",
+      "feature_dependency": ["NOTIFY-001", "NOTIFY-002"],
+      "ai_prompt": "Implement notification preferences:\n\n1. Create services/notification-service/src/preferences/notification-preferences.ts:\n   ```typescript\n   export class NotificationPreferences {\n     async getPreferences(userId: string): Promise<UserNotificationPrefs>;\n     async updatePreferences(userId: string, prefs: Partial<UserNotificationPrefs>): Promise<void>;\n     async shouldNotify(userId: string, type: NotificationType, channel: NotificationChannel): Promise<boolean>;\n   }\n\n   interface UserNotificationPrefs {\n     user_id: string;\n     channels: {\n       push: boolean;\n       email: boolean;\n       inapp: boolean;\n     };\n     types: {\n       new_message: ChannelPrefs;\n       mention: ChannelPrefs;\n       reaction: ChannelPrefs;\n       system: ChannelPrefs;\n       call_missed: ChannelPrefs;\n     };\n     quiet_hours: {\n       enabled: boolean;\n       start: string; // \"22:00\"\n       end: string;   // \"07:00\"\n       timezone: string;\n     };\n     muted_conversations: string[];\n   }\n   ```\n\n2. Create services/notification-service/src/preferences/quiet-hours.ts:\n   - Do Not Disturb mode\n   - Scheduled quiet hours\n   - Timezone-aware\n   - Override for urgent notifications\n\n3. Create services/notification-service/src/preferences/mute-manager.ts:\n   ```typescript\n   export class MuteManager {\n     async muteConversation(userId: string, conversationId: string, duration?: number): Promise<void>;\n     async unmuteConversation(userId: string, conversationId: string): Promise<void>;\n     async isMuted(userId: string, conversationId: string): Promise<boolean>;\n   }\n   ```\n\n4. Create services/gateway/src/routes/v1/notifications/preferences.ts:\n   - GET /v1/notifications/preferences - Get preferences\n   - PUT /v1/notifications/preferences - Update preferences\n   - POST /v1/conversations/:id/mute - Mute conversation\n   - DELETE /v1/conversations/:id/mute - Unmute conversation\n\n5. Default preferences:\n   - Tenant-level defaults\n   - User can override\n   - Respect tenant restrictions\n\n6. Create services/notification-service/src/preferences/notification-filter.ts:\n   - Filter notifications based on preferences\n   - Check quiet hours\n   - Check muted conversations\n   - Check channel preferences",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test preference retrieval",
+          "Test quiet hours logic",
+          "Test mute logic"
+        ],
+        "integration_tests": [
+          "Test preference filtering",
+          "Test API endpoints",
+          "Test mute functionality"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Preferences can be set",
+        "Quiet hours work",
+        "Muting works",
+        "Filtering respects preferences",
+        "API endpoints function"
+      ],
+      "files_to_create": [
+        "services/notification-service/src/preferences/notification-preferences.ts",
+        "services/notification-service/src/preferences/quiet-hours.ts",
+        "services/notification-service/src/preferences/mute-manager.ts",
+        "services/notification-service/src/preferences/notification-filter.ts",
+        "services/gateway/src/routes/v1/notifications/preferences.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb", "redis"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/v1/notifications/preferences",
+          "description": "Get notification preferences"
+        },
+        {
+          "method": "PUT",
+          "path": "/v1/notifications/preferences",
+          "description": "Update notification preferences"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/conversations/:id/mute",
+          "description": "Mute conversation"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "notification_preferences",
+            "description": "Store user notification preferences"
+          },
+          {
+            "name": "muted_conversations",
+            "description": "Store muted conversations"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "notification_preferences",
+            "fields": ["user_id"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["notifications", "preferences", "mute", "quiet-hours"]
+    },
+    {
+      "id": "NOTIFY-004",
+      "task_name": "Notification Event Consumer",
+      "feature_details": "Implement Kafka consumer to process notification events and dispatch notifications.",
+      "feature_dependency": ["NOTIFY-001", "NOTIFY-002", "KAFKA-009"],
+      "ai_prompt": "Implement notification event consumer:\n\n1. Create services/notification-service/src/consumers/notification-consumer.ts:\n   ```typescript\n   export class NotificationConsumer {\n     async start(): Promise<void>;\n     async stop(): Promise<void>;\n     async processEvent(event: NotificationEvent): Promise<void>;\n   }\n\n   interface NotificationEvent {\n     type: 'message_created' | 'mention' | 'reaction' | 'call_missed' | 'group_invite';\n     tenant_id: string;\n     data: Record<string, unknown>;\n     timestamp: Date;\n   }\n   ```\n\n2. Create services/notification-service/src/consumers/message-notification-handler.ts:\n   ```typescript\n   export class MessageNotificationHandler {\n     async handleNewMessage(event: MessageCreatedEvent): Promise<void> {\n       // 1. Get conversation participants\n       // 2. Filter out sender\n       // 3. Check preferences for each\n       // 4. Create in-app notification\n       // 5. Send push notification to offline users\n     }\n   }\n   ```\n\n3. Create services/notification-service/src/consumers/mention-notification-handler.ts:\n   - Handle @mention notifications\n   - Parse mentions from message\n   - Notify mentioned users\n\n4. Create services/notification-service/src/notification-dispatcher.ts:\n   ```typescript\n   export class NotificationDispatcher {\n     async dispatch(notification: Notification, userId: string): Promise<void> {\n       // 1. Check if user is online\n       const isOnline = await presenceService.isOnline(userId);\n\n       // 2. Always create in-app notification\n       await inAppManager.createNotification(notification);\n\n       // 3. Send socket notification if online\n       if (isOnline) {\n         await sendSocketNotification(userId, notification);\n       } else {\n         // 4. Send push notification if offline\n         await pushService.sendToUser(userId, notification);\n       }\n     }\n   }\n   ```\n\n5. Kafka consumer configuration:\n   - Consumer group: notification-service\n   - Topics: message.created, user.mentioned, etc.\n   - Partition assignment\n   - Error handling and DLQ\n\n6. Notification batching:\n   - Batch notifications for efficiency\n   - Debounce rapid notifications\n   - Aggregate similar notifications",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test event processing",
+          "Test dispatcher logic",
+          "Test handler logic"
+        ],
+        "integration_tests": [
+          "Test Kafka consumption",
+          "Test notification dispatch",
+          "Test push delivery"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Kafka events are consumed",
+        "Notifications are created",
+        "Online users get socket notification",
+        "Offline users get push notification",
+        "Error handling works"
+      ],
+      "files_to_create": [
+        "services/notification-service/src/consumers/notification-consumer.ts",
+        "services/notification-service/src/consumers/message-notification-handler.ts",
+        "services/notification-service/src/consumers/mention-notification-handler.ts",
+        "services/notification-service/src/notification-dispatcher.ts",
+        "services/notification-service/src/index.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["kafka", "mongodb", "redis"],
+        "environment_variables": [
+          "KAFKA_BROKERS",
+          "NOTIFICATION_CONSUMER_GROUP"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 3,
+      "tags": ["notifications", "kafka", "consumer", "events"]
+    }
+  ]
+}

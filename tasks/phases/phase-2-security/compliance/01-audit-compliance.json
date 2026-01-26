@@ -1,0 +1,530 @@
+{
+  "task_group": "audit-compliance",
+  "description": "Audit logging, data protection, and security compliance features",
+  "priority": "high",
+  "estimated_hours": 30,
+  "phase": 2,
+  "feature_area": "compliance",
+  "tasks": [
+    {
+      "id": "COMPLY-001",
+      "task_name": "Security Audit Logging",
+      "feature_details": "Implement comprehensive security audit logging for all security-relevant events and actions.",
+      "feature_dependency": ["GATEWAY-008", "KAFKA-008"],
+      "ai_prompt": "Implement security audit logging:\n\n1. Create services/audit-service/src/audit-logger.ts:\n   ```typescript\n   export class SecurityAuditLogger {\n     log(event: AuditEvent): Promise<void>;\n     logBatch(events: AuditEvent[]): Promise<void>;\n     query(filter: AuditFilter): Promise<AuditEntry[]>;\n   }\n\n   interface AuditEvent {\n     event_type: string;\n     actor: {\n       user_id?: string;\n       ip_address: string;\n       user_agent: string;\n       session_id?: string;\n     };\n     target: {\n       type: string;\n       id: string;\n     };\n     action: string;\n     result: 'success' | 'failure';\n     metadata: Record<string, unknown>;\n     timestamp: Date;\n   }\n   ```\n\n2. Security events to log:\n   - Authentication: login, logout, failed_login, password_change\n   - Authorization: access_granted, access_denied, role_change\n   - Data access: data_read, data_write, data_delete, data_export\n   - Admin actions: user_create, user_delete, settings_change\n   - Security: mfa_enabled, mfa_disabled, api_key_created, api_key_revoked\n\n3. Create services/audit-service/src/audit-storage.ts:\n   - Store in MongoDB with TTL indexes\n   - Stream to Kafka for real-time analysis\n   - Archive to cold storage (S3/GCS)\n\n4. Create services/audit-service/src/audit-query-service.ts:\n   - Query by time range\n   - Filter by event type, actor, target\n   - Full-text search on metadata\n   - Pagination and export\n\n5. Create services/gateway/src/middleware/audit/audit-middleware.ts:\n   - Capture request context\n   - Emit audit events\n   - Track request duration\n\n6. Create services/gateway/src/routes/v1/admin/audit-logs.ts:\n   - GET /v1/admin/audit-logs - Query audit logs\n   - GET /v1/admin/audit-logs/export - Export logs\n   - GET /v1/admin/audit-logs/stats - Statistics\n\n7. Audit log immutability:\n   - Write-only after creation\n   - Hash chain for tamper detection\n   - Signature by audit service",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test event creation",
+          "Test event filtering",
+          "Test hash chain"
+        ],
+        "integration_tests": [
+          "Test log storage",
+          "Test Kafka streaming",
+          "Test query API"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "All security events are logged",
+        "Logs are queryable",
+        "Logs are immutable",
+        "Export functionality works",
+        "Real-time streaming works"
+      ],
+      "files_to_create": [
+        "services/audit-service/package.json",
+        "services/audit-service/tsconfig.json",
+        "services/audit-service/src/audit-logger.ts",
+        "services/audit-service/src/audit-storage.ts",
+        "services/audit-service/src/audit-query-service.ts",
+        "services/audit-service/src/hash-chain.ts",
+        "services/audit-service/src/types.ts",
+        "services/audit-service/src/index.ts",
+        "services/gateway/src/middleware/audit/audit-middleware.ts",
+        "services/gateway/src/routes/v1/admin/audit-logs.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb", "kafka"],
+        "environment_variables": [
+          "AUDIT_LOG_RETENTION_DAYS",
+          "AUDIT_LOG_ARCHIVE_ENABLED"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/v1/admin/audit-logs",
+          "description": "Query audit logs"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/admin/audit-logs/export",
+          "description": "Export audit logs"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/admin/audit-logs/stats",
+          "description": "Audit log statistics"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "security_audit_logs",
+            "description": "Store security audit entries"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "security_audit_logs",
+            "fields": ["tenant_id", "timestamp"]
+          },
+          {
+            "collection": "security_audit_logs",
+            "fields": ["event_type", "timestamp"]
+          },
+          {
+            "collection": "security_audit_logs",
+            "fields": ["actor.user_id", "timestamp"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 6,
+      "tags": ["compliance", "audit", "logging", "security"]
+    },
+    {
+      "id": "COMPLY-002",
+      "task_name": "GDPR Data Subject Rights",
+      "feature_details": "Implement GDPR data subject rights including data export, erasure, and consent management.",
+      "feature_dependency": ["MONGO-009", "COMPLY-001"],
+      "ai_prompt": "Implement GDPR data subject rights:\n\n1. Create services/compliance-service/src/gdpr/data-export.ts:\n   ```typescript\n   export class DataExportService {\n     requestExport(userId: string, format: 'json' | 'csv'): Promise<ExportRequest>;\n     getExportStatus(requestId: string): Promise<ExportStatus>;\n     downloadExport(requestId: string): Promise<ReadableStream>;\n   }\n   ```\n\n2. Data to export:\n   - User profile\n   - Messages sent\n   - Conversations participated in\n   - Files uploaded\n   - Activity logs\n   - Settings and preferences\n\n3. Create services/compliance-service/src/gdpr/data-erasure.ts:\n   ```typescript\n   export class DataErasureService {\n     requestErasure(userId: string): Promise<ErasureRequest>;\n     getErasureStatus(requestId: string): Promise<ErasureStatus>;\n     verifyErasure(requestId: string): Promise<ErasureVerification>;\n   }\n   ```\n\n4. Erasure process:\n   - Soft delete initially\n   - Hard delete after retention period\n   - Anonymize where deletion not possible\n   - Handle data in backups\n   - Maintain erasure records (for compliance)\n\n5. Create services/compliance-service/src/gdpr/consent-manager.ts:\n   - Track consent for data processing\n   - Consent types: marketing, analytics, third_party\n   - Consent history\n   - Withdrawal of consent\n\n6. Create services/gateway/src/routes/v1/privacy/index.ts:\n   - POST /v1/privacy/export - Request data export\n   - GET /v1/privacy/export/:id - Get export status\n   - GET /v1/privacy/export/:id/download - Download export\n   - POST /v1/privacy/erase - Request erasure\n   - GET /v1/privacy/consent - Get consent status\n   - PUT /v1/privacy/consent - Update consent\n\n7. Create services/compliance-service/src/gdpr/data-minimization.ts:\n   - Auto-delete old data\n   - Retention period configuration\n   - Anonymization rules\n\n8. Audit trail:\n   - Log all privacy requests\n   - Track request processing\n   - Compliance reporting",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test export generation",
+          "Test erasure process",
+          "Test consent tracking"
+        ],
+        "integration_tests": [
+          "Test full export flow",
+          "Test erasure verification",
+          "Test consent API"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Data export includes all user data",
+        "Erasure removes all user data",
+        "Consent is tracked properly",
+        "All operations are audited",
+        "Requests complete within 30 days"
+      ],
+      "files_to_create": [
+        "services/compliance-service/package.json",
+        "services/compliance-service/tsconfig.json",
+        "services/compliance-service/src/gdpr/data-export.ts",
+        "services/compliance-service/src/gdpr/data-erasure.ts",
+        "services/compliance-service/src/gdpr/consent-manager.ts",
+        "services/compliance-service/src/gdpr/data-minimization.ts",
+        "services/compliance-service/src/gdpr/types.ts",
+        "services/compliance-service/src/gdpr/index.ts",
+        "services/gateway/src/routes/v1/privacy/index.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb"],
+        "environment_variables": [
+          "DATA_RETENTION_DAYS",
+          "EXPORT_EXPIRY_HOURS"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/v1/privacy/export",
+          "description": "Request data export"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/privacy/erase",
+          "description": "Request data erasure"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/privacy/consent",
+          "description": "Get consent status"
+        },
+        {
+          "method": "PUT",
+          "path": "/v1/privacy/consent",
+          "description": "Update consent"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "privacy_requests",
+            "description": "Track GDPR requests"
+          },
+          {
+            "name": "user_consent",
+            "description": "Track user consent"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "privacy_requests",
+            "fields": ["user_id", "type", "status"]
+          },
+          {
+            "collection": "user_consent",
+            "fields": ["user_id"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 6,
+      "tags": ["compliance", "gdpr", "privacy", "data-protection"]
+    },
+    {
+      "id": "COMPLY-003",
+      "task_name": "Security Headers Implementation",
+      "feature_details": "Implement comprehensive security headers including CSP, HSTS, and other security-related HTTP headers.",
+      "feature_dependency": ["GATEWAY-002"],
+      "ai_prompt": "Implement security headers:\n\n1. Create services/gateway/src/middleware/security/security-headers.ts:\n   ```typescript\n   export function securityHeadersMiddleware(options: SecurityHeadersOptions) {\n     return async (request: FastifyRequest, reply: FastifyReply) => {\n       // Set all security headers\n     };\n   }\n   ```\n\n2. Headers to implement:\n\n   a. Content-Security-Policy:\n   ```\n   default-src 'self';\n   script-src 'self' 'unsafe-inline';\n   style-src 'self' 'unsafe-inline';\n   img-src 'self' data: https:;\n   connect-src 'self' wss: https:;\n   frame-ancestors 'none';\n   form-action 'self';\n   base-uri 'self';\n   ```\n\n   b. Strict-Transport-Security:\n   ```\n   max-age=31536000; includeSubDomains; preload\n   ```\n\n   c. X-Content-Type-Options: nosniff\n   d. X-Frame-Options: DENY\n   e. X-XSS-Protection: 1; mode=block\n   f. Referrer-Policy: strict-origin-when-cross-origin\n   g. Permissions-Policy: camera=(), microphone=(), geolocation=()\n\n3. Create services/gateway/src/middleware/security/csp-builder.ts:\n   - CSP directive builder\n   - Nonce generation for inline scripts\n   - Report-only mode for testing\n\n4. Create services/gateway/src/middleware/security/csp-violation-handler.ts:\n   - POST /v1/security/csp-report - Receive CSP violation reports\n   - Log and analyze violations\n   - Alert on new violations\n\n5. Create services/gateway/src/middleware/security/cors-config.ts:\n   - CORS configuration per tenant\n   - Allowed origins\n   - Allowed methods and headers\n   - Credentials handling\n\n6. Create services/gateway/src/config/security-headers.ts:\n   - Configuration per environment\n   - Development mode relaxed headers\n   - Production strict headers\n\n7. Testing:\n   - Security header scanner integration\n   - Automated header verification\n   - Report on missing headers",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test header generation",
+          "Test CSP building",
+          "Test CORS configuration"
+        ],
+        "integration_tests": [
+          "Test headers are set on responses",
+          "Test CSP violation reporting",
+          "Test CORS preflight"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "All security headers are set",
+        "CSP is properly configured",
+        "HSTS is enabled",
+        "CORS works for allowed origins",
+        "CSP violations are reported"
+      ],
+      "files_to_create": [
+        "services/gateway/src/middleware/security/security-headers.ts",
+        "services/gateway/src/middleware/security/csp-builder.ts",
+        "services/gateway/src/middleware/security/csp-violation-handler.ts",
+        "services/gateway/src/middleware/security/cors-config.ts",
+        "services/gateway/src/middleware/security/index.ts",
+        "services/gateway/src/config/security-headers.ts",
+        "services/gateway/src/routes/v1/security/csp-report.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [
+          "CSP_REPORT_ONLY",
+          "HSTS_MAX_AGE",
+          "CORS_ALLOWED_ORIGINS"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/v1/security/csp-report",
+          "description": "Receive CSP violation reports"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "csp_violations",
+            "description": "Store CSP violation reports"
+          }
+        ],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["compliance", "security", "headers", "csp"]
+    },
+    {
+      "id": "COMPLY-004",
+      "task_name": "IP Security and Whitelisting",
+      "feature_details": "Implement IP-based security controls including whitelisting, blacklisting, and geo-blocking capabilities.",
+      "feature_dependency": ["GATEWAY-005"],
+      "ai_prompt": "Implement IP security:\n\n1. Create services/gateway/src/middleware/security/ip-security.ts:\n   ```typescript\n   export class IPSecurityMiddleware {\n     check(ip: string, tenantId: string): Promise<IPCheckResult>;\n     isWhitelisted(ip: string, tenantId: string): Promise<boolean>;\n     isBlacklisted(ip: string): Promise<boolean>;\n     isGeoBlocked(ip: string, tenantId: string): Promise<boolean>;\n   }\n   ```\n\n2. Create services/gateway/src/middleware/security/ip-whitelist.ts:\n   - Per-tenant IP whitelisting\n   - Support for CIDR ranges\n   - IPv4 and IPv6 support\n   - Wildcard patterns\n\n3. Create services/gateway/src/middleware/security/ip-blacklist.ts:\n   - Platform-wide IP blacklist\n   - Automatic addition from security events\n   - Temporary and permanent bans\n   - Rate-limit offenders\n\n4. Create services/gateway/src/middleware/security/geo-blocking.ts:\n   - GeoIP lookup (MaxMind GeoIP2)\n   - Allow/deny by country\n   - Per-tenant geo rules\n   - VPN/Tor detection (optional)\n\n5. Create services/gateway/src/routes/v1/admin/ip-security.ts:\n   - GET /v1/admin/ip-security/whitelist - List whitelist\n   - POST /v1/admin/ip-security/whitelist - Add to whitelist\n   - DELETE /v1/admin/ip-security/whitelist/:ip - Remove from whitelist\n   - GET /v1/admin/ip-security/blacklist - List blacklist\n   - POST /v1/admin/ip-security/blacklist - Add to blacklist\n   - PUT /v1/admin/ip-security/geo-rules - Update geo rules\n\n6. Create services/gateway/src/services/geoip-service.ts:\n   - GeoIP database management\n   - Automatic updates\n   - Fallback handling\n\n7. Security events:\n   - Log blocked requests\n   - Alert on repeated blocked attempts\n   - Integration with threat intelligence\n\n8. Performance:\n   - Cache IP lookups in Redis\n   - Bloom filter for blacklist\n   - Minimize GeoIP lookup overhead",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test CIDR matching",
+          "Test whitelist logic",
+          "Test blacklist logic"
+        ],
+        "integration_tests": [
+          "Test IP blocking",
+          "Test geo blocking",
+          "Test API endpoints"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Whitelist allows specified IPs only",
+        "Blacklist blocks specified IPs",
+        "Geo-blocking works by country",
+        "CIDR ranges are supported",
+        "Performance impact is minimal"
+      ],
+      "files_to_create": [
+        "services/gateway/src/middleware/security/ip-security.ts",
+        "services/gateway/src/middleware/security/ip-whitelist.ts",
+        "services/gateway/src/middleware/security/ip-blacklist.ts",
+        "services/gateway/src/middleware/security/geo-blocking.ts",
+        "services/gateway/src/services/geoip-service.ts",
+        "services/gateway/src/routes/v1/admin/ip-security.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["redis"],
+        "environment_variables": [
+          "GEOIP_DATABASE_PATH",
+          "IP_WHITELIST_ENABLED",
+          "GEO_BLOCKING_ENABLED"
+        ],
+        "volumes": [
+          "./data/geoip:/app/geoip"
+        ],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/v1/admin/ip-security/whitelist",
+          "description": "List IP whitelist"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/admin/ip-security/whitelist",
+          "description": "Add IP to whitelist"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/admin/ip-security/blacklist",
+          "description": "Add IP to blacklist"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "ip_whitelist",
+            "description": "Store IP whitelist entries"
+          },
+          {
+            "name": "ip_blacklist",
+            "description": "Store IP blacklist entries"
+          },
+          {
+            "name": "geo_rules",
+            "description": "Store geo-blocking rules"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "ip_whitelist",
+            "fields": ["tenant_id"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 5,
+      "tags": ["compliance", "security", "ip-security", "geo-blocking"]
+    },
+    {
+      "id": "COMPLY-005",
+      "task_name": "Data Retention Policies",
+      "feature_details": "Implement configurable data retention policies with automatic cleanup and archival.",
+      "feature_dependency": ["MONGO-009", "COMPLY-001"],
+      "ai_prompt": "Implement data retention:\n\n1. Create services/compliance-service/src/retention/retention-policy.ts:\n   ```typescript\n   export class RetentionPolicyService {\n     createPolicy(policy: RetentionPolicyDTO): Promise<RetentionPolicy>;\n     updatePolicy(id: string, policy: Partial<RetentionPolicyDTO>): Promise<RetentionPolicy>;\n     applyPolicy(policyId: string): Promise<RetentionResult>;\n     getRetentionSchedule(): Promise<ScheduledDeletion[]>;\n   }\n\n   interface RetentionPolicy {\n     id: string;\n     tenant_id: string;\n     data_type: 'messages' | 'files' | 'logs' | 'analytics';\n     retention_days: number;\n     action: 'delete' | 'archive' | 'anonymize';\n     is_active: boolean;\n   }\n   ```\n\n2. Data types with retention:\n   - Messages: Configurable per tenant (30-365 days)\n   - Files: Configurable (30-365 days)\n   - Audit logs: Minimum 365 days (compliance)\n   - Analytics: 90 days default\n   - Session data: 30 days\n\n3. Create services/compliance-service/src/retention/retention-executor.ts:\n   - Scheduled job for retention enforcement\n   - Batch deletion/archival\n   - Rate limiting to avoid performance impact\n   - Dry-run mode\n\n4. Create services/compliance-service/src/retention/data-archiver.ts:\n   - Archive to cold storage (S3/GCS)\n   - Compressed format\n   - Encrypted at rest\n   - Retention on archives\n\n5. Create services/gateway/src/routes/v1/admin/retention.ts:\n   - GET /v1/admin/retention/policies - List policies\n   - POST /v1/admin/retention/policies - Create policy\n   - PUT /v1/admin/retention/policies/:id - Update policy\n   - DELETE /v1/admin/retention/policies/:id - Delete policy\n   - POST /v1/admin/retention/preview - Preview policy effect\n   - POST /v1/admin/retention/execute - Execute policy (manual)\n\n6. Create services/compliance-service/src/retention/legal-hold.ts:\n   - Legal hold capability\n   - Suspend retention for specific data\n   - Track hold requests\n   - Override retention policies\n\n7. Notifications:\n   - Notify before deletion (configurable)\n   - Notify on policy changes\n   - Report on retention execution",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test policy creation",
+          "Test retention calculation",
+          "Test archival logic"
+        ],
+        "integration_tests": [
+          "Test retention execution",
+          "Test archival process",
+          "Test legal hold"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Retention policies are configurable",
+        "Data is deleted after retention period",
+        "Archives are created correctly",
+        "Legal hold works",
+        "Execution is audited"
+      ],
+      "files_to_create": [
+        "services/compliance-service/src/retention/retention-policy.ts",
+        "services/compliance-service/src/retention/retention-executor.ts",
+        "services/compliance-service/src/retention/data-archiver.ts",
+        "services/compliance-service/src/retention/legal-hold.ts",
+        "services/compliance-service/src/retention/types.ts",
+        "services/compliance-service/src/retention/index.ts",
+        "services/gateway/src/routes/v1/admin/retention.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb"],
+        "environment_variables": [
+          "ARCHIVE_STORAGE_BUCKET",
+          "RETENTION_BATCH_SIZE",
+          "RETENTION_JOB_SCHEDULE"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/v1/admin/retention/policies",
+          "description": "List retention policies"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/admin/retention/policies",
+          "description": "Create retention policy"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/admin/retention/preview",
+          "description": "Preview policy effect"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "retention_policies",
+            "description": "Store retention policy configurations"
+          },
+          {
+            "name": "legal_holds",
+            "description": "Store legal hold records"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "retention_policies",
+            "fields": ["tenant_id", "data_type"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 5,
+      "tags": ["compliance", "retention", "archival", "data-lifecycle"]
+    },
+    {
+      "id": "COMPLY-006",
+      "task_name": "Compliance Reporting Dashboard",
+      "feature_details": "Create compliance reporting capabilities for security audits, GDPR compliance, and SOC 2 readiness.",
+      "feature_dependency": ["COMPLY-001", "COMPLY-002", "COMPLY-005"],
+      "ai_prompt": "Implement compliance reporting:\n\n1. Create services/compliance-service/src/reporting/compliance-reporter.ts:\n   ```typescript\n   export class ComplianceReporter {\n     generateReport(type: ReportType, options: ReportOptions): Promise<Report>;\n     scheduleReport(schedule: ReportSchedule): Promise<void>;\n     getReportHistory(): Promise<ReportEntry[]>;\n   }\n\n   type ReportType = 'security_summary' | 'gdpr_compliance' | 'access_audit' | 'data_retention' | 'soc2_readiness';\n   ```\n\n2. Report types:\n\n   a. Security Summary:\n   - Authentication attempts (success/failure)\n   - Authorization denials\n   - API key usage\n   - Session statistics\n   - Security events\n\n   b. GDPR Compliance:\n   - Data subject requests (export/erasure)\n   - Consent status\n   - Data retention compliance\n   - Cross-border transfers\n\n   c. Access Audit:\n   - Who accessed what data\n   - Admin actions\n   - Configuration changes\n   - Privilege escalation\n\n   d. SOC 2 Readiness:\n   - Control compliance status\n   - Outstanding issues\n   - Remediation tracking\n\n3. Create services/compliance-service/src/reporting/report-templates.ts:\n   - Customizable report templates\n   - Branding options\n   - Multiple formats (PDF, CSV, JSON)\n\n4. Create services/gateway/src/routes/v1/admin/reports.ts:\n   - GET /v1/admin/reports/types - List report types\n   - POST /v1/admin/reports/generate - Generate report\n   - GET /v1/admin/reports/:id - Get report\n   - GET /v1/admin/reports/:id/download - Download report\n   - POST /v1/admin/reports/schedule - Schedule recurring report\n\n5. Create services/compliance-service/src/reporting/scheduled-reports.ts:\n   - Cron-based scheduling\n   - Email delivery\n   - Storage to cloud\n\n6. Dashboard data APIs (for clientFacingUI):\n   - GET /v1/admin/dashboard/compliance - Compliance overview\n   - GET /v1/admin/dashboard/security - Security metrics\n   - GET /v1/admin/dashboard/privacy - Privacy metrics\n\n7. Alerting:\n   - Alert on compliance threshold breaches\n   - Alert on pending GDPR requests\n   - Alert on security anomalies",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test report generation",
+          "Test data aggregation",
+          "Test template rendering"
+        ],
+        "integration_tests": [
+          "Test full report generation",
+          "Test scheduling",
+          "Test API endpoints"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Reports generate correctly",
+        "Multiple formats are supported",
+        "Scheduling works",
+        "Dashboard data is accurate",
+        "Alerts trigger correctly"
+      ],
+      "files_to_create": [
+        "services/compliance-service/src/reporting/compliance-reporter.ts",
+        "services/compliance-service/src/reporting/report-templates.ts",
+        "services/compliance-service/src/reporting/scheduled-reports.ts",
+        "services/compliance-service/src/reporting/report-generators/security-summary.ts",
+        "services/compliance-service/src/reporting/report-generators/gdpr-compliance.ts",
+        "services/compliance-service/src/reporting/report-generators/access-audit.ts",
+        "services/compliance-service/src/reporting/types.ts",
+        "services/compliance-service/src/reporting/index.ts",
+        "services/gateway/src/routes/v1/admin/reports.ts",
+        "services/gateway/src/routes/v1/admin/dashboard.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb"],
+        "environment_variables": [
+          "REPORT_STORAGE_BUCKET",
+          "REPORT_EMAIL_ENABLED"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/v1/admin/reports/types",
+          "description": "List available report types"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/admin/reports/generate",
+          "description": "Generate compliance report"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/admin/dashboard/compliance",
+          "description": "Get compliance dashboard data"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "compliance_reports",
+            "description": "Store generated reports"
+          },
+          {
+            "name": "report_schedules",
+            "description": "Store report schedules"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "compliance_reports",
+            "fields": ["tenant_id", "created_at"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["compliance", "reporting", "dashboard", "gdpr", "soc2"]
+    }
+  ]
+}

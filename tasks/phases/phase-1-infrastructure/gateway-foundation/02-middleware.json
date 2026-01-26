@@ -1,0 +1,317 @@
+{
+  "task_group": "gateway-middleware",
+  "description": "Authentication, rate limiting, validation, logging, and error handling middleware",
+  "priority": "critical",
+  "estimated_hours": 22,
+  "phase": 1,
+  "feature_area": "gateway-foundation",
+  "tasks": [
+    {
+      "id": "GATEWAY-005",
+      "task_name": "Authentication Middleware",
+      "feature_details": "Implement the core authentication middleware supporting API keys, JWT tokens, and SDK authentication for the gateway.",
+      "feature_dependency": ["GATEWAY-003"],
+      "ai_prompt": "Create the authentication middleware:\n\n1. Create src/middleware/auth/index.ts:\n   - AuthMiddleware class\n   - Support multiple auth strategies\n\n2. Create src/middleware/auth/api-key-auth.ts:\n   - Validate API key from X-API-Key header\n   - Look up key in Redis cache (fallback to MongoDB)\n   - Check key status (active/revoked/expired)\n   - Extract tenant_id from key\n   - Check permissions/scopes\n   - Rate limit check against key quota\n\n3. Create src/middleware/auth/jwt-auth.ts:\n   - Validate JWT from Authorization header\n   - Support both Bearer and SDK-JWT schemes\n   - Verify signature using tenant's public key\n   - Check expiration\n   - Extract claims (user_id, tenant_id, permissions)\n\n4. Create src/middleware/auth/sdk-auth.ts:\n   - SDK-specific authentication\n   - App ID + App Secret validation\n   - Generate session tokens\n   - Refresh token handling\n\n5. Create src/middleware/auth/auth-context.ts:\n   - AuthContext interface:\n     ```typescript\n     interface AuthContext {\n       tenant_id: string;\n       user_id?: string;\n       auth_type: 'api_key' | 'jwt' | 'sdk';\n       permissions: string[];\n       rate_limit_tier: string;\n       metadata: Record<string, unknown>;\n     }\n     ```\n   - Attach to request.auth\n\n6. Create src/decorators/require-auth.ts:\n   - Route decorator for auth requirement\n   - Specify required permissions\n   - Optional/required flag\n\n7. Error responses:\n   - 401 Unauthorized (no/invalid credentials)\n   - 403 Forbidden (insufficient permissions)\n   - Include error codes for SDK handling",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test API key validation",
+          "Test JWT verification",
+          "Test permission checking",
+          "Test auth context creation"
+        ],
+        "integration_tests": [
+          "Test full auth flow with valid API key",
+          "Test full auth flow with valid JWT",
+          "Test rejection of invalid credentials",
+          "Test permission enforcement"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "API keys are validated correctly",
+        "JWTs are verified against tenant keys",
+        "Permissions are enforced per route",
+        "Auth context is available in handlers",
+        "Clear error messages for auth failures"
+      ],
+      "files_to_create": [
+        "services/gateway/src/middleware/auth/index.ts",
+        "services/gateway/src/middleware/auth/api-key-auth.ts",
+        "services/gateway/src/middleware/auth/jwt-auth.ts",
+        "services/gateway/src/middleware/auth/sdk-auth.ts",
+        "services/gateway/src/middleware/auth/auth-context.ts",
+        "services/gateway/src/middleware/auth/strategies.ts",
+        "services/gateway/src/decorators/require-auth.ts",
+        "services/gateway/src/decorators/require-permission.ts",
+        "services/gateway/src/decorators/index.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [
+          "JWT_PUBLIC_KEY",
+          "API_KEY_CACHE_TTL",
+          "AUTH_HEADER_NAME"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 6,
+      "tags": ["gateway", "authentication", "jwt", "api-key", "middleware"]
+    },
+    {
+      "id": "GATEWAY-006",
+      "task_name": "Rate Limiting Middleware",
+      "feature_details": "Implement tiered rate limiting with Redis-based sliding window, tenant quotas, and burst handling.",
+      "feature_dependency": ["GATEWAY-005"],
+      "ai_prompt": "Create comprehensive rate limiting:\n\n1. Create src/middleware/rate-limit/index.ts:\n   - RateLimitMiddleware using @fastify/rate-limit\n   - Custom keyGenerator for tenant-based limiting\n\n2. Create src/middleware/rate-limit/rate-limit-store.ts:\n   - Redis-based sliding window implementation\n   - Efficient counter using MULTI/EXEC\n   - Atomic increment and expire\n\n3. Rate limit tiers:\n   ```typescript\n   const RATE_LIMIT_TIERS = {\n     free: { requests: 100, window: 60, burst: 20 },\n     startup: { requests: 1000, window: 60, burst: 100 },\n     business: { requests: 10000, window: 60, burst: 500 },\n     enterprise: { requests: 100000, window: 60, burst: 5000 }\n   };\n   ```\n\n4. Create src/middleware/rate-limit/rate-limit-key.ts:\n   - Generate rate limit keys:\n     * Per tenant: `rl:tenant:{tenant_id}`\n     * Per API key: `rl:key:{api_key_id}`\n     * Per user: `rl:user:{tenant_id}:{user_id}`\n     * Per IP: `rl:ip:{ip_address}`\n   - Hierarchical limiting (check all levels)\n\n5. Create src/middleware/rate-limit/quota-manager.ts:\n   - Monthly quota tracking\n   - Quota reset on billing cycle\n   - Overage handling\n   - Quota alerts (80%, 90%, 100%)\n\n6. Response headers:\n   - X-RateLimit-Limit\n   - X-RateLimit-Remaining\n   - X-RateLimit-Reset\n   - Retry-After (on 429)\n\n7. Create src/services/quota-service.ts:\n   - Check tenant quota\n   - Increment usage counters\n   - Get current usage\n\n8. Bypass rules:\n   - Whitelist certain IPs\n   - Exempt health check endpoints\n   - Admin override capability",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test sliding window calculation",
+          "Test tier configuration",
+          "Test key generation"
+        ],
+        "integration_tests": [
+          "Test rate limiting with Redis",
+          "Test quota enforcement",
+          "Test burst handling",
+          "Test 429 response"
+        ],
+        "e2e_tests": [
+          "Test rate limit across multiple requests"
+        ]
+      },
+      "acceptance_criteria": [
+        "Rate limits are enforced per tier",
+        "Sliding window is accurate",
+        "Burst allowance works correctly",
+        "Headers are included in responses",
+        "Quota tracking is accurate"
+      ],
+      "files_to_create": [
+        "services/gateway/src/middleware/rate-limit/index.ts",
+        "services/gateway/src/middleware/rate-limit/rate-limit-store.ts",
+        "services/gateway/src/middleware/rate-limit/rate-limit-key.ts",
+        "services/gateway/src/middleware/rate-limit/quota-manager.ts",
+        "services/gateway/src/middleware/rate-limit/tiers.ts",
+        "services/gateway/src/services/quota-service.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["redis"],
+        "environment_variables": [
+          "RATE_LIMIT_ENABLED",
+          "RATE_LIMIT_DEFAULT_TIER",
+          "RATE_LIMIT_BYPASS_IPS"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "tenant_quotas",
+            "description": "Track tenant monthly quotas and usage"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "tenant_quotas",
+            "fields": ["tenant_id", "month"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 5,
+      "tags": ["gateway", "rate-limiting", "redis", "quota", "middleware"]
+    },
+    {
+      "id": "GATEWAY-007",
+      "task_name": "Request Validation Middleware",
+      "feature_details": "Implement request validation using Zod schemas with comprehensive error messages and schema generation.",
+      "feature_dependency": ["GATEWAY-003"],
+      "ai_prompt": "Create request validation middleware:\n\n1. Create src/middleware/validation/index.ts:\n   - ValidationMiddleware using @fastify/type-provider-zod\n   - Integrate Zod with Fastify schema validation\n\n2. Create src/middleware/validation/validators.ts:\n   - validateBody(schema)\n   - validateQuery(schema)\n   - validateParams(schema)\n   - validateHeaders(schema)\n\n3. Create src/schemas/validators/common.ts:\n   - Reusable Zod schemas:\n     ```typescript\n     export const uuid = z.string().uuid();\n     export const email = z.string().email();\n     export const timestamp = z.number().int().positive();\n     export const paginationQuery = z.object({\n       page: z.coerce.number().int().positive().default(1),\n       limit: z.coerce.number().int().min(1).max(100).default(20),\n       sort: z.string().optional(),\n       order: z.enum(['asc', 'desc']).default('desc')\n     });\n     ```\n\n4. Create src/schemas/validators/tenant.ts:\n   - Tenant-related validation schemas\n   - Create tenant request\n   - Update tenant request\n\n5. Create src/schemas/validators/user.ts:\n   - User validation schemas\n   - Registration\n   - Profile update\n\n6. Create src/middleware/validation/error-formatter.ts:\n   - Format Zod errors into user-friendly messages\n   - Include field paths\n   - Support localization keys\n\n7. Create src/middleware/validation/sanitizers.ts:\n   - Input sanitization\n   - XSS prevention\n   - SQL injection prevention\n   - Trim whitespace\n   - Normalize unicode\n\n8. Create src/utils/schema-to-json.ts:\n   - Convert Zod schemas to JSON Schema\n   - For Swagger documentation",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test each validator",
+          "Test error formatting",
+          "Test sanitization"
+        ],
+        "integration_tests": [
+          "Test validation in routes",
+          "Test error responses",
+          "Test schema generation"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "All requests are validated",
+        "Error messages are clear and actionable",
+        "Schemas are reusable",
+        "Swagger docs are generated from schemas",
+        "Sanitization prevents common attacks"
+      ],
+      "files_to_create": [
+        "services/gateway/src/middleware/validation/index.ts",
+        "services/gateway/src/middleware/validation/validators.ts",
+        "services/gateway/src/middleware/validation/error-formatter.ts",
+        "services/gateway/src/middleware/validation/sanitizers.ts",
+        "services/gateway/src/schemas/validators/common.ts",
+        "services/gateway/src/schemas/validators/tenant.ts",
+        "services/gateway/src/schemas/validators/user.ts",
+        "services/gateway/src/schemas/validators/index.ts",
+        "services/gateway/src/utils/schema-to-json.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["gateway", "validation", "zod", "schemas", "middleware"]
+    },
+    {
+      "id": "GATEWAY-008",
+      "task_name": "Structured Logging Middleware",
+      "feature_details": "Implement structured JSON logging with request tracing, sensitive data redaction, and log aggregation support.",
+      "feature_dependency": ["GATEWAY-002"],
+      "ai_prompt": "Create structured logging middleware:\n\n1. Create src/middleware/logging/index.ts:\n   - LoggingMiddleware using Pino\n   - Request/response logging\n   - Automatic timing\n\n2. Create src/middleware/logging/request-logger.ts:\n   - Log on request start:\n     ```json\n     {\n       \"level\": \"info\",\n       \"timestamp\": \"2024-01-01T00:00:00.000Z\",\n       \"request_id\": \"uuid\",\n       \"trace_id\": \"uuid\",\n       \"tenant_id\": \"tenant-1\",\n       \"method\": \"POST\",\n       \"path\": \"/v1/messages\",\n       \"query\": {},\n       \"user_agent\": \"CAAS-SDK/1.0\",\n       \"ip\": \"1.2.3.4\"\n     }\n     ```\n\n3. Create src/middleware/logging/response-logger.ts:\n   - Log on response:\n     ```json\n     {\n       \"level\": \"info\",\n       \"request_id\": \"uuid\",\n       \"status\": 200,\n       \"duration_ms\": 45,\n       \"response_size\": 1234\n     }\n     ```\n\n4. Create src/middleware/logging/redaction.ts:\n   - Redact sensitive fields:\n     * password, secret, token\n     * Authorization header\n     * API keys\n     * Credit card numbers\n   - Configurable redaction patterns\n\n5. Create src/middleware/logging/context.ts:\n   - AsyncLocalStorage for log context\n   - Inherit context through async calls\n   - Add custom fields dynamically\n\n6. Create src/utils/logger.ts:\n   - createLogger(name) factory\n   - Child loggers with context\n   - Log level configuration per module\n\n7. Create src/middleware/logging/audit-logger.ts:\n   - Separate audit log stream\n   - Log security-relevant events:\n     * Authentication attempts\n     * Permission changes\n     * Data access\n     * Configuration changes\n\n8. Log destinations:\n   - stdout for container logs\n   - File rotation for persistence\n   - Loki for aggregation",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test redaction patterns",
+          "Test log formatting",
+          "Test context propagation"
+        ],
+        "integration_tests": [
+          "Test request/response logging",
+          "Test audit logging",
+          "Test async context"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "All requests are logged with timing",
+        "Sensitive data is redacted",
+        "Trace IDs propagate through logs",
+        "Audit events are logged separately",
+        "Logs are valid JSON"
+      ],
+      "files_to_create": [
+        "services/gateway/src/middleware/logging/index.ts",
+        "services/gateway/src/middleware/logging/request-logger.ts",
+        "services/gateway/src/middleware/logging/response-logger.ts",
+        "services/gateway/src/middleware/logging/redaction.ts",
+        "services/gateway/src/middleware/logging/context.ts",
+        "services/gateway/src/middleware/logging/audit-logger.ts",
+        "services/gateway/src/utils/logger.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [
+          "LOG_LEVEL",
+          "LOG_REDACT_PATTERNS",
+          "AUDIT_LOG_ENABLED"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "audit_logs",
+            "description": "Store audit log entries for compliance"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "audit_logs",
+            "fields": ["tenant_id", "timestamp"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["gateway", "logging", "pino", "audit", "middleware"]
+    },
+    {
+      "id": "GATEWAY-009",
+      "task_name": "Error Handling and Recovery",
+      "feature_details": "Implement comprehensive error handling with consistent error responses, error tracking, and graceful degradation.",
+      "feature_dependency": ["GATEWAY-003", "GATEWAY-008"],
+      "ai_prompt": "Create comprehensive error handling:\n\n1. Create src/errors/error-handler.ts:\n   - Global error handler plugin\n   - Catch all uncaught errors\n   - Convert to HTTP responses\n   - Log errors with context\n\n2. Create src/errors/http-errors.ts (expand):\n   ```typescript\n   export class HttpError extends Error {\n     constructor(\n       public statusCode: number,\n       public code: string,\n       public message: string,\n       public details?: unknown\n     ) {}\n   }\n   ```\n   - All HTTP error classes\n   - Error codes for SDK handling\n\n3. Create src/errors/error-response.ts:\n   - Standard error response format:\n     ```json\n     {\n       \"success\": false,\n       \"error\": {\n         \"code\": \"VALIDATION_ERROR\",\n         \"message\": \"Invalid request body\",\n         \"details\": [\n           { \"field\": \"email\", \"message\": \"Invalid email format\" }\n         ],\n         \"request_id\": \"uuid\",\n         \"timestamp\": 1234567890\n       }\n     }\n     ```\n\n4. Create src/errors/error-codes.ts:\n   - Define all error codes:\n     * AUTH_* - Authentication errors\n     * AUTHZ_* - Authorization errors\n     * VAL_* - Validation errors\n     * RATE_* - Rate limit errors\n     * SYS_* - System errors\n     * TENANT_* - Tenant errors\n     * MSG_* - Messaging errors\n\n5. Create src/errors/error-tracker.ts:\n   - Send errors to tracking service (Sentry pattern)\n   - Error grouping\n   - User impact tracking\n   - Error rate monitoring\n\n6. Create src/middleware/error/graceful-degradation.ts:\n   - Circuit breaker for dependencies\n   - Fallback responses\n   - Cache stale data on failure\n   - Timeout handling\n\n7. Create src/middleware/error/not-found-handler.ts:\n   - Handle 404 errors\n   - Suggest similar endpoints\n   - Log unknown paths\n\n8. Create src/middleware/error/timeout-handler.ts:\n   - Request timeout handling\n   - Configurable per route\n   - Abort slow operations",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test error conversion",
+          "Test error formatting",
+          "Test error codes"
+        ],
+        "integration_tests": [
+          "Test error handler catches all errors",
+          "Test graceful degradation",
+          "Test timeout handling"
+        ],
+        "e2e_tests": [
+          "Test error responses match spec"
+        ]
+      },
+      "acceptance_criteria": [
+        "All errors return consistent format",
+        "Error codes are documented",
+        "Errors are tracked with context",
+        "Graceful degradation works",
+        "Timeouts are handled properly"
+      ],
+      "files_to_create": [
+        "services/gateway/src/errors/error-handler.ts",
+        "services/gateway/src/errors/http-errors.ts",
+        "services/gateway/src/errors/error-response.ts",
+        "services/gateway/src/errors/error-codes.ts",
+        "services/gateway/src/errors/error-tracker.ts",
+        "services/gateway/src/middleware/error/graceful-degradation.ts",
+        "services/gateway/src/middleware/error/not-found-handler.ts",
+        "services/gateway/src/middleware/error/timeout-handler.ts",
+        "services/gateway/src/middleware/error/index.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [
+          "ERROR_TRACKING_DSN",
+          "REQUEST_TIMEOUT_MS"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 3,
+      "tags": ["gateway", "error-handling", "middleware", "circuit-breaker"]
+    }
+  ]
+}

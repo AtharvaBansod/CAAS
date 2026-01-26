@@ -1,0 +1,245 @@
+{
+  "task_group": "mongodb-optimization",
+  "description": "MongoDB performance optimization including indexing strategy, query optimization, and caching layer",
+  "priority": "high",
+  "estimated_hours": 15,
+  "phase": 1,
+  "feature_area": "mongodb-service",
+  "tasks": [
+    {
+      "id": "MONGO-014",
+      "task_name": "Index Strategy Implementation",
+      "feature_details": "Implement comprehensive indexing strategy for all collections based on query patterns, including compound indexes, partial indexes, and TTL indexes.",
+      "feature_dependency": ["MONGO-013"],
+      "ai_prompt": "Create a comprehensive indexing strategy:\n\n1. Create src/indexes/index-manager.ts:\n   - IndexManager class\n   - Methods:\n     * createIndexes(): Create all indexes\n     * dropIndexes(): Drop non-essential indexes\n     * analyzeIndexUsage(): Get index usage stats\n     * suggestIndexes(queryPatterns): Suggest new indexes\n\n2. Create src/indexes/index-definitions.ts:\n   Define all indexes by collection:\n\n   Platform Collections:\n   - saas_clients: { client_id: 1 } unique, { status: 1, created_at: -1 }\n   - applications: { client_id: 1, app_id: 1 } unique, { domains: 1 }\n   - api_keys: { key_hash: 1 } unique, { client_id: 1, status: 1 }\n\n   Tenant Collections:\n   - users: { tenant_id: 1, external_user_id: 1 } unique, { tenant_id: 1, status: 1, last_seen: -1 }\n   - conversations: { tenant_id: 1, 'participants.user_id': 1, updated_at: -1 }, { tenant_id: 1, type: 1 }\n   - messages: { tenant_id: 1, conversation_id: 1, created_at: -1 }, { tenant_id: 1, sender_id: 1, created_at: -1 }\n   - files: { tenant_id: 1, uploader_id: 1, created_at: -1 }, { tenant_id: 1, 'sharing.conversation_id': 1 }\n\n3. Create src/indexes/ttl-indexes.ts:\n   - user_sessions: expire after 7 days\n   - read_receipts: expire after 30 days (configurable)\n   - posts with type='story': expire after 24 hours\n\n4. Create src/indexes/partial-indexes.ts:\n   - Active users only: { status: 'active' }\n   - Unread messages: { 'read_by': { $size: 0 } }\n\n5. Add index creation to migration system\n\n6. Create CLI command: npm run indexes:analyze\n\nEnsure indexes support the most common query patterns identified in roadmaps.",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test index definition parsing",
+          "Test TTL calculation"
+        ],
+        "integration_tests": [
+          "Test index creation on all collections",
+          "Test TTL index expiry",
+          "Test query performance with indexes",
+          "Test index usage analysis"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "All defined indexes are created",
+        "TTL indexes expire documents correctly",
+        "Partial indexes reduce index size",
+        "Query explain shows index usage",
+        "Index analysis reports usage statistics"
+      ],
+      "files_to_create": [
+        "services/mongodb-service/src/indexes/index-manager.ts",
+        "services/mongodb-service/src/indexes/index-definitions.ts",
+        "services/mongodb-service/src/indexes/ttl-indexes.ts",
+        "services/mongodb-service/src/indexes/partial-indexes.ts",
+        "services/mongodb-service/src/indexes/index.ts"
+      ],
+      "files_to_modify": [
+        "services/mongodb-service/package.json"
+      ],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": ["All production indexes"],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["mongodb", "indexes", "performance", "optimization"]
+    },
+    {
+      "id": "MONGO-015",
+      "task_name": "Query Optimization and Profiling",
+      "feature_details": "Implement query profiling, slow query detection, and query optimization utilities.",
+      "feature_dependency": ["MONGO-014"],
+      "ai_prompt": "Create query optimization and profiling tools:\n\n1. Create src/profiling/query-profiler.ts:\n   - QueryProfiler class\n   - Enable MongoDB profiler for slow queries (> 100ms)\n   - Methods:\n     * enableProfiling(level: 0|1|2, slowMs: number)\n     * getSlowQueries(options): Fetch slow query log\n     * analyzeQuery(query): Run explain and analyze\n     * suggestOptimizations(query): AI-assisted suggestions\n\n2. Create src/profiling/query-analyzer.ts:\n   - Analyze explain output\n   - Detect:\n     * Full collection scans (COLLSCAN)\n     * Index not used when available\n     * Large documents fetched\n     * High skip values (pagination anti-pattern)\n   - Generate recommendations\n\n3. Create src/utils/optimized-queries.ts:\n   - Pre-built optimized aggregation pipelines:\n     * getConversationList(userId, options) - Optimized for chat list\n     * getMessageHistory(conversationId, cursor) - Efficient pagination\n     * getUnreadCounts(userId) - Aggregated unread counts\n     * searchMessages(query, options) - Full-text search\n\n4. Create src/utils/query-cache.ts:\n   - Query result caching with Redis\n   - Cache invalidation strategies\n   - Cache key generation\n   - TTL configuration per query type\n\n5. Metrics to collect:\n   - Query execution time\n   - Documents examined vs returned\n   - Index usage\n   - Cache hit/miss ratio\n\nAll slow queries should be logged with context for debugging.",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test explain output parsing",
+          "Test cache key generation",
+          "Test optimization suggestion logic"
+        ],
+        "integration_tests": [
+          "Test profiling with real queries",
+          "Test optimized queries performance",
+          "Test cache hit/miss behavior",
+          "Test slow query detection"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Slow queries are detected and logged",
+        "Query explain is parsed correctly",
+        "Optimized queries execute in < 50ms",
+        "Cache reduces database load",
+        "Recommendations are actionable"
+      ],
+      "files_to_create": [
+        "services/mongodb-service/src/profiling/query-profiler.ts",
+        "services/mongodb-service/src/profiling/query-analyzer.ts",
+        "services/mongodb-service/src/profiling/index.ts",
+        "services/mongodb-service/src/utils/optimized-queries.ts",
+        "services/mongodb-service/src/utils/query-cache.ts"
+      ],
+      "files_to_modify": [
+        "services/mongodb-service/src/utils/index.ts"
+      ],
+      "docker_requirements": {
+        "services": ["redis"],
+        "environment_variables": [
+          "QUERY_CACHE_TTL",
+          "SLOW_QUERY_THRESHOLD_MS"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 5,
+      "tags": ["mongodb", "profiling", "optimization", "caching"]
+    },
+    {
+      "id": "MONGO-016",
+      "task_name": "Redis Caching Layer Integration",
+      "feature_details": "Implement a comprehensive Redis caching layer with cache-aside pattern, write-through caching, and intelligent cache invalidation.",
+      "feature_dependency": ["MONGO-015"],
+      "ai_prompt": "Create Redis caching layer for MongoDB:\n\n1. Create src/cache/redis-client.ts:\n   - RedisClient singleton\n   - Connection with retry logic\n   - Cluster support for production\n   - Health check\n\n2. Create src/cache/cache-manager.ts:\n   - CacheManager class\n   - Methods:\n     * get<T>(key: string): Promise<T | null>\n     * set<T>(key: string, value: T, ttl?: number): Promise<void>\n     * delete(key: string): Promise<void>\n     * deletePattern(pattern: string): Promise<void>\n     * wrap<T>(key: string, fn: () => Promise<T>, ttl?: number): Promise<T>\n\n3. Create src/cache/cache-strategies.ts:\n   - Cache-aside (lazy loading)\n   - Write-through (sync cache on write)\n   - Write-behind (async cache update)\n   - Cache invalidation patterns\n\n4. Create src/cache/entity-cache.ts:\n   - UserCache: Cache user profiles, presence\n   - ConversationCache: Cache conversation metadata\n   - MessageCache: Cache recent messages (last 50 per conversation)\n   - PresenceCache: Real-time user presence\n\n5. Cache key patterns:\n   - user:{tenant_id}:{user_id}\n   - conversation:{tenant_id}:{conversation_id}\n   - messages:{tenant_id}:{conversation_id}:recent\n   - presence:{tenant_id}:{user_id}\n   - unread:{tenant_id}:{user_id}\n\n6. Invalidation triggers:\n   - Message sent → invalidate conversation cache\n   - User updated → invalidate user cache\n   - Read receipt → invalidate unread count\n\nCache hit rate target: > 80% for hot data.",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test cache key generation",
+          "Test TTL expiry",
+          "Test pattern deletion"
+        ],
+        "integration_tests": [
+          "Test cache-aside pattern",
+          "Test write-through updates",
+          "Test cache invalidation",
+          "Test cache performance"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Cache hit rate > 80% for common queries",
+        "Cache invalidation is immediate",
+        "Write-through maintains consistency",
+        "Cache failure doesn't break application",
+        "Cluster mode works in production"
+      ],
+      "files_to_create": [
+        "services/mongodb-service/src/cache/redis-client.ts",
+        "services/mongodb-service/src/cache/cache-manager.ts",
+        "services/mongodb-service/src/cache/cache-strategies.ts",
+        "services/mongodb-service/src/cache/entity-cache.ts",
+        "services/mongodb-service/src/cache/cache-keys.ts",
+        "services/mongodb-service/src/cache/index.ts"
+      ],
+      "files_to_modify": [
+        "services/mongodb-service/src/index.ts"
+      ],
+      "docker_requirements": {
+        "services": ["redis"],
+        "environment_variables": [
+          "REDIS_URL",
+          "REDIS_PASSWORD",
+          "CACHE_DEFAULT_TTL"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["mongodb", "redis", "caching", "performance"]
+    },
+    {
+      "id": "MONGO-017",
+      "task_name": "Connection Pool and Resource Monitoring",
+      "feature_details": "Implement connection pool monitoring, resource usage tracking, and automatic scaling of database connections.",
+      "feature_dependency": ["MONGO-002"],
+      "ai_prompt": "Create connection pool and resource monitoring:\n\n1. Create src/monitoring/connection-monitor.ts:\n   - ConnectionMonitor class\n   - Track:\n     * Active connections\n     * Available connections\n     * Connection wait time\n     * Connection errors\n   - Methods:\n     * getPoolStats(): ConnectionPoolStats\n     * onConnectionEvent(handler): Subscribe to events\n\n2. Create src/monitoring/resource-monitor.ts:\n   - ResourceMonitor class\n   - Track per tenant:\n     * Query count\n     * Data transfer size\n     * Storage usage\n     * Index size\n   - Aggregate metrics for platform monitoring\n\n3. Create src/monitoring/health-reporter.ts:\n   - Comprehensive health check:\n     * Primary reachable\n     * Replica set status\n     * Replication lag\n     * Connection pool health\n     * Disk space\n   - Return structured health response\n\n4. Create src/monitoring/metrics-exporter.ts:\n   - Export metrics in Prometheus format\n   - Metrics:\n     * mongodb_connections_active\n     * mongodb_connections_available\n     * mongodb_query_duration_seconds\n     * mongodb_operations_total\n     * mongodb_replication_lag_seconds\n\n5. Auto-scaling logic:\n   - Increase pool size when utilization > 80%\n   - Decrease pool size when utilization < 20%\n   - Respect min/max bounds\n\nMetrics should be collected efficiently without impacting performance.",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test metric calculations",
+          "Test health check logic",
+          "Test auto-scaling thresholds"
+        ],
+        "integration_tests": [
+          "Test connection pool monitoring",
+          "Test resource tracking accuracy",
+          "Test Prometheus metrics export",
+          "Test health endpoint"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Connection pool stats are accurate",
+        "Health check reflects actual status",
+        "Prometheus metrics are correctly formatted",
+        "Auto-scaling adjusts pool size appropriately",
+        "Monitoring adds < 1% overhead"
+      ],
+      "files_to_create": [
+        "services/mongodb-service/src/monitoring/connection-monitor.ts",
+        "services/mongodb-service/src/monitoring/resource-monitor.ts",
+        "services/mongodb-service/src/monitoring/health-reporter.ts",
+        "services/mongodb-service/src/monitoring/metrics-exporter.ts",
+        "services/mongodb-service/src/monitoring/index.ts"
+      ],
+      "files_to_modify": [
+        "services/mongodb-service/src/index.ts"
+      ],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [
+          "POOL_MIN_SIZE",
+          "POOL_MAX_SIZE",
+          "POOL_SCALE_UP_THRESHOLD",
+          "POOL_SCALE_DOWN_THRESHOLD"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/health",
+          "description": "Database health check endpoint"
+        },
+        {
+          "method": "GET",
+          "path": "/metrics",
+          "description": "Prometheus metrics endpoint"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 2,
+      "tags": ["mongodb", "monitoring", "metrics", "health-check"]
+    }
+  ]
+}

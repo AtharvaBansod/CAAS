@@ -1,0 +1,222 @@
+{
+  "task_group": "message-types",
+  "description": "Different message types - text, media, system, and rich messages",
+  "priority": "high",
+  "estimated_hours": 16,
+  "phase": 4,
+  "feature_area": "messages",
+  "tasks": [
+    {
+      "id": "MSG-005",
+      "task_name": "Text Message Processing",
+      "feature_details": "Advanced text message processing with markdown, mentions, and link previews.",
+      "feature_dependency": ["MSG-003"],
+      "ai_prompt": "Implement text message processing:\n\n1. Create services/messaging-service/src/messages/processors/text-processor.ts:\n   ```typescript\n   export class TextProcessor {\n     async process(text: string): Promise<ProcessedText> {\n       return {\n         original: text,\n         formatted: this.formatMarkdown(text),\n         mentions: this.extractMentions(text),\n         links: await this.extractLinks(text),\n         hashtags: this.extractHashtags(text),\n       };\n     }\n\n     private formatMarkdown(text: string): string {\n       // Bold: **text** or __text__\n       // Italic: *text* or _text_\n       // Code: `code` or ```code```\n       // Lists, quotes, etc.\n     }\n\n     private extractMentions(text: string): Mention[] {\n       // Extract @username patterns\n       // Validate users exist\n       // Return with user IDs\n     }\n\n     private async extractLinks(text: string): Promise<LinkPreview[]> {\n       // Extract URLs\n       // Fetch metadata (title, description, image)\n       // Cache previews\n     }\n   }\n\n   interface ProcessedText {\n     original: string;\n     formatted: string;\n     mentions: Mention[];\n     links: LinkPreview[];\n     hashtags: string[];\n   }\n   ```\n\n2. Create services/messaging-service/src/messages/processors/link-preview.service.ts:\n   - Fetch page metadata\n   - Extract Open Graph tags\n   - Download and cache preview images\n   - Handle timeouts and errors\n\n3. Mention handling:\n   - @username for specific user\n   - @everyone for group mentions (admin only)\n   - @here for online users\n   - Validation against participant list\n\n4. Content limits:\n   - Max text length: 4000 characters\n   - Max mentions: 50\n   - Max links: 10\n   - Max preview fetches: 3\n\n5. Caching:\n   - Cache link previews in Redis\n   - TTL: 24 hours\n   - Skip fetching for cached URLs",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test markdown formatting",
+          "Test mention extraction",
+          "Test link extraction"
+        ],
+        "integration_tests": [
+          "Test link preview fetching",
+          "Test caching",
+          "Test with real URLs"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Markdown is formatted",
+        "Mentions are extracted",
+        "Links are extracted",
+        "Previews are generated",
+        "Caching works"
+      ],
+      "files_to_create": [
+        "services/messaging-service/src/messages/processors/text-processor.ts",
+        "services/messaging-service/src/messages/processors/link-preview.service.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["redis"],
+        "environment_variables": [
+          "LINK_PREVIEW_TIMEOUT",
+          "LINK_PREVIEW_CACHE_TTL"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["messaging", "text", "markdown", "links"]
+    },
+    {
+      "id": "MSG-006",
+      "task_name": "Media Message Support",
+      "feature_details": "Support for media attachments including images, videos, audio, and files.",
+      "feature_dependency": ["MSG-003", "MEDIA-001"],
+      "ai_prompt": "Implement media message support:\n\n1. Create services/messaging-service/src/messages/processors/media-processor.ts:\n   ```typescript\n   export class MediaProcessor {\n     constructor(private mediaService: MediaService) {}\n\n     async processMediaMessage(message: CreateMessageDto): Promise<ProcessedMediaMessage> {\n       const attachments: MediaAttachment[] = [];\n\n       for (const media of message.media) {\n         // Validate media exists and belongs to sender\n         const mediaInfo = await this.mediaService.getMedia(media.id);\n         \n         attachments.push({\n           id: media.id,\n           type: mediaInfo.type,\n           url: mediaInfo.url,\n           thumbnail_url: mediaInfo.thumbnail_url,\n           filename: mediaInfo.filename,\n           size: mediaInfo.size,\n           mime_type: mediaInfo.mime_type,\n           dimensions: mediaInfo.dimensions,\n           duration: mediaInfo.duration,\n         });\n       }\n\n       return { attachments };\n     }\n   }\n\n   interface MediaAttachment {\n     id: string;\n     type: 'image' | 'video' | 'audio' | 'file';\n     url: string;\n     thumbnail_url?: string;\n     filename: string;\n     size: number;\n     mime_type: string;\n     dimensions?: { width: number; height: number };\n     duration?: number; // for audio/video\n   }\n   ```\n\n2. Media types:\n   - Images: JPEG, PNG, GIF, WebP\n   - Videos: MP4, WebM, MOV\n   - Audio: MP3, OGG, WAV, M4A (voice messages)\n   - Files: PDF, DOC, XLS, etc.\n\n3. Voice message handling:\n   ```typescript\n   interface VoiceMessage extends MediaAttachment {\n     type: 'audio';\n     is_voice_message: true;\n     waveform: number[]; // Audio waveform for visualization\n   }\n   ```\n\n4. Message with caption:\n   - Media messages can have text captions\n   - Caption supports markdown and mentions\n\n5. Gallery support:\n   - Multiple images in single message\n   - Album grouping for display\n   - Max 10 media per message",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test media validation",
+          "Test attachment processing"
+        ],
+        "integration_tests": [
+          "Test with media service",
+          "Test voice messages",
+          "Test galleries"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Images are supported",
+        "Videos are supported",
+        "Audio/voice messages work",
+        "Files are supported",
+        "Galleries work"
+      ],
+      "files_to_create": [
+        "services/messaging-service/src/messages/processors/media-processor.ts",
+        "services/messaging-service/src/messages/processors/voice-message.service.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["media-service"],
+        "environment_variables": [
+          "MAX_MEDIA_PER_MESSAGE"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["messaging", "media", "attachments", "voice"]
+    },
+    {
+      "id": "MSG-007",
+      "task_name": "System Messages",
+      "feature_details": "Automatic system messages for group events and call notifications.",
+      "feature_dependency": ["MSG-003"],
+      "ai_prompt": "Implement system messages:\n\n1. Create services/messaging-service/src/messages/system-message.service.ts:\n   ```typescript\n   export class SystemMessageService {\n     constructor(private messageRepo: MessageRepository) {}\n\n     async createSystemMessage(\n       conversationId: string,\n       type: SystemMessageType,\n       data: SystemMessageData,\n     ): Promise<Message> {\n       return this.messageRepo.create({\n         conversation_id: conversationId,\n         type: MessageType.SYSTEM,\n         sender_id: 'system',\n         content: {\n           system: {\n             type,\n             data,\n           },\n         },\n       });\n     }\n\n     // Pre-built system message types\n     async memberJoined(conversationId: string, userId: string, addedBy?: string): Promise<Message>;\n     async memberLeft(conversationId: string, userId: string): Promise<Message>;\n     async memberRemoved(conversationId: string, userId: string, removedBy: string): Promise<Message>;\n     async groupNameChanged(conversationId: string, newName: string, changedBy: string): Promise<Message>;\n     async callStarted(conversationId: string, callerId: string): Promise<Message>;\n     async callEnded(conversationId: string, duration: number): Promise<Message>;\n   }\n\n   enum SystemMessageType {\n     MEMBER_JOINED = 'member_joined',\n     MEMBER_LEFT = 'member_left',\n     MEMBER_REMOVED = 'member_removed',\n     GROUP_CREATED = 'group_created',\n     GROUP_NAME_CHANGED = 'group_name_changed',\n     GROUP_AVATAR_CHANGED = 'group_avatar_changed',\n     CALL_STARTED = 'call_started',\n     CALL_ENDED = 'call_ended',\n     CALL_MISSED = 'call_missed',\n     ENCRYPTION_CHANGED = 'encryption_changed',\n   }\n   ```\n\n2. Event listeners:\n   - Listen to Kafka events\n   - Create system messages automatically\n   - No sender (system-generated)\n\n3. Create services/messaging-service/src/messages/system-message.consumer.ts:\n   ```typescript\n   @KafkaConsumer('group-events')\n   export class SystemMessageConsumer {\n     @Subscribe('member.added')\n     async onMemberAdded(event: MemberAddedEvent) {\n       await this.systemMessageService.memberJoined(\n         event.conversation_id,\n         event.member_id,\n         event.added_by,\n       );\n     }\n\n     @Subscribe('call.ended')\n     async onCallEnded(event: CallEndedEvent) {\n       await this.systemMessageService.callEnded(\n         event.conversation_id,\n         event.duration,\n       );\n     }\n   }\n   ```\n\n4. System message display:\n   - Different styling in UI\n   - Localization support\n   - Include user names in message",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test system message creation",
+          "Test message types"
+        ],
+        "integration_tests": [
+          "Test event consumption",
+          "Test automatic creation"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "System messages are created",
+        "All event types handled",
+        "Messages are localized",
+        "Events trigger messages"
+      ],
+      "files_to_create": [
+        "services/messaging-service/src/messages/system-message.service.ts",
+        "services/messaging-service/src/messages/system-message.consumer.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["kafka"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["messaging", "system", "events", "automation"]
+    },
+    {
+      "id": "MSG-008",
+      "task_name": "Rich Message Types",
+      "feature_details": "Support for rich interactive messages like cards, buttons, and location sharing.",
+      "feature_dependency": ["MSG-003"],
+      "ai_prompt": "Implement rich message types:\n\n1. Create services/messaging-service/src/messages/processors/rich-message.processor.ts:\n   ```typescript\n   export class RichMessageProcessor {\n     async process(content: RichContent): Promise<ProcessedRichContent> {\n       switch (content.type) {\n         case 'card':\n           return this.processCard(content);\n         case 'carousel':\n           return this.processCarousel(content);\n         case 'location':\n           return this.processLocation(content);\n         case 'contact':\n           return this.processContact(content);\n         case 'poll':\n           return this.processPoll(content);\n       }\n     }\n   }\n\n   interface RichContent {\n     type: 'card' | 'carousel' | 'location' | 'contact' | 'poll';\n     data: CardData | CarouselData | LocationData | ContactData | PollData;\n   }\n\n   interface CardData {\n     title: string;\n     subtitle?: string;\n     image_url?: string;\n     buttons?: Button[];\n   }\n\n   interface Button {\n     type: 'url' | 'action' | 'reply';\n     label: string;\n     value: string;\n   }\n\n   interface LocationData {\n     latitude: number;\n     longitude: number;\n     name?: string;\n     address?: string;\n     live?: {\n       duration: number;\n       expires_at: Date;\n     };\n   }\n   ```\n\n2. Card messages:\n   - Title, subtitle, image\n   - Action buttons\n   - URL buttons\n   - Quick reply buttons\n\n3. Location sharing:\n   - Static location (point)\n   - Live location (updating)\n   - Live location duration\n   - Map preview generation\n\n4. Contact sharing:\n   - Share contact cards\n   - Phone number, email\n   - Profile picture\n\n5. Poll messages:\n   ```typescript\n   interface PollData {\n     question: string;\n     options: PollOption[];\n     allows_multiple: boolean;\n     anonymous: boolean;\n     closes_at?: Date;\n   }\n\n   interface PollOption {\n     id: string;\n     text: string;\n     votes: number;\n     voters?: string[];\n   }\n   ```\n\n6. Interactive handling:\n   - Button click events\n   - Poll vote handling\n   - Live location updates",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test card processing",
+          "Test location validation",
+          "Test poll logic"
+        ],
+        "integration_tests": [
+          "Test button interactions",
+          "Test live location updates",
+          "Test poll voting"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Card messages work",
+        "Location sharing works",
+        "Contact sharing works",
+        "Polls work",
+        "Buttons are interactive"
+      ],
+      "files_to_create": [
+        "services/messaging-service/src/messages/processors/rich-message.processor.ts",
+        "services/messaging-service/src/messages/poll.service.ts",
+        "services/messaging-service/src/messages/live-location.service.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb", "redis"],
+        "environment_variables": [
+          "LIVE_LOCATION_MAX_DURATION"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/v1/messages/:id/poll/vote",
+          "description": "Vote on a poll"
+        },
+        {
+          "method": "PUT",
+          "path": "/v1/messages/:id/location",
+          "description": "Update live location"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "poll_votes",
+            "description": "Store poll vote data"
+          },
+          {
+            "name": "live_locations",
+            "description": "Store live location updates"
+          }
+        ],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["messaging", "rich", "interactive", "location", "polls"]
+    }
+  ]
+}

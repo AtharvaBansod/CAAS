@@ -1,0 +1,284 @@
+{
+  "task_group": "read-receipts",
+  "description": "Message read tracking and delivery receipts",
+  "priority": "high",
+  "estimated_hours": 16,
+  "phase": 3,
+  "feature_area": "realtime-events",
+  "tasks": [
+    {
+      "id": "RECEIPT-001",
+      "task_name": "Read Receipt Handler",
+      "feature_details": "Implement read receipt handling for individual and batch message reads.",
+      "feature_dependency": ["SOCKET-009", "SOCKET-010"],
+      "ai_prompt": "Implement read receipt handler:\n\n1. Create services/socket-service/src/receipts/read-receipt-handler.ts:\n   ```typescript\n   export class ReadReceiptHandler {\n     async markAsRead(userId: string, messageId: string): Promise<void>;\n     async markBatchAsRead(userId: string, messageIds: string[]): Promise<void>;\n     async markConversationAsRead(userId: string, conversationId: string, upToMessageId: string): Promise<void>;\n   }\n   ```\n\n2. Create services/socket-service/src/events/read-events.ts:\n   ```typescript\n   socket.on('message_read', async (data: { message_id: string; conversation_id: string }) => {\n     await readReceiptHandler.markAsRead(socket.data.user.id, data.message_id);\n\n     // Notify message sender\n     const receipt: ReadReceipt = {\n       message_id: data.message_id,\n       conversation_id: data.conversation_id,\n       read_by: socket.data.user.id,\n       read_at: new Date(),\n     };\n\n     socket.to(`conversation:${data.conversation_id}`).emit('read_receipt', receipt);\n   });\n\n   socket.on('conversation_read', async (data: { conversation_id: string; up_to_message_id: string }) => {\n     await readReceiptHandler.markConversationAsRead(\n       socket.data.user.id,\n       data.conversation_id,\n       data.up_to_message_id\n     );\n   });\n   ```\n\n3. Create services/socket-service/src/receipts/read-receipt-store.ts:\n   - Store read receipts in MongoDB\n   - Track per-user read position per conversation\n   - Efficient bulk updates\n\n4. Read tracking strategies:\n   - Per-message read (granular)\n   - Watermark/high-water mark (efficient)\n   - Hybrid approach\n\n5. Create services/socket-service/src/receipts/read-receipt-types.ts:\n   ```typescript\n   interface ReadReceipt {\n     message_id: string;\n     conversation_id: string;\n     read_by: string;\n     read_at: Date;\n   }\n\n   interface ReadPosition {\n     user_id: string;\n     conversation_id: string;\n     last_read_message_id: string;\n     last_read_at: Date;\n   }\n   ```",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test single message read",
+          "Test batch read",
+          "Test conversation read"
+        ],
+        "integration_tests": [
+          "Test receipt broadcast",
+          "Test persistence",
+          "Test watermark update"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Read receipts are recorded",
+        "Receipts are broadcast to sender",
+        "Batch reads work efficiently",
+        "Watermark tracking works",
+        "Data persists to MongoDB"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/receipts/read-receipt-handler.ts",
+        "services/socket-service/src/receipts/read-receipt-store.ts",
+        "services/socket-service/src/receipts/read-receipt-types.ts",
+        "services/socket-service/src/events/read-events.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb", "redis"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "read_receipts",
+            "description": "Store message read receipts"
+          },
+          {
+            "name": "read_positions",
+            "description": "Store user read positions per conversation"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "read_receipts",
+            "fields": ["message_id", "read_by"]
+          },
+          {
+            "collection": "read_positions",
+            "fields": ["user_id", "conversation_id"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["receipts", "read", "messaging"]
+    },
+    {
+      "id": "RECEIPT-002",
+      "task_name": "Delivery Receipt System",
+      "feature_details": "Implement delivery receipts to confirm message delivery to recipients.",
+      "feature_dependency": ["RECEIPT-001"],
+      "ai_prompt": "Implement delivery receipts:\n\n1. Create services/socket-service/src/receipts/delivery-receipt-handler.ts:\n   ```typescript\n   export class DeliveryReceiptHandler {\n     async markAsDelivered(userId: string, messageId: string): Promise<void>;\n     async markBatchAsDelivered(userId: string, messageIds: string[]): Promise<void>;\n     async getDeliveryStatus(messageId: string): Promise<DeliveryStatus>;\n   }\n\n   interface DeliveryStatus {\n     message_id: string;\n     total_recipients: number;\n     delivered_to: string[];\n     pending: string[];\n     failed: string[];\n   }\n   ```\n\n2. Delivery tracking:\n   - Message sent: Track all intended recipients\n   - Socket delivery: Mark delivered when socket receives\n   - Offline delivery: Mark delivered when user comes online\n\n3. Create services/socket-service/src/receipts/delivery-tracker.ts:\n   ```typescript\n   export class DeliveryTracker {\n     async trackMessageSent(messageId: string, recipientIds: string[]): Promise<void>;\n     async confirmDelivery(messageId: string, recipientId: string): Promise<void>;\n     async getPendingDeliveries(userId: string): Promise<string[]>;\n   }\n   ```\n\n4. Create services/socket-service/src/events/delivery-events.ts:\n   ```typescript\n   // On new message, send acknowledgment\n   socket.on('message_received', async (data: { message_id: string }) => {\n     await deliveryReceiptHandler.markAsDelivered(socket.data.user.id, data.message_id);\n\n     // Notify sender\n     const receipt: DeliveryReceipt = {\n       message_id: data.message_id,\n       delivered_to: socket.data.user.id,\n       delivered_at: new Date(),\n     };\n\n     // Send to sender's sockets\n     const senderSockets = await getSenderSockets(data.message_id);\n     io.to(senderSockets).emit('delivery_receipt', receipt);\n   });\n   ```\n\n5. Delivery status states:\n   - sent: Message sent to server\n   - delivered: Message received by recipient's device\n   - read: Message read by recipient\n\n6. Group message delivery:\n   - Track delivery per member\n   - Aggregate delivery status\n   - Show \"Delivered to 5 of 10\"",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test delivery marking",
+          "Test status aggregation",
+          "Test pending deliveries"
+        ],
+        "integration_tests": [
+          "Test delivery confirmation",
+          "Test offline delivery",
+          "Test group delivery"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Delivery is tracked per recipient",
+        "Sender receives delivery receipts",
+        "Offline users get delivered on reconnect",
+        "Group delivery status aggregates",
+        "Status progression works"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/receipts/delivery-receipt-handler.ts",
+        "services/socket-service/src/receipts/delivery-tracker.ts",
+        "services/socket-service/src/events/delivery-events.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb", "redis"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "delivery_receipts",
+            "description": "Store message delivery receipts"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "delivery_receipts",
+            "fields": ["message_id", "delivered_to"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["receipts", "delivery", "messaging"]
+    },
+    {
+      "id": "RECEIPT-003",
+      "task_name": "Unread Count Management",
+      "feature_details": "Manage unread message counts per conversation for badge displays.",
+      "feature_dependency": ["RECEIPT-001"],
+      "ai_prompt": "Implement unread count management:\n\n1. Create services/socket-service/src/receipts/unread-counter.ts:\n   ```typescript\n   export class UnreadCounter {\n     async incrementUnread(userId: string, conversationId: string): Promise<number>;\n     async resetUnread(userId: string, conversationId: string): Promise<void>;\n     async getUnreadCount(userId: string, conversationId: string): Promise<number>;\n     async getTotalUnread(userId: string): Promise<number>;\n     async getAllUnreadCounts(userId: string): Promise<Map<string, number>>;\n   }\n   ```\n\n2. Create services/socket-service/src/receipts/unread-store.ts:\n   - Redis-based for fast access\n   - Persist to MongoDB periodically\n   - Hash per user: unread:{user_id} -> {conv_id: count}\n\n3. Unread count updates:\n   - On new message: increment for all recipients\n   - On read: reset to 0 for that user\n   - On delete: recalculate\n\n4. Create services/socket-service/src/events/unread-events.ts:\n   ```typescript\n   // Emit unread count update to user\n   async function notifyUnreadChange(userId: string, conversationId: string, count: number) {\n     const sockets = await getSocketsForUser(userId);\n     io.to(sockets).emit('unread_count', {\n       conversation_id: conversationId,\n       count,\n       total: await unreadCounter.getTotalUnread(userId),\n     });\n   }\n   ```\n\n5. Create services/gateway/src/routes/v1/conversations/unread.ts:\n   - GET /v1/conversations/unread - Get all unread counts\n   - GET /v1/conversations/:id/unread - Get specific unread count\n   - POST /v1/conversations/:id/read - Mark as read\n\n6. Optimization:\n   - Batch unread updates\n   - Cache total unread count\n   - Lazy load conversation counts",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test increment",
+          "Test reset",
+          "Test total calculation"
+        ],
+        "integration_tests": [
+          "Test real-time updates",
+          "Test API endpoints",
+          "Test persistence"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Unread counts are accurate",
+        "Real-time updates work",
+        "Total unread is calculated",
+        "API endpoints work",
+        "Performance is acceptable"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/receipts/unread-counter.ts",
+        "services/socket-service/src/receipts/unread-store.ts",
+        "services/socket-service/src/events/unread-events.ts",
+        "services/gateway/src/routes/v1/conversations/unread.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["redis", "mongodb"],
+        "environment_variables": [
+          "UNREAD_PERSIST_INTERVAL_MS"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/v1/conversations/unread",
+          "description": "Get all unread counts"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/conversations/:id/unread",
+          "description": "Get conversation unread count"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/conversations/:id/read",
+          "description": "Mark conversation as read"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "unread_counts",
+            "description": "Store persisted unread counts"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "unread_counts",
+            "fields": ["user_id"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["receipts", "unread", "badges", "counts"]
+    },
+    {
+      "id": "RECEIPT-004",
+      "task_name": "Read Receipt Privacy Controls",
+      "feature_details": "Implement privacy controls for read receipts allowing users to disable them.",
+      "feature_dependency": ["RECEIPT-001"],
+      "ai_prompt": "Implement read receipt privacy:\n\n1. Create services/socket-service/src/receipts/read-receipt-privacy.ts:\n   ```typescript\n   export class ReadReceiptPrivacy {\n     async canSendReadReceipt(userId: string): Promise<boolean>;\n     async canSeeReadReceipts(userId: string): Promise<boolean>;\n     async shouldShowReceipt(senderId: string, recipientId: string): Promise<boolean>;\n   }\n   ```\n\n2. Privacy settings:\n   - Send read receipts: enabled/disabled\n   - Show read receipts: enabled/disabled (requires sending)\n   - If A disabled, A cannot see B's receipts either\n\n3. Create services/socket-service/src/receipts/read-receipt-settings.ts:\n   ```typescript\n   interface ReadReceiptSettings {\n     user_id: string;\n     send_read_receipts: boolean;\n     send_delivery_receipts: boolean;\n     updated_at: Date;\n   }\n   ```\n\n4. Create services/gateway/src/routes/v1/users/privacy.ts:\n   - GET /v1/users/me/privacy - Get privacy settings\n   - PUT /v1/users/me/privacy - Update privacy settings\n   - GET /v1/users/me/privacy/receipts - Get receipt settings\n   - PUT /v1/users/me/privacy/receipts - Update receipt settings\n\n5. Privacy enforcement:\n   - Filter receipts before sending\n   - Filter receipts in query results\n   - Cache privacy settings\n\n6. Tenant-level settings:\n   - Tenant can enforce read receipts\n   - Tenant can disable user toggle\n   - Compliance requirements\n\n7. Create services/socket-service/src/receipts/filtered-receipt-sender.ts:\n   - Check privacy before sending\n   - Batch privacy checks\n   - Fallback to no-receipt mode",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test privacy checks",
+          "Test settings retrieval",
+          "Test filtering"
+        ],
+        "integration_tests": [
+          "Test disabled receipts",
+          "Test mutual disable",
+          "Test tenant override"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Users can disable read receipts",
+        "Disabled users don't see others' receipts",
+        "Tenant can override settings",
+        "API endpoints work",
+        "Privacy is enforced"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/receipts/read-receipt-privacy.ts",
+        "services/socket-service/src/receipts/read-receipt-settings.ts",
+        "services/socket-service/src/receipts/filtered-receipt-sender.ts",
+        "services/gateway/src/routes/v1/users/privacy.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb", "redis"],
+        "environment_variables": [
+          "READ_RECEIPTS_DEFAULT_ENABLED"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/v1/users/me/privacy",
+          "description": "Get privacy settings"
+        },
+        {
+          "method": "PUT",
+          "path": "/v1/users/me/privacy",
+          "description": "Update privacy settings"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "user_privacy_settings",
+            "description": "Store user privacy settings"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "user_privacy_settings",
+            "fields": ["user_id"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["receipts", "privacy", "settings"]
+    }
+  ]
+}

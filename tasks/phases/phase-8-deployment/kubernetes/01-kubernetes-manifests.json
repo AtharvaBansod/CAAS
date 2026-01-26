@@ -1,0 +1,124 @@
+{
+  "feature_group": "kubernetes-manifests",
+  "description": "Kubernetes deployment configurations",
+  "tasks": [
+    {
+      "task-name": "Base Kubernetes Manifests",
+      "feature-details": "Create base Kubernetes manifests for deploying services. Include Deployments, Services, ConfigMaps, and Secrets. Use Kustomize for environment overlays.",
+      "feature-dependency": ["DEPLOY-001"],
+      "ai-prompt": "Create Kubernetes manifests in kubernetes/:\n\n1. Directory structure:\n   ```\n   kubernetes/\n   ├── base/\n   │   ├── kustomization.yaml\n   │   ├── namespace.yaml\n   │   ├── gateway/\n   │   ├── messaging/\n   │   ├── socket/\n   │   └── ...\n   └── overlays/\n       ├── development/\n       ├── staging/\n       └── production/\n   ```\n\n2. Base deployment template:\n   ```yaml\n   apiVersion: apps/v1\n   kind: Deployment\n   metadata:\n     name: gateway\n     labels:\n       app: gateway\n   spec:\n     replicas: 2\n     selector:\n       matchLabels:\n         app: gateway\n     template:\n       metadata:\n         labels:\n           app: gateway\n       spec:\n         containers:\n         - name: gateway\n           image: caas/gateway:latest\n           ports:\n           - containerPort: 3001\n           envFrom:\n           - configMapRef:\n               name: gateway-config\n           - secretRef:\n               name: gateway-secrets\n           resources:\n             requests:\n               cpu: \"100m\"\n               memory: \"256Mi\"\n             limits:\n               cpu: \"500m\"\n               memory: \"512Mi\"\n           livenessProbe:\n             httpGet:\n               path: /health/live\n               port: 3001\n             initialDelaySeconds: 30\n           readinessProbe:\n             httpGet:\n               path: /health/ready\n               port: 3001\n   ```\n\n3. Service for each deployment:\n   - ClusterIP for internal services\n   - LoadBalancer for gateway (or Ingress)\n\n4. ConfigMaps:\n   - Non-sensitive configuration\n   - Environment-specific via overlay\n\n5. Secrets:\n   - Database credentials\n   - API keys\n   - Use external-secrets or sealed-secrets\n\n6. Create for all services:\n   - gateway\n   - messaging\n   - socket\n   - media\n   - billing\n   - metering\n   - auth\n   - admin-portal\n\n7. Kustomization:\n   - Base references all manifests\n   - Overlays patch for environment\n   - Image tags per environment",
+      "testing-instructions": "1. Apply base to dev cluster\n2. Verify deployments are created\n3. Verify services are accessible\n4. Test ConfigMaps are mounted\n5. Test Secrets are mounted\n6. Apply overlay and verify patches\n7. Test kustomize build output\n8. Verify probes work correctly",
+      "acceptance_criteria": [
+        "All services have deployments",
+        "Services are created correctly",
+        "ConfigMaps contain configuration",
+        "Secrets are properly referenced",
+        "Resource limits are defined",
+        "Probes are configured",
+        "Kustomize overlays work",
+        "Manifests pass kubeval"
+      ],
+      "files_to_create": [
+        "kubernetes/base/kustomization.yaml",
+        "kubernetes/base/namespace.yaml",
+        "kubernetes/base/gateway/deployment.yaml",
+        "kubernetes/base/gateway/service.yaml",
+        "kubernetes/base/gateway/configmap.yaml",
+        "kubernetes/base/messaging/deployment.yaml",
+        "kubernetes/base/messaging/service.yaml",
+        "kubernetes/base/socket/deployment.yaml",
+        "kubernetes/base/socket/service.yaml",
+        "kubernetes/base/billing/deployment.yaml",
+        "kubernetes/base/billing/service.yaml",
+        "kubernetes/overlays/development/kustomization.yaml",
+        "kubernetes/overlays/staging/kustomization.yaml",
+        "kubernetes/overlays/production/kustomization.yaml"
+      ],
+      "docker_requirements": null,
+      "task_id": "DEPLOY-003"
+    },
+    {
+      "task-name": "Ingress and TLS Configuration",
+      "feature-details": "Configure Kubernetes Ingress for external access. Set up TLS termination with cert-manager. Support multiple domains and path-based routing.",
+      "feature-dependency": ["DEPLOY-003"],
+      "ai-prompt": "Create Ingress configuration in kubernetes/:\n\n1. NGINX Ingress Controller:\n   - Install via Helm or manifest\n   - Configure for WebSocket support\n   - Enable proxy protocol if behind LB\n\n2. Main Ingress:\n   ```yaml\n   apiVersion: networking.k8s.io/v1\n   kind: Ingress\n   metadata:\n     name: caas-ingress\n     annotations:\n       kubernetes.io/ingress.class: nginx\n       cert-manager.io/cluster-issuer: letsencrypt-prod\n       nginx.ingress.kubernetes.io/proxy-read-timeout: \"3600\"\n       nginx.ingress.kubernetes.io/proxy-send-timeout: \"3600\"\n   spec:\n     tls:\n     - hosts:\n       - api.caas.io\n       - socket.caas.io\n       - admin.caas.io\n       secretName: caas-tls\n     rules:\n     - host: api.caas.io\n       http:\n         paths:\n         - path: /\n           pathType: Prefix\n           backend:\n             service:\n               name: gateway\n               port:\n                 number: 3001\n     - host: socket.caas.io\n       http:\n         paths:\n         - path: /\n           pathType: Prefix\n           backend:\n             service:\n               name: socket\n               port:\n                 number: 3003\n   ```\n\n3. cert-manager configuration:\n   - ClusterIssuer for Let's Encrypt\n   - Production and staging issuers\n   - Certificate resources\n\n4. WebSocket support:\n   - Increase timeouts for Socket.IO\n   - Enable sticky sessions\n   - Configure upgrade headers\n\n5. Rate limiting:\n   ```yaml\n   annotations:\n     nginx.ingress.kubernetes.io/limit-rps: \"100\"\n     nginx.ingress.kubernetes.io/limit-connections: \"10\"\n   ```\n\n6. CORS configuration:\n   - Allow configured origins\n   - Proper headers for API\n\n7. Security headers:\n   - HSTS\n   - X-Frame-Options\n   - Content-Security-Policy\n\n8. Environment overlays:\n   - Different hosts per environment\n   - Staging uses staging issuer",
+      "testing-instructions": "1. Apply Ingress and verify created\n2. Test TLS certificate is issued\n3. Test API is accessible via domain\n4. Test WebSocket connection through Ingress\n5. Test rate limiting works\n6. Verify security headers\n7. Test CORS headers\n8. Test sticky sessions for Socket.IO",
+      "acceptance_criteria": [
+        "Ingress routes traffic correctly",
+        "TLS certificates are issued",
+        "WebSocket connections work",
+        "Rate limiting is active",
+        "Security headers are set",
+        "CORS is configured",
+        "Sticky sessions work",
+        "All domains resolve correctly"
+      ],
+      "files_to_create": [
+        "kubernetes/base/ingress/ingress.yaml",
+        "kubernetes/base/ingress/cluster-issuer.yaml",
+        "kubernetes/base/ingress/certificate.yaml",
+        "kubernetes/base/ingress/nginx-config.yaml",
+        "kubernetes/overlays/production/ingress-patch.yaml"
+      ],
+      "docker_requirements": null,
+      "task_id": "DEPLOY-004"
+    },
+    {
+      "task-name": "StatefulSets for Databases",
+      "feature-details": "Create StatefulSet configurations for stateful services: MongoDB, Kafka, Redis, and Elasticsearch. Include persistent volumes, headless services, and init containers.",
+      "feature-dependency": ["DEPLOY-003"],
+      "ai-prompt": "Create StatefulSets for databases in kubernetes/:\n\n1. MongoDB StatefulSet:\n   ```yaml\n   apiVersion: apps/v1\n   kind: StatefulSet\n   metadata:\n     name: mongodb\n   spec:\n     serviceName: mongodb\n     replicas: 3\n     selector:\n       matchLabels:\n         app: mongodb\n     template:\n       spec:\n         containers:\n         - name: mongodb\n           image: mongo:7.0\n           ports:\n           - containerPort: 27017\n           volumeMounts:\n           - name: data\n             mountPath: /data/db\n           env:\n           - name: MONGO_INITDB_ROOT_USERNAME\n             valueFrom:\n               secretKeyRef:\n                 name: mongodb-secret\n                 key: username\n     volumeClaimTemplates:\n     - metadata:\n         name: data\n       spec:\n         accessModes: [\"ReadWriteOnce\"]\n         resources:\n           requests:\n             storage: 50Gi\n   ```\n\n2. MongoDB Headless Service:\n   - Enables stable network identities\n   - mongodb-0.mongodb, mongodb-1.mongodb, etc.\n\n3. Kafka StatefulSet:\n   - 3 broker replicas\n   - Zookeeper StatefulSet (3 nodes)\n   - Persistent storage for logs\n   - Init container for config\n\n4. Redis Cluster StatefulSet:\n   - 6 nodes (3 master, 3 replica)\n   - Cluster init job\n   - Persistent volumes\n\n5. Elasticsearch StatefulSet:\n   - 3 node cluster\n   - Master/data separation (optional)\n   - JVM heap configuration\n   - Persistent volumes\n\n6. Storage Classes:\n   - Fast SSD for databases\n   - Standard for logs\n   - Retain policy for production\n\n7. Backup CronJobs:\n   - MongoDB backup to S3\n   - Scheduled daily\n   - Retention policy\n\n8. Pod Disruption Budgets:\n   - Ensure availability during updates\n   - minAvailable: 2 for 3-node clusters",
+      "testing-instructions": "1. Deploy StatefulSets and verify pods created in order\n2. Test persistent volumes are bound\n3. Test MongoDB replica set forms\n4. Test Kafka cluster is healthy\n5. Test Redis cluster is operational\n6. Test Elasticsearch cluster health\n7. Test Pod Disruption Budget\n8. Test backup CronJob runs",
+      "acceptance_criteria": [
+        "StatefulSets deploy correctly",
+        "Pods have stable network identities",
+        "Persistent volumes are bound",
+        "Clusters form correctly",
+        "Data persists across restarts",
+        "Backups run on schedule",
+        "PDBs protect availability",
+        "Resource limits are appropriate"
+      ],
+      "files_to_create": [
+        "kubernetes/base/mongodb/statefulset.yaml",
+        "kubernetes/base/mongodb/headless-service.yaml",
+        "kubernetes/base/mongodb/pdb.yaml",
+        "kubernetes/base/kafka/zookeeper-statefulset.yaml",
+        "kubernetes/base/kafka/kafka-statefulset.yaml",
+        "kubernetes/base/redis/statefulset.yaml",
+        "kubernetes/base/elasticsearch/statefulset.yaml",
+        "kubernetes/base/storage/storage-class.yaml",
+        "kubernetes/base/backup/mongodb-backup-cronjob.yaml"
+      ],
+      "docker_requirements": null,
+      "task_id": "DEPLOY-005"
+    },
+    {
+      "task-name": "Horizontal Pod Autoscaling",
+      "feature-details": "Configure Horizontal Pod Autoscaler (HPA) for application services. Scale based on CPU, memory, and custom metrics. Set appropriate min/max replicas.",
+      "feature-dependency": ["DEPLOY-003"],
+      "ai-prompt": "Create HPA configurations in kubernetes/:\n\n1. Install metrics-server (if not present)\n\n2. HPA for Gateway:\n   ```yaml\n   apiVersion: autoscaling/v2\n   kind: HorizontalPodAutoscaler\n   metadata:\n     name: gateway-hpa\n   spec:\n     scaleTargetRef:\n       apiVersion: apps/v1\n       kind: Deployment\n       name: gateway\n     minReplicas: 2\n     maxReplicas: 20\n     metrics:\n     - type: Resource\n       resource:\n         name: cpu\n         target:\n           type: Utilization\n           averageUtilization: 70\n     - type: Resource\n       resource:\n         name: memory\n         target:\n           type: Utilization\n           averageUtilization: 80\n     behavior:\n       scaleDown:\n         stabilizationWindowSeconds: 300\n         policies:\n         - type: Percent\n           value: 10\n           periodSeconds: 60\n       scaleUp:\n         stabilizationWindowSeconds: 0\n         policies:\n         - type: Percent\n           value: 100\n           periodSeconds: 15\n   ```\n\n3. Custom metrics (Prometheus):\n   - Install prometheus-adapter\n   - Configure custom metrics API\n   - Scale based on:\n     - requests_per_second\n     - websocket_connections\n     - queue_length\n\n4. HPA per service:\n   - gateway: 2-20, CPU/memory\n   - messaging: 2-10, CPU/memory\n   - socket: 2-50, connections metric\n   - billing: 1-5, CPU\n\n5. Scaling policies:\n   - Scale up quickly (15s)\n   - Scale down slowly (5 min stabilization)\n   - Prevent flapping\n\n6. Resource requests (required for HPA):\n   - Accurate resource requests\n   - Based on load testing\n\n7. Vertical Pod Autoscaler (optional):\n   - Recommend resource adjustments\n   - updateMode: Off (recommendations only)\n\n8. KEDA for event-driven scaling:\n   - Scale based on Kafka lag\n   - Scale to zero for batch jobs",
+      "testing-instructions": "1. Apply HPA and verify created\n2. Generate load and observe scale up\n3. Verify scale down after load stops\n4. Test stabilization window works\n5. Test custom metrics scaling\n6. Verify min replicas maintained\n7. Test max replicas limit\n8. Check HPA status for errors",
+      "acceptance_criteria": [
+        "HPA is created for all services",
+        "Scaling up works under load",
+        "Scaling down is gradual",
+        "Min replicas are maintained",
+        "Max replicas are respected",
+        "Custom metrics work (if configured)",
+        "No thrashing/flapping",
+        "Resources are properly configured"
+      ],
+      "files_to_create": [
+        "kubernetes/base/gateway/hpa.yaml",
+        "kubernetes/base/messaging/hpa.yaml",
+        "kubernetes/base/socket/hpa.yaml",
+        "kubernetes/base/billing/hpa.yaml",
+        "kubernetes/base/metrics/prometheus-adapter.yaml",
+        "kubernetes/overlays/production/hpa-patch.yaml"
+      ],
+      "docker_requirements": null,
+      "task_id": "DEPLOY-006"
+    }
+  ]
+}

@@ -1,0 +1,184 @@
+{
+  "task_group": "alerting",
+  "description": "Alert rules and notification setup with Alertmanager",
+  "priority": "high",
+  "estimated_hours": 16,
+  "phase": 5,
+  "feature_area": "metrics",
+  "tasks": [
+    {
+      "id": "METRIC-005",
+      "task_name": "Alertmanager Setup",
+      "feature_details": "Set up Alertmanager for alert routing and notifications.",
+      "feature_dependency": ["METRIC-001"],
+      "ai_prompt": "Set up Alertmanager:\n\n1. Create infrastructure/alertmanager/alertmanager.yml:\n   ```yaml\n   global:\n     resolve_timeout: 5m\n     smtp_smarthost: 'smtp.example.com:587'\n     smtp_from: 'alerts@caas.io'\n     smtp_auth_username: 'alerts@caas.io'\n     smtp_auth_password: '$SMTP_PASSWORD'\n\n   route:\n     group_by: ['alertname', 'severity', 'service']\n     group_wait: 30s\n     group_interval: 5m\n     repeat_interval: 4h\n     receiver: 'default'\n     routes:\n       - match:\n           severity: critical\n         receiver: 'critical'\n         repeat_interval: 1h\n       - match:\n           severity: warning\n         receiver: 'warning'\n         repeat_interval: 4h\n\n   receivers:\n     - name: 'default'\n       email_configs:\n         - to: 'team@caas.io'\n\n     - name: 'critical'\n       email_configs:\n         - to: 'oncall@caas.io'\n       slack_configs:\n         - api_url: '$SLACK_WEBHOOK_URL'\n           channel: '#critical-alerts'\n           title: '{{ .GroupLabels.alertname }}'\n           text: '{{ .CommonAnnotations.summary }}'\n       pagerduty_configs:\n         - service_key: '$PAGERDUTY_KEY'\n\n     - name: 'warning'\n       slack_configs:\n         - api_url: '$SLACK_WEBHOOK_URL'\n           channel: '#alerts'\n\n   inhibit_rules:\n     - source_match:\n         severity: 'critical'\n       target_match:\n         severity: 'warning'\n       equal: ['alertname', 'service']\n   ```\n\n2. Update docker-compose.yml:\n   ```yaml\n   alertmanager:\n     image: prom/alertmanager:v0.26.0\n     ports:\n       - \"9093:9093\"\n     volumes:\n       - ./infrastructure/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml\n       - alertmanager_data:/alertmanager\n     command:\n       - '--config.file=/etc/alertmanager/alertmanager.yml'\n       - '--storage.path=/alertmanager'\n     networks:\n       - caas-network\n   ```\n\n3. Notification channels:\n   - Email (default)\n   - Slack (real-time)\n   - PagerDuty (critical)\n   - Webhook (custom integrations)\n\n4. Alert grouping:\n   - Group by service and severity\n   - Reduce alert fatigue\n   - Intelligent deduplication",
+      "testing_instructions": {
+        "unit_tests": [],
+        "integration_tests": [
+          "Test Alertmanager startup",
+          "Test routing rules",
+          "Test notifications"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Alertmanager running",
+        "Routes configured",
+        "Receivers configured",
+        "Notifications work"
+      ],
+      "files_to_create": [
+        "infrastructure/alertmanager/alertmanager.yml"
+      ],
+      "files_to_modify": [
+        "docker-compose.yml"
+      ],
+      "docker_requirements": {
+        "services": ["alertmanager"],
+        "environment_variables": [
+          "SMTP_PASSWORD",
+          "SLACK_WEBHOOK_URL",
+          "PAGERDUTY_KEY"
+        ],
+        "volumes": ["alertmanager_data"],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["alerting", "alertmanager", "notifications"]
+    },
+    {
+      "id": "METRIC-006",
+      "task_name": "Service Alert Rules",
+      "feature_details": "Define alert rules for service health and performance.",
+      "feature_dependency": ["METRIC-005"],
+      "ai_prompt": "Create service alert rules:\n\n1. Create infrastructure/prometheus/rules/services.yml:\n   ```yaml\n   groups:\n     - name: service-health\n       rules:\n         - alert: ServiceDown\n           expr: up == 0\n           for: 1m\n           labels:\n             severity: critical\n           annotations:\n             summary: 'Service {{ $labels.job }} is down'\n             description: 'Service {{ $labels.job }} has been down for more than 1 minute'\n\n         - alert: HighErrorRate\n           expr: |\n             sum(rate(http_requests_total{status=~\"5..\"}[5m])) by (service)\n             / sum(rate(http_requests_total[5m])) by (service) > 0.05\n           for: 5m\n           labels:\n             severity: warning\n           annotations:\n             summary: 'High error rate on {{ $labels.service }}'\n             description: 'Error rate is {{ $value | humanizePercentage }}'\n\n         - alert: HighLatency\n           expr: |\n             histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, service)) > 2\n           for: 5m\n           labels:\n             severity: warning\n           annotations:\n             summary: 'High latency on {{ $labels.service }}'\n             description: 'P99 latency is {{ $value | humanizeDuration }}'\n\n         - alert: HighCPU\n           expr: |\n             rate(process_cpu_seconds_total[5m]) > 0.9\n           for: 10m\n           labels:\n             severity: warning\n           annotations:\n             summary: 'High CPU usage on {{ $labels.service }}'\n\n         - alert: HighMemory\n           expr: |\n             process_resident_memory_bytes / 1024 / 1024 / 1024 > 2\n           for: 10m\n           labels:\n             severity: warning\n           annotations:\n             summary: 'High memory usage on {{ $labels.service }}'\n             description: 'Memory usage is {{ $value | humanize1024 }}GB'\n   ```\n\n2. Critical vs Warning thresholds:\n   - Critical: Immediate action needed\n   - Warning: Investigation needed\n\n3. Alert annotations:\n   - Summary: Brief description\n   - Description: Detailed info\n   - Runbook URL: Link to remediation docs\n\n4. Testing alerts:\n   - Use promtool to validate\n   - Unit test alert expressions",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test alert expressions with promtool"
+        ],
+        "integration_tests": [
+          "Test alert firing",
+          "Test alert resolution"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Alert rules valid",
+        "Rules loaded in Prometheus",
+        "Alerts fire correctly",
+        "Annotations complete"
+      ],
+      "files_to_create": [
+        "infrastructure/prometheus/rules/services.yml"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["alerting", "rules", "services"]
+    },
+    {
+      "id": "METRIC-007",
+      "task_name": "Infrastructure Alert Rules",
+      "feature_details": "Define alert rules for infrastructure components.",
+      "feature_dependency": ["METRIC-005"],
+      "ai_prompt": "Create infrastructure alert rules:\n\n1. Create infrastructure/prometheus/rules/infrastructure.yml:\n   ```yaml\n   groups:\n     - name: mongodb-alerts\n       rules:\n         - alert: MongoDBDown\n           expr: mongodb_up == 0\n           for: 1m\n           labels:\n             severity: critical\n           annotations:\n             summary: 'MongoDB is down'\n\n         - alert: MongoDBHighConnections\n           expr: mongodb_connections_current > 100\n           for: 5m\n           labels:\n             severity: warning\n           annotations:\n             summary: 'MongoDB high connection count: {{ $value }}'\n\n         - alert: MongoDBReplicationLag\n           expr: mongodb_replset_member_optime_date{state=\"SECONDARY\"} - mongodb_replset_member_optime_date{state=\"PRIMARY\"} > 10\n           for: 5m\n           labels:\n             severity: warning\n           annotations:\n             summary: 'MongoDB replication lag: {{ $value }}s'\n\n     - name: redis-alerts\n       rules:\n         - alert: RedisDown\n           expr: redis_up == 0\n           for: 1m\n           labels:\n             severity: critical\n\n         - alert: RedisHighMemory\n           expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.9\n           for: 5m\n           labels:\n             severity: warning\n           annotations:\n             summary: 'Redis memory usage > 90%'\n\n     - name: kafka-alerts\n       rules:\n         - alert: KafkaConsumerLag\n           expr: kafka_consumer_group_lag > 10000\n           for: 10m\n           labels:\n             severity: warning\n           annotations:\n             summary: 'Kafka consumer lag on {{ $labels.topic }}: {{ $value }}'\n\n         - alert: KafkaUnderReplicatedPartitions\n           expr: kafka_topic_partition_under_replicated_partition > 0\n           for: 5m\n           labels:\n             severity: warning\n\n     - name: disk-alerts\n       rules:\n         - alert: DiskSpaceLow\n           expr: node_filesystem_avail_bytes / node_filesystem_size_bytes < 0.1\n           for: 10m\n           labels:\n             severity: warning\n           annotations:\n             summary: 'Disk space < 10% on {{ $labels.mountpoint }}'\n   ```\n\n2. Database-specific alerts:\n   - Connection pool exhaustion\n   - Slow queries\n   - Replication issues\n\n3. Message queue alerts:\n   - Consumer lag\n   - Partition issues\n   - Dead letter queue growth\n\n4. Storage alerts:\n   - Disk space\n   - IOPS limits\n   - S3/MinIO issues",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test alert expressions"
+        ],
+        "integration_tests": [
+          "Test with infrastructure failures",
+          "Test alert resolution"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "MongoDB alerts configured",
+        "Redis alerts configured",
+        "Kafka alerts configured",
+        "Disk alerts configured"
+      ],
+      "files_to_create": [
+        "infrastructure/prometheus/rules/infrastructure.yml"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["alerting", "rules", "infrastructure"]
+    },
+    {
+      "id": "METRIC-008",
+      "task_name": "Business Alert Rules",
+      "feature_details": "Define alert rules for business metrics and SLAs.",
+      "feature_dependency": ["METRIC-005", "METRIC-003"],
+      "ai_prompt": "Create business alert rules:\n\n1. Create infrastructure/prometheus/rules/business.yml:\n   ```yaml\n   groups:\n     - name: business-metrics\n       rules:\n         - alert: MessageDeliveryFailure\n           expr: |\n             sum(rate(messages_failed_total[5m])) \n             / sum(rate(messages_sent_total[5m])) > 0.01\n           for: 5m\n           labels:\n             severity: warning\n           annotations:\n             summary: 'Message delivery failure rate > 1%'\n             description: 'Current failure rate: {{ $value | humanizePercentage }}'\n\n         - alert: NoMessagesBeingSent\n           expr: sum(rate(messages_sent_total[5m])) == 0\n           for: 15m\n           labels:\n             severity: warning\n           annotations:\n             summary: 'No messages sent in 15 minutes'\n\n         - alert: WebSocketConnectionsDrop\n           expr: |\n             (sum(active_connections offset 5m) - sum(active_connections)) \n             / sum(active_connections offset 5m) > 0.2\n           for: 5m\n           labels:\n             severity: warning\n           annotations:\n             summary: 'WebSocket connections dropped by > 20%'\n\n         - alert: HighCallFailureRate\n           expr: |\n             sum(rate(calls_failed_total[5m])) \n             / sum(rate(calls_started_total[5m])) > 0.1\n           for: 5m\n           labels:\n             severity: warning\n           annotations:\n             summary: 'Call failure rate > 10%'\n\n     - name: sla-monitoring\n       rules:\n         - alert: SLABreach99Percentile\n           expr: |\n             histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) > 1\n           for: 10m\n           labels:\n             severity: warning\n           annotations:\n             summary: 'P99 latency SLA breach: {{ $value | humanizeDuration }}'\n\n         - alert: AvailabilitySLABreach\n           expr: |\n             avg_over_time(up[1h]) < 0.999\n           for: 0m\n           labels:\n             severity: critical\n           annotations:\n             summary: 'Availability below 99.9% SLA'\n\n     - name: tenant-specific\n       rules:\n         - alert: TenantHighUsage\n           expr: |\n             sum(rate(messages_sent_total[1h])) by (tenant_id) > 100000\n           for: 30m\n           labels:\n             severity: info\n           annotations:\n             summary: 'Tenant {{ $labels.tenant_id }} high usage'\n   ```\n\n2. SLA monitoring:\n   - Availability targets\n   - Latency targets\n   - Error rate targets\n\n3. Tenant-specific alerts:\n   - Usage anomalies\n   - Billing thresholds\n   - Abuse detection\n\n4. Recording rules for efficiency:\n   ```yaml\n   groups:\n     - name: recording-rules\n       rules:\n         - record: job:http_requests_total:rate5m\n           expr: sum(rate(http_requests_total[5m])) by (service)\n   ```",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test alert expressions"
+        ],
+        "integration_tests": [
+          "Test SLA breach detection",
+          "Test tenant alerts"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Business alerts configured",
+        "SLA monitoring works",
+        "Tenant alerts work",
+        "Recording rules optimize queries"
+      ],
+      "files_to_create": [
+        "infrastructure/prometheus/rules/business.yml",
+        "infrastructure/prometheus/rules/recording.yml"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["alerting", "rules", "business", "sla"]
+    }
+  ]
+}

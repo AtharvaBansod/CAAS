@@ -1,0 +1,295 @@
+{
+  "task_group": "group-conversations",
+  "description": "Group conversation features including members and roles",
+  "priority": "high",
+  "estimated_hours": 16,
+  "phase": 4,
+  "feature_area": "conversations",
+  "tasks": [
+    {
+      "id": "CONV-005",
+      "task_name": "Group Conversation Management",
+      "feature_details": "Implement group-specific features like member management and roles.",
+      "feature_dependency": ["CONV-003"],
+      "ai_prompt": "Implement group conversation management:\n\n1. Create services/messaging-service/src/conversations/group-conversation.service.ts:\n   ```typescript\n   export class GroupConversationService {\n     async addMembers(conversationId: string, memberIds: string[], addedBy: string): Promise<void>;\n     async removeMembers(conversationId: string, memberIds: string[], removedBy: string): Promise<void>;\n     async updateMemberRole(conversationId: string, memberId: string, role: ParticipantRole, updatedBy: string): Promise<void>;\n     async getMembers(conversationId: string): Promise<Participant[]>;\n     async leaveGroup(conversationId: string, userId: string): Promise<void>;\n   }\n   ```\n\n2. Create services/gateway/src/routes/v1/conversations/members.ts:\n   ```typescript\n   // Add members\n   fastify.post('/:id/members', {\n     handler: async (request, reply) => {\n       await groupService.addMembers(\n         request.params.id,\n         request.body.member_ids,\n         request.user.id,\n       );\n       return reply.status(204).send();\n     },\n   });\n\n   // Remove member\n   fastify.delete('/:id/members/:memberId', { ... });\n\n   // Update member role\n   fastify.put('/:id/members/:memberId/role', { ... });\n\n   // Get members\n   fastify.get('/:id/members', { ... });\n\n   // Leave group\n   fastify.post('/:id/leave', { ... });\n   ```\n\n3. Roles and permissions:\n   - owner: Full control, cannot be removed\n   - admin: Can manage members, edit settings\n   - member: Can read/write messages\n\n4. Member limits:\n   - Configurable per tenant\n   - Default max: 100 members\n   - Premium: Higher limits\n\n5. Events:\n   - member.added\n   - member.removed\n   - member.role.changed\n   - member.left\n\n6. Admin transfer:\n   - Owner can transfer ownership\n   - Last admin cannot leave without transferring",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test member operations",
+          "Test role changes",
+          "Test permission checks"
+        ],
+        "integration_tests": [
+          "Test add/remove flow",
+          "Test leave flow",
+          "Test event emission"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Members can be added",
+        "Members can be removed",
+        "Roles can be changed",
+        "Member limits enforced",
+        "Events are emitted"
+      ],
+      "files_to_create": [
+        "services/messaging-service/src/conversations/group-conversation.service.ts",
+        "services/gateway/src/routes/v1/conversations/members.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb", "kafka"],
+        "environment_variables": [
+          "MAX_GROUP_MEMBERS"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/v1/conversations/:id/members",
+          "description": "Add members to group"
+        },
+        {
+          "method": "DELETE",
+          "path": "/v1/conversations/:id/members/:memberId",
+          "description": "Remove member from group"
+        },
+        {
+          "method": "PUT",
+          "path": "/v1/conversations/:id/members/:memberId/role",
+          "description": "Update member role"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/conversations/:id/leave",
+          "description": "Leave group"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["messaging", "groups", "members", "roles"]
+    },
+    {
+      "id": "CONV-006",
+      "task_name": "Group Invitation System",
+      "feature_details": "Implement invitation system for group conversations with invite links.",
+      "feature_dependency": ["CONV-005"],
+      "ai_prompt": "Implement group invitation system:\n\n1. Create services/messaging-service/src/conversations/invitation.service.ts:\n   ```typescript\n   export class InvitationService {\n     async createInviteLink(conversationId: string, createdBy: string, options?: InviteLinkOptions): Promise<InviteLink>;\n     async revokeInviteLink(linkId: string, revokedBy: string): Promise<void>;\n     async joinViaLink(linkCode: string, userId: string): Promise<Conversation>;\n     async getInviteLinks(conversationId: string): Promise<InviteLink[]>;\n   }\n\n   interface InviteLink {\n     id: string;\n     conversation_id: string;\n     code: string;\n     created_by: string;\n     expires_at?: Date;\n     max_uses?: number;\n     uses: number;\n     is_active: boolean;\n   }\n   ```\n\n2. Create services/gateway/src/routes/v1/conversations/invites.ts:\n   - POST /:id/invites - Create invite link\n   - GET /:id/invites - List invite links\n   - DELETE /:id/invites/:linkId - Revoke link\n   - POST /join/:code - Join via invite code\n\n3. Invite link options:\n   - Expiration time (optional)\n   - Max uses (optional)\n   - Single use (one-time link)\n   - Require approval\n\n4. Create services/messaging-service/src/conversations/invitation.repository.ts:\n   - Store invite links in MongoDB\n   - Index on code for lookup\n   - Track usage statistics\n\n5. Security:\n   - Cryptographically random codes\n   - Rate limit invite creation\n   - Rate limit join attempts\n   - Log all invite usage\n\n6. User invitations (direct):\n   - Invite specific users\n   - Pending invitation state\n   - Accept/decline flow",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test link generation",
+          "Test join via link",
+          "Test expiration"
+        ],
+        "integration_tests": [
+          "Test invite flow",
+          "Test usage limits",
+          "Test revocation"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Invite links can be created",
+        "Users can join via link",
+        "Links can be revoked",
+        "Expiration works",
+        "Usage limits work"
+      ],
+      "files_to_create": [
+        "services/messaging-service/src/conversations/invitation.service.ts",
+        "services/messaging-service/src/conversations/invitation.repository.ts",
+        "services/gateway/src/routes/v1/conversations/invites.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb"],
+        "environment_variables": [
+          "INVITE_LINK_EXPIRY_DAYS"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/v1/conversations/:id/invites",
+          "description": "Create invite link"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/conversations/:id/invites",
+          "description": "List invite links"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/conversations/join/:code",
+          "description": "Join via invite code"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "conversation_invites",
+            "description": "Store group invite links"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "conversation_invites",
+            "fields": ["code"],
+            "unique": true
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["messaging", "groups", "invitations", "links"]
+    },
+    {
+      "id": "CONV-007",
+      "task_name": "Group Admin Tools",
+      "feature_details": "Implement admin tools for group moderation and management.",
+      "feature_dependency": ["CONV-005"],
+      "ai_prompt": "Implement group admin tools:\n\n1. Create services/messaging-service/src/conversations/moderation.service.ts:\n   ```typescript\n   export class ModerationService {\n     async muteUser(conversationId: string, userId: string, duration: number, mutedBy: string): Promise<void>;\n     async unmuteUser(conversationId: string, userId: string, unmutedBy: string): Promise<void>;\n     async banUser(conversationId: string, userId: string, bannedBy: string, reason?: string): Promise<void>;\n     async unbanUser(conversationId: string, userId: string, unbannedBy: string): Promise<void>;\n     async deleteMessage(conversationId: string, messageId: string, deletedBy: string): Promise<void>;\n     async pinMessage(conversationId: string, messageId: string, pinnedBy: string): Promise<void>;\n   }\n   ```\n\n2. Create services/gateway/src/routes/v1/conversations/admin.ts:\n   - POST /:id/mute/:userId - Mute user\n   - DELETE /:id/mute/:userId - Unmute user\n   - POST /:id/ban/:userId - Ban user\n   - DELETE /:id/ban/:userId - Unban user\n   - DELETE /:id/messages/:messageId - Delete message\n   - POST /:id/pin/:messageId - Pin message\n\n3. Mute functionality:\n   - Temporary mute with duration\n   - Permanent mute\n   - Muted users can read but not write\n\n4. Ban functionality:\n   - Remove from group\n   - Prevent rejoining\n   - Ban list management\n\n5. Create services/messaging-service/src/conversations/pinned-messages.service.ts:\n   - Pin important messages\n   - Limit number of pinned messages\n   - Order pinned messages\n\n6. Admin actions audit:\n   - Log all admin actions\n   - Who did what when\n   - Reason for action",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test mute logic",
+          "Test ban logic",
+          "Test pin logic"
+        ],
+        "integration_tests": [
+          "Test mute enforcement",
+          "Test ban enforcement",
+          "Test admin audit"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Users can be muted",
+        "Users can be banned",
+        "Messages can be pinned",
+        "Actions are audited",
+        "Permissions are enforced"
+      ],
+      "files_to_create": [
+        "services/messaging-service/src/conversations/moderation.service.ts",
+        "services/messaging-service/src/conversations/pinned-messages.service.ts",
+        "services/gateway/src/routes/v1/conversations/admin.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb"],
+        "environment_variables": [
+          "MAX_PINNED_MESSAGES"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/v1/conversations/:id/mute/:userId",
+          "description": "Mute user in group"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/conversations/:id/ban/:userId",
+          "description": "Ban user from group"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/conversations/:id/pin/:messageId",
+          "description": "Pin message"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "conversation_bans",
+            "description": "Store banned users"
+          },
+          {
+            "name": "pinned_messages",
+            "description": "Store pinned messages"
+          }
+        ],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["messaging", "groups", "moderation", "admin"]
+    },
+    {
+      "id": "CONV-008",
+      "task_name": "Group Announcements and Descriptions",
+      "feature_details": "Implement group descriptions, announcements, and group-only mode.",
+      "feature_dependency": ["CONV-005"],
+      "ai_prompt": "Implement group announcements:\n\n1. Create services/messaging-service/src/conversations/group-info.service.ts:\n   ```typescript\n   export class GroupInfoService {\n     async updateDescription(conversationId: string, description: string, updatedBy: string): Promise<void>;\n     async updateAvatar(conversationId: string, avatarUrl: string, updatedBy: string): Promise<void>;\n     async setAnnouncement(conversationId: string, announcement: string, announcedBy: string): Promise<void>;\n     async clearAnnouncement(conversationId: string, clearedBy: string): Promise<void>;\n     async setAnnouncementsOnly(conversationId: string, enabled: boolean, setBy: string): Promise<void>;\n   }\n   ```\n\n2. Group properties:\n   ```typescript\n   interface GroupSettings {\n     description?: string;\n     announcement?: {\n       text: string;\n       set_by: string;\n       set_at: Date;\n     };\n     announcements_only: boolean; // Only admins can post\n     members_can_invite: boolean;\n     members_can_edit_info: boolean;\n   }\n   ```\n\n3. Create services/gateway/src/routes/v1/conversations/info.ts:\n   - PUT /:id/description - Update description\n   - PUT /:id/avatar - Update avatar\n   - PUT /:id/announcement - Set announcement\n   - DELETE /:id/announcement - Clear announcement\n   - PUT /:id/settings - Update settings\n\n4. Announcements only mode:\n   - Only admins can send messages\n   - Regular members can only read\n   - Useful for broadcast channels\n\n5. Permission settings:\n   - Who can invite new members\n   - Who can edit group info\n   - Who can send messages\n\n6. Avatar handling:\n   - Upload to media service\n   - Generate thumbnails\n   - Update URL in conversation",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test description update",
+          "Test announcement logic",
+          "Test settings"
+        ],
+        "integration_tests": [
+          "Test announcements only mode",
+          "Test permission enforcement",
+          "Test avatar upload"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Descriptions can be set",
+        "Announcements work",
+        "Announcements only mode works",
+        "Permissions are configurable",
+        "Avatar can be updated"
+      ],
+      "files_to_create": [
+        "services/messaging-service/src/conversations/group-info.service.ts",
+        "services/gateway/src/routes/v1/conversations/info.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "PUT",
+          "path": "/v1/conversations/:id/description",
+          "description": "Update group description"
+        },
+        {
+          "method": "PUT",
+          "path": "/v1/conversations/:id/announcement",
+          "description": "Set group announcement"
+        },
+        {
+          "method": "PUT",
+          "path": "/v1/conversations/:id/settings",
+          "description": "Update group settings"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["messaging", "groups", "announcements", "settings"]
+    }
+  ]
+}

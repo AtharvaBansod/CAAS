@@ -1,0 +1,244 @@
+{
+  "task_group": "presence-tracking",
+  "description": "Online/offline detection and status management",
+  "priority": "high",
+  "estimated_hours": 16,
+  "phase": 3,
+  "feature_area": "presence",
+  "tasks": [
+    {
+      "id": "PRESENCE-001",
+      "task_name": "Presence State Management",
+      "feature_details": "Implement core presence state management for tracking user online/offline status.",
+      "feature_dependency": ["SOCKET-007"],
+      "ai_prompt": "Implement presence state management:\n\n1. Create services/socket-service/src/presence/presence-manager.ts:\n   ```typescript\n   export class PresenceManager {\n     async setStatus(userId: string, status: PresenceStatus): Promise<void>;\n     async getStatus(userId: string): Promise<UserPresence>;\n     async getBulkStatus(userIds: string[]): Promise<Map<string, UserPresence>>;\n     async setOnline(userId: string, metadata?: PresenceMetadata): Promise<void>;\n     async setOffline(userId: string): Promise<void>;\n   }\n\n   interface UserPresence {\n     user_id: string;\n     status: PresenceStatus;\n     custom_status?: string;\n     last_seen: Date;\n     devices: ConnectedDevice[];\n   }\n\n   type PresenceStatus = 'online' | 'away' | 'busy' | 'offline' | 'invisible';\n   ```\n\n2. Create services/socket-service/src/presence/presence-store.ts:\n   ```typescript\n   export class PresenceStore {\n     // Redis-based storage\n     async set(userId: string, presence: UserPresence): Promise<void>;\n     async get(userId: string): Promise<UserPresence | null>;\n     async mget(userIds: string[]): Promise<Map<string, UserPresence>>;\n     async delete(userId: string): Promise<void>;\n     async getAllOnline(tenantId: string): Promise<UserPresence[]>;\n   }\n   ```\n\n3. Create services/socket-service/src/presence/presence-states.ts:\n   - State machine for presence transitions\n   - Valid transitions\n   - Automatic state changes (idle, offline)\n\n4. Create services/socket-service/src/presence/presence-events.ts:\n   ```typescript\n   socket.on('presence_update', async (data: { status: PresenceStatus; custom_status?: string }) => {\n     await presenceManager.setStatus(socket.data.user.id, data.status);\n     // Broadcast to subscribed users\n     await presenceNotifier.notifyStatusChange(socket.data.user.id, data.status);\n   });\n   ```\n\n5. Multi-device presence:\n   - User is 'online' if any device is online\n   - Track per-device status\n   - Last device determines final offline\n\n6. Create services/socket-service/src/presence/presence-types.ts:\n   - All presence-related types\n   - Event payloads\n   - Storage structures",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test status setting",
+          "Test status retrieval",
+          "Test bulk status"
+        ],
+        "integration_tests": [
+          "Test multi-device presence",
+          "Test status persistence",
+          "Test status broadcasts"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Presence status can be set",
+        "Presence status can be retrieved",
+        "Bulk retrieval works efficiently",
+        "Multi-device presence is correct",
+        "Status changes are broadcast"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/presence/presence-manager.ts",
+        "services/socket-service/src/presence/presence-store.ts",
+        "services/socket-service/src/presence/presence-states.ts",
+        "services/socket-service/src/presence/presence-events.ts",
+        "services/socket-service/src/presence/presence-types.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["redis"],
+        "environment_variables": [
+          "PRESENCE_STORE_PREFIX",
+          "PRESENCE_TTL_SECONDS"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["presence", "status", "online-detection"]
+    },
+    {
+      "id": "PRESENCE-002",
+      "task_name": "Idle Detection and Auto-Away",
+      "feature_details": "Implement automatic idle detection to set users as 'away' after inactivity.",
+      "feature_dependency": ["PRESENCE-001"],
+      "ai_prompt": "Implement idle detection:\n\n1. Create services/socket-service/src/presence/idle-detector.ts:\n   ```typescript\n   export class IdleDetector {\n     async trackActivity(userId: string): Promise<void>;\n     async checkIdleUsers(): Promise<void>;\n     async getIdleTime(userId: string): Promise<number>;\n   }\n   ```\n\n2. Create services/socket-service/src/presence/activity-tracker.ts:\n   ```typescript\n   export class ActivityTracker {\n     // Redis-based activity timestamps\n     async recordActivity(userId: string, activityType: ActivityType): Promise<void>;\n     async getLastActivity(userId: string): Promise<ActivityRecord | null>;\n     async getInactiveUsers(thresholdMs: number): Promise<string[]>;\n   }\n\n   type ActivityType = 'message' | 'typing' | 'presence_update' | 'heartbeat' | 'api_call';\n   ```\n\n3. Activity sources:\n   - Message sent\n   - Typing event\n   - Status update\n   - Client heartbeat\n   - Any socket event\n\n4. Create services/socket-service/src/presence/idle-scheduler.ts:\n   - Periodic job to check idle users\n   - Configurable idle timeout\n   - Batch processing\n   - Notify on status change\n\n5. Create services/socket-service/src/presence/auto-away-handler.ts:\n   ```typescript\n   export class AutoAwayHandler {\n     async setAutoAway(userId: string): Promise<void>;\n     async clearAutoAway(userId: string): Promise<void>;\n     async isAutoAway(userId: string): Promise<boolean>;\n   }\n   ```\n\n6. Client-side idle support:\n   - Accept idle hints from client\n   - Client can report focus/blur\n   - Override server-side detection\n\n7. Configuration:\n   - Idle timeout per tenant\n   - Enable/disable auto-away\n   - Custom idle thresholds",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test activity tracking",
+          "Test idle detection",
+          "Test auto-away logic"
+        ],
+        "integration_tests": [
+          "Test idle timeout",
+          "Test activity reset",
+          "Test status restoration"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Activity is tracked",
+        "Idle users are detected",
+        "Auto-away is triggered",
+        "Activity clears auto-away",
+        "Configuration is respected"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/presence/idle-detector.ts",
+        "services/socket-service/src/presence/activity-tracker.ts",
+        "services/socket-service/src/presence/idle-scheduler.ts",
+        "services/socket-service/src/presence/auto-away-handler.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["redis"],
+        "environment_variables": [
+          "PRESENCE_IDLE_TIMEOUT_MS",
+          "AUTO_AWAY_ENABLED"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["presence", "idle", "auto-away", "activity"]
+    },
+    {
+      "id": "PRESENCE-003",
+      "task_name": "Presence Subscription System",
+      "feature_details": "Implement subscription system for receiving presence updates for specific users.",
+      "feature_dependency": ["PRESENCE-001", "SOCKET-009"],
+      "ai_prompt": "Implement presence subscriptions:\n\n1. Create services/socket-service/src/presence/presence-subscriber.ts:\n   ```typescript\n   export class PresenceSubscriber {\n     async subscribe(subscriberId: string, targetUserIds: string[]): Promise<void>;\n     async unsubscribe(subscriberId: string, targetUserIds: string[]): Promise<void>;\n     async unsubscribeAll(subscriberId: string): Promise<void>;\n     async getSubscriptions(subscriberId: string): Promise<string[]>;\n     async getSubscribers(targetUserId: string): Promise<string[]>;\n   }\n   ```\n\n2. Create services/socket-service/src/presence/presence-notifier.ts:\n   ```typescript\n   export class PresenceNotifier {\n     async notifyStatusChange(userId: string, newStatus: PresenceStatus): Promise<void>;\n     async notifySubscribers(userId: string, event: PresenceEvent): Promise<void>;\n   }\n   ```\n\n3. Create services/socket-service/src/events/presence-subscription-events.ts:\n   ```typescript\n   socket.on('presence_subscribe', async (data: { user_ids: string[] }) => {\n     // Validate access to user presence\n     const allowed = await presenceAuthorizer.canViewPresence(socket.data.user.id, data.user_ids);\n     await presenceSubscriber.subscribe(socket.data.user.id, allowed);\n\n     // Return current status of subscribed users\n     const statuses = await presenceManager.getBulkStatus(allowed);\n     socket.emit('presence_status', { users: statuses });\n   });\n   ```\n\n4. Create services/socket-service/src/presence/presence-authorizer.ts:\n   - Check if user can view another's presence\n   - Same tenant check\n   - Conversation membership check\n   - Privacy settings respect\n\n5. Subscription optimization:\n   - Room-based subscriptions\n   - Auto-subscribe on room join\n   - Auto-unsubscribe on room leave\n   - Batch presence updates\n\n6. Privacy controls:\n   - Invisible mode (hide from all)\n   - Selective visibility\n   - Block list respect",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test subscription logic",
+          "Test notification delivery",
+          "Test authorization"
+        ],
+        "integration_tests": [
+          "Test subscribe/unsubscribe",
+          "Test update notifications",
+          "Test privacy controls"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Users can subscribe to presence",
+        "Updates are delivered to subscribers",
+        "Authorization is enforced",
+        "Privacy settings are respected",
+        "Subscriptions are efficient"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/presence/presence-subscriber.ts",
+        "services/socket-service/src/presence/presence-notifier.ts",
+        "services/socket-service/src/presence/presence-authorizer.ts",
+        "services/socket-service/src/events/presence-subscription-events.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["redis"],
+        "environment_variables": [
+          "MAX_PRESENCE_SUBSCRIPTIONS"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["presence", "subscriptions", "notifications", "privacy"]
+    },
+    {
+      "id": "PRESENCE-004",
+      "task_name": "Last Seen Tracking",
+      "feature_details": "Track and serve accurate 'last seen' timestamps for offline users.",
+      "feature_dependency": ["PRESENCE-001"],
+      "ai_prompt": "Implement last seen tracking:\n\n1. Create services/socket-service/src/presence/last-seen-tracker.ts:\n   ```typescript\n   export class LastSeenTracker {\n     async updateLastSeen(userId: string): Promise<void>;\n     async getLastSeen(userId: string): Promise<Date | null>;\n     async getBulkLastSeen(userIds: string[]): Promise<Map<string, Date | null>>;\n   }\n   ```\n\n2. Create services/socket-service/src/presence/last-seen-store.ts:\n   ```typescript\n   export class LastSeenStore {\n     // Hybrid storage: Redis for recent, MongoDB for historical\n     async set(userId: string, timestamp: Date): Promise<void>;\n     async get(userId: string): Promise<Date | null>;\n     async mget(userIds: string[]): Promise<Map<string, Date | null>>;\n     async persist(userId: string): Promise<void>; // Move to MongoDB\n   }\n   ```\n\n3. Last seen update triggers:\n   - On disconnect (with delay)\n   - On status change to offline\n   - Periodic persistence to MongoDB\n\n4. Create services/socket-service/src/presence/last-seen-privacy.ts:\n   - Privacy settings for last seen\n   - Hide last seen option\n   - Approximate last seen (\"recently\", \"today\")\n   - Contact-only visibility\n\n5. Create services/gateway/src/routes/v1/users/presence.ts:\n   - GET /v1/users/:id/presence - Get user presence\n   - GET /v1/users/presence/bulk - Get bulk presence\n   - PUT /v1/users/me/presence - Update own presence\n\n6. Display formatting:\n   - \"Online\"\n   - \"Last seen recently\" (< 1 hour)\n   - \"Last seen today\"\n   - \"Last seen yesterday\"\n   - \"Last seen [date]\"\n\n7. Persistence:\n   - Redis for hot data (recent)\n   - MongoDB for cold data (historical)\n   - Periodic sync job",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test last seen updates",
+          "Test privacy filtering",
+          "Test display formatting"
+        ],
+        "integration_tests": [
+          "Test persistence flow",
+          "Test bulk retrieval",
+          "Test API endpoints"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Last seen is tracked accurately",
+        "Privacy settings are respected",
+        "Bulk retrieval is efficient",
+        "API endpoints work correctly",
+        "Data persists to MongoDB"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/presence/last-seen-tracker.ts",
+        "services/socket-service/src/presence/last-seen-store.ts",
+        "services/socket-service/src/presence/last-seen-privacy.ts",
+        "services/gateway/src/routes/v1/users/presence.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["redis", "mongodb"],
+        "environment_variables": [
+          "LAST_SEEN_PERSIST_INTERVAL_MS",
+          "LAST_SEEN_REDIS_TTL"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/v1/users/:id/presence",
+          "description": "Get user presence and last seen"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/users/presence/bulk",
+          "description": "Get bulk user presence"
+        },
+        {
+          "method": "PUT",
+          "path": "/v1/users/me/presence",
+          "description": "Update own presence"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "user_presence",
+            "description": "Store user presence and last seen"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "user_presence",
+            "fields": ["user_id"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["presence", "last-seen", "tracking", "privacy"]
+    }
+  ]
+}

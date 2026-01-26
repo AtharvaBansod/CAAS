@@ -1,0 +1,152 @@
+{
+  "task_group": "search-indexing",
+  "description": "Search index setup and message indexing",
+  "priority": "medium",
+  "estimated_hours": 12,
+  "phase": 4,
+  "feature_area": "search",
+  "tasks": [
+    {
+      "id": "SEARCH-001",
+      "task_name": "Elasticsearch Setup",
+      "feature_details": "Set up Elasticsearch with Docker and create message index.",
+      "feature_dependency": ["MSG-001"],
+      "ai_prompt": "Set up Elasticsearch:\n\n1. Update docker-compose.yml with Elasticsearch:\n   ```yaml\n   elasticsearch:\n     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0\n     environment:\n       - discovery.type=single-node\n       - xpack.security.enabled=true\n       - ELASTIC_PASSWORD=changeme\n       - \"ES_JAVA_OPTS=-Xms512m -Xmx512m\"\n     volumes:\n       - elasticsearch_data:/usr/share/elasticsearch/data\n     ports:\n       - \"9200:9200\"\n     healthcheck:\n       test: curl -s http://localhost:9200 || exit 1\n       interval: 10s\n       timeout: 5s\n       retries: 5\n   ```\n\n2. Create services/search-service/src/main.ts:\n   ```typescript\n   import { Client } from '@elastic/elasticsearch';\n   import Fastify from 'fastify';\n\n   const esClient = new Client({\n     node: process.env.ELASTICSEARCH_URL || 'http://elasticsearch:9200',\n     auth: {\n       username: 'elastic',\n       password: process.env.ELASTICSEARCH_PASSWORD!,\n     },\n   });\n\n   const fastify = Fastify({ logger: true });\n   ```\n\n3. Create services/search-service/src/indices/messages.index.ts:\n   ```typescript\n   export const messagesIndexMapping = {\n     mappings: {\n       properties: {\n         id: { type: 'keyword' },\n         conversation_id: { type: 'keyword' },\n         tenant_id: { type: 'keyword' },\n         sender_id: { type: 'keyword' },\n         type: { type: 'keyword' },\n         content: {\n           type: 'text',\n           analyzer: 'standard',\n           fields: {\n             exact: { type: 'keyword', ignore_above: 256 },\n           },\n         },\n         mentions: { type: 'keyword' },\n         created_at: { type: 'date' },\n         updated_at: { type: 'date' },\n       },\n     },\n     settings: {\n       number_of_shards: 3,\n       number_of_replicas: 1,\n       analysis: {\n         analyzer: {\n           content_analyzer: {\n             type: 'custom',\n             tokenizer: 'standard',\n             filter: ['lowercase', 'asciifolding', 'stemmer'],\n           },\n         },\n       },\n     },\n   };\n   ```\n\n4. Create index initialization script:\n   ```typescript\n   async function initializeIndices() {\n     const exists = await esClient.indices.exists({ index: 'messages' });\n     if (!exists) {\n       await esClient.indices.create({\n         index: 'messages',\n         body: messagesIndexMapping,\n       });\n     }\n   }\n   ```\n\n5. Create services/search-service/Dockerfile",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test index mapping",
+          "Test client connection"
+        ],
+        "integration_tests": [
+          "Test Elasticsearch connectivity",
+          "Test index creation"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Elasticsearch running in Docker",
+        "Search service connected",
+        "Message index created",
+        "Mapping configured"
+      ],
+      "files_to_create": [
+        "services/search-service/src/main.ts",
+        "services/search-service/src/indices/messages.index.ts",
+        "services/search-service/Dockerfile",
+        "services/search-service/package.json"
+      ],
+      "files_to_modify": [
+        "docker-compose.yml"
+      ],
+      "docker_requirements": {
+        "services": ["elasticsearch"],
+        "environment_variables": [
+          "ELASTICSEARCH_URL",
+          "ELASTICSEARCH_PASSWORD"
+        ],
+        "volumes": ["elasticsearch_data"],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["search", "elasticsearch", "setup"]
+    },
+    {
+      "id": "SEARCH-002",
+      "task_name": "Message Indexing Consumer",
+      "feature_details": "Implement Kafka consumer to index messages in Elasticsearch.",
+      "feature_dependency": ["SEARCH-001", "MSG-003"],
+      "ai_prompt": "Implement message indexing:\n\n1. Create services/search-service/src/indexing/message-indexer.ts:\n   ```typescript\n   export class MessageIndexer {\n     constructor(private esClient: Client) {}\n\n     async indexMessage(message: Message): Promise<void> {\n       await this.esClient.index({\n         index: 'messages',\n         id: message.id,\n         document: {\n           id: message.id,\n           conversation_id: message.conversation_id,\n           tenant_id: message.tenant_id,\n           sender_id: message.sender_id,\n           type: message.type,\n           content: this.extractSearchableContent(message),\n           mentions: message.mentions,\n           created_at: message.created_at,\n           updated_at: message.updated_at,\n         },\n       });\n     }\n\n     async updateMessage(message: Message): Promise<void> {\n       await this.esClient.update({\n         index: 'messages',\n         id: message.id,\n         doc: {\n           content: this.extractSearchableContent(message),\n           updated_at: message.updated_at,\n         },\n       });\n     }\n\n     async deleteMessage(messageId: string): Promise<void> {\n       await this.esClient.delete({\n         index: 'messages',\n         id: messageId,\n       });\n     }\n\n     private extractSearchableContent(message: Message): string {\n       switch (message.type) {\n         case 'text':\n           return message.content.text || '';\n         case 'media':\n           return message.content.media?.map(m => m.filename).join(' ') || '';\n         default:\n           return '';\n       }\n     }\n   }\n   ```\n\n2. Create services/search-service/src/indexing/indexing-consumer.ts:\n   ```typescript\n   @KafkaConsumer('messages')\n   export class IndexingConsumer {\n     @Subscribe('message.created')\n     async onMessageCreated(event: MessageCreatedEvent) {\n       await this.messageIndexer.indexMessage(event.data);\n     }\n\n     @Subscribe('message.updated')\n     async onMessageUpdated(event: MessageUpdatedEvent) {\n       await this.messageIndexer.updateMessage(event.data);\n     }\n\n     @Subscribe('message.deleted')\n     async onMessageDeleted(event: MessageDeletedEvent) {\n       await this.messageIndexer.deleteMessage(event.data.id);\n     }\n   }\n   ```\n\n3. Bulk indexing:\n   ```typescript\n   async bulkIndex(messages: Message[]): Promise<void> {\n     const operations = messages.flatMap(msg => [\n       { index: { _index: 'messages', _id: msg.id } },\n       this.toDocument(msg),\n     ]);\n\n     await this.esClient.bulk({ operations });\n   }\n   ```\n\n4. Reindexing support:\n   - Full reindex command\n   - Incremental reindex\n   - Progress tracking",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test content extraction",
+          "Test document mapping"
+        ],
+        "integration_tests": [
+          "Test indexing flow",
+          "Test bulk indexing",
+          "Test updates and deletes"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Messages indexed on create",
+        "Messages updated on edit",
+        "Messages deleted on delete",
+        "Bulk indexing works"
+      ],
+      "files_to_create": [
+        "services/search-service/src/indexing/message-indexer.ts",
+        "services/search-service/src/indexing/indexing-consumer.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["elasticsearch", "kafka"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["search", "indexing", "kafka"]
+    },
+    {
+      "id": "SEARCH-003",
+      "task_name": "Conversation and User Indexing",
+      "feature_details": "Index conversations and users for comprehensive search.",
+      "feature_dependency": ["SEARCH-001"],
+      "ai_prompt": "Implement conversation indexing:\n\n1. Create services/search-service/src/indices/conversations.index.ts:\n   ```typescript\n   export const conversationsIndexMapping = {\n     mappings: {\n       properties: {\n         id: { type: 'keyword' },\n         tenant_id: { type: 'keyword' },\n         type: { type: 'keyword' },\n         name: {\n           type: 'text',\n           fields: {\n             keyword: { type: 'keyword' },\n           },\n         },\n         participant_ids: { type: 'keyword' },\n         participant_names: { type: 'text' },\n         created_at: { type: 'date' },\n         last_message_at: { type: 'date' },\n       },\n     },\n   };\n   ```\n\n2. Create services/search-service/src/indexing/conversation-indexer.ts:\n   ```typescript\n   export class ConversationIndexer {\n     async indexConversation(conversation: Conversation): Promise<void> {\n       const participantNames = await this.getParticipantNames(conversation.participant_ids);\n\n       await this.esClient.index({\n         index: 'conversations',\n         id: conversation.id,\n         document: {\n           id: conversation.id,\n           tenant_id: conversation.tenant_id,\n           type: conversation.type,\n           name: conversation.name,\n           participant_ids: conversation.participant_ids,\n           participant_names: participantNames,\n           created_at: conversation.created_at,\n           last_message_at: conversation.last_message_at,\n         },\n       });\n     }\n   }\n   ```\n\n3. Create services/search-service/src/indices/users.index.ts:\n   ```typescript\n   export const usersIndexMapping = {\n     mappings: {\n       properties: {\n         id: { type: 'keyword' },\n         tenant_id: { type: 'keyword' },\n         name: {\n           type: 'text',\n           fields: {\n             keyword: { type: 'keyword' },\n             autocomplete: {\n               type: 'text',\n               analyzer: 'autocomplete',\n             },\n           },\n         },\n         email: { type: 'keyword' },\n       },\n     },\n     settings: {\n       analysis: {\n         analyzer: {\n           autocomplete: {\n             type: 'custom',\n             tokenizer: 'standard',\n             filter: ['lowercase', 'edge_ngram'],\n           },\n         },\n         filter: {\n           edge_ngram: {\n             type: 'edge_ngram',\n             min_gram: 2,\n             max_gram: 10,\n           },\n         },\n       },\n     },\n   };\n   ```\n\n4. User autocomplete:\n   - Edge n-gram for prefix matching\n   - Fast user lookup\n   - For @mention suggestions",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test conversation mapping",
+          "Test user autocomplete"
+        ],
+        "integration_tests": [
+          "Test conversation indexing",
+          "Test user search"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Conversations indexed",
+        "Users indexed",
+        "Autocomplete works",
+        "Participant search works"
+      ],
+      "files_to_create": [
+        "services/search-service/src/indices/conversations.index.ts",
+        "services/search-service/src/indices/users.index.ts",
+        "services/search-service/src/indexing/conversation-indexer.ts",
+        "services/search-service/src/indexing/user-indexer.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["elasticsearch"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["search", "indexing", "conversations", "users"]
+    }
+  ]
+}

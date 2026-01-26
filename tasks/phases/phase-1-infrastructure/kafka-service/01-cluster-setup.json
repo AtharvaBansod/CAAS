@@ -1,0 +1,252 @@
+{
+  "task_group": "kafka-cluster-setup",
+  "description": "Kafka cluster deployment, configuration, and security setup",
+  "priority": "critical",
+  "estimated_hours": 20,
+  "phase": 1,
+  "feature_area": "kafka-service",
+  "tasks": [
+    {
+      "id": "KAFKA-001",
+      "task_name": "Kafka Docker Cluster Configuration",
+      "feature_details": "Configure a 3-broker Kafka cluster with ZooKeeper using Docker Compose, including proper networking, persistence, and health checks.",
+      "feature_dependency": [],
+      "ai_prompt": "Create production-ready Kafka cluster configuration:\n\n1. Update tasks/docker-compose.yml for Kafka:\n   - 3 Kafka brokers (already defined, enhance configuration)\n   - ZooKeeper with proper data persistence\n   - Schema Registry\n   - Network configuration for inter-broker communication\n\n2. Create tasks/docker/kafka/ directory with:\n   - server.properties template for brokers\n   - zookeeper.properties\n   - log4j.properties for logging configuration\n   - init-topics.sh script for topic creation\n\n3. Broker configuration:\n   - num.partitions=3 (default)\n   - default.replication.factor=3\n   - min.insync.replicas=2\n   - log.retention.hours=168 (7 days)\n   - log.segment.bytes=1073741824 (1GB)\n   - auto.create.topics.enable=false\n   - unclean.leader.election.enable=false\n\n4. ZooKeeper configuration:\n   - tickTime=2000\n   - initLimit=10\n   - syncLimit=5\n   - Data persistence volume\n\n5. Health checks:\n   - Kafka broker API version check\n   - ZooKeeper ruok command\n   - Schema Registry HTTP health\n\n6. Environment-based configuration:\n   - Development: Single broker mode option\n   - Production: Full 3-broker cluster\n\nEnsure cluster can handle broker failures gracefully.",
+      "testing_instructions": {
+        "unit_tests": [],
+        "integration_tests": [
+          "Verify all 3 brokers register with ZooKeeper",
+          "Test topic creation across cluster",
+          "Test broker failure and leader election",
+          "Test message production and consumption",
+          "Verify replication factor is honored"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "All 3 Kafka brokers are running and healthy",
+        "ZooKeeper ensemble is stable",
+        "Schema Registry is accessible",
+        "Topics can be created with replication",
+        "Cluster survives single broker failure",
+        "Messages are not lost during broker restart"
+      ],
+      "files_to_create": [
+        "tasks/docker/kafka/server.properties",
+        "tasks/docker/kafka/zookeeper.properties",
+        "tasks/docker/kafka/log4j.properties",
+        "tasks/docker/kafka/init-topics.sh"
+      ],
+      "files_to_modify": [
+        "tasks/docker-compose.yml"
+      ],
+      "docker_requirements": {
+        "services": ["zookeeper", "kafka-1", "kafka-2", "kafka-3", "schema-registry"],
+        "environment_variables": [
+          "KAFKA_BROKER_ID",
+          "KAFKA_ZOOKEEPER_CONNECT",
+          "KAFKA_ADVERTISED_LISTENERS",
+          "KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR"
+        ],
+        "volumes": ["kafka_data", "zookeeper_data"],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 6,
+      "tags": ["kafka", "docker", "infrastructure", "cluster"]
+    },
+    {
+      "id": "KAFKA-002",
+      "task_name": "Kafka Service Package Setup",
+      "feature_details": "Initialize the kafka-service package as a TypeScript Node.js library providing Kafka client abstractions for all CAAS services.",
+      "feature_dependency": ["KAFKA-001"],
+      "ai_prompt": "Create the kafka-service package:\n\n1. Initialize package in services/kafka-service/:\n   - package.json with kafkajs, @kafkajs/confluent-schema-registry\n   - tsconfig.json with strict TypeScript\n   - Dockerfile for containerization\n   - .env.example\n\n2. Create src/config/:\n   - kafka.config.ts - Kafka client configuration\n   - environment.ts - Environment variable validation with Zod\n   - constants.ts - Topic names, consumer groups\n\n3. Create src/client/:\n   - kafka-client.ts - KafkaClient singleton\n     * Connection management\n     * Retry configuration\n     * Connection events handling\n   - admin-client.ts - AdminClient for topic management\n     * Create/delete topics\n     * List topics\n     * Describe cluster\n   - health-check.ts - Cluster health monitoring\n\n4. Client configuration:\n   ```typescript\n   {\n     clientId: 'caas-service',\n     brokers: ['kafka-1:29092', 'kafka-2:29092', 'kafka-3:29092'],\n     connectionTimeout: 10000,\n     requestTimeout: 30000,\n     retry: {\n       initialRetryTime: 100,\n       retries: 8,\n       maxRetryTime: 30000\n     }\n   }\n   ```\n\n5. Export types:\n   - KafkaConfig\n   - TopicConfig\n   - ProducerConfig\n   - ConsumerConfig\n\nUse modern TypeScript patterns and comprehensive error handling.",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test configuration parsing",
+          "Test environment validation",
+          "Test client singleton behavior"
+        ],
+        "integration_tests": [
+          "Test connection to Kafka cluster",
+          "Test admin operations",
+          "Test health check accuracy",
+          "Test reconnection on failure"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Package compiles without errors",
+        "Client connects to Kafka cluster",
+        "Admin operations work correctly",
+        "Health check returns accurate status",
+        "Reconnection works after broker restart"
+      ],
+      "files_to_create": [
+        "services/kafka-service/package.json",
+        "services/kafka-service/tsconfig.json",
+        "services/kafka-service/Dockerfile",
+        "services/kafka-service/.env.example",
+        "services/kafka-service/src/config/kafka.config.ts",
+        "services/kafka-service/src/config/environment.ts",
+        "services/kafka-service/src/config/constants.ts",
+        "services/kafka-service/src/config/index.ts",
+        "services/kafka-service/src/client/kafka-client.ts",
+        "services/kafka-service/src/client/admin-client.ts",
+        "services/kafka-service/src/client/health-check.ts",
+        "services/kafka-service/src/client/index.ts",
+        "services/kafka-service/src/index.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["kafka-service"],
+        "environment_variables": [
+          "KAFKA_BROKERS",
+          "KAFKA_CLIENT_ID",
+          "KAFKA_CONNECTION_TIMEOUT",
+          "KAFKA_REQUEST_TIMEOUT"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 5,
+      "tags": ["kafka", "typescript", "package", "client"]
+    },
+    {
+      "id": "KAFKA-003",
+      "task_name": "Kafka Security Configuration",
+      "feature_details": "Implement SASL/SCRAM authentication and SSL/TLS encryption for Kafka cluster.",
+      "feature_dependency": ["KAFKA-002"],
+      "ai_prompt": "Implement Kafka security configuration:\n\n1. SASL/SCRAM Authentication:\n   - Create tasks/docker/kafka/kafka_server_jaas.conf\n   - Configure SCRAM-SHA-512 mechanism\n   - Create users:\n     * admin - Full cluster access\n     * producer - Produce to all topics\n     * consumer - Consume from all topics\n     * service-{name} - Per-service credentials\n\n2. Update docker-compose.yml:\n   - Add SASL configuration to all brokers\n   - Configure listener security protocol map\n   - Set inter-broker security\n\n3. ACL Configuration:\n   - Create src/security/acl-manager.ts\n   - Methods:\n     * createProducerAcl(topic, principal)\n     * createConsumerAcl(topic, group, principal)\n     * createAdminAcl(principal)\n     * listAcls()\n     * deleteAcl(aclId)\n\n4. Update kafka-client.ts:\n   - Add SASL authentication options\n   - SSL/TLS configuration (for production)\n   - Certificate management\n\n5. Credential rotation:\n   - Create src/security/credential-rotator.ts\n   - Support for rotating service credentials\n   - Zero-downtime rotation process\n\n6. Create initialization script:\n   - tasks/docker/kafka/init-security.sh\n   - Create SCRAM credentials\n   - Apply initial ACLs\n\nSecurity should be optional for development but enforced in production.",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test ACL creation logic",
+          "Test credential generation"
+        ],
+        "integration_tests": [
+          "Test authenticated connection",
+          "Test ACL enforcement",
+          "Test unauthorized access is blocked",
+          "Test credential rotation"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "SASL authentication works for all users",
+        "ACLs restrict access appropriately",
+        "Unauthorized access is denied",
+        "Credential rotation has zero downtime",
+        "Development mode works without security"
+      ],
+      "files_to_create": [
+        "tasks/docker/kafka/kafka_server_jaas.conf",
+        "tasks/docker/kafka/init-security.sh",
+        "services/kafka-service/src/security/acl-manager.ts",
+        "services/kafka-service/src/security/credential-rotator.ts",
+        "services/kafka-service/src/security/index.ts"
+      ],
+      "files_to_modify": [
+        "tasks/docker-compose.yml",
+        "services/kafka-service/src/client/kafka-client.ts"
+      ],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [
+          "KAFKA_SASL_ENABLED",
+          "KAFKA_SASL_USERNAME",
+          "KAFKA_SASL_PASSWORD",
+          "KAFKA_SSL_ENABLED"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 5,
+      "tags": ["kafka", "security", "authentication", "acl"]
+    },
+    {
+      "id": "KAFKA-004",
+      "task_name": "Kafka Monitoring and Metrics",
+      "feature_details": "Implement Kafka monitoring with JMX metrics export for internal platform observability.",
+      "feature_dependency": ["KAFKA-002"],
+      "ai_prompt": "Create Kafka monitoring and metrics system:\n\n1. JMX Metrics Export:\n   - Configure JMX exporter for Kafka brokers\n   - Create tasks/docker/kafka/jmx-exporter-config.yml\n   - Metrics to export:\n     * kafka.server:type=BrokerTopicMetrics\n     * kafka.server:type=ReplicaManager\n     * kafka.network:type=RequestMetrics\n     * kafka.controller:type=KafkaController\n\n2. Create src/monitoring/metrics-collector.ts:\n   - MetricsCollector class\n   - Methods:\n     * getBrokerMetrics(): Broker health\n     * getTopicMetrics(topic): Topic-level metrics\n     * getConsumerGroupMetrics(group): Consumer lag\n     * getProducerMetrics(): Producer performance\n\n3. Key metrics to track:\n   - Messages per second (in/out)\n   - Bytes per second (in/out)\n   - Consumer group lag\n   - Under-replicated partitions\n   - Active controller count\n   - Request latency (produce/fetch)\n   - ISR shrink/expand rate\n\n4. Create src/monitoring/lag-monitor.ts:\n   - LagMonitor class\n   - Track consumer lag per group\n   - Alert when lag exceeds threshold\n   - Historical lag tracking\n\n5. Create src/monitoring/health-dashboard-data.ts:\n   - Aggregate data for internal dashboards\n   - Cluster overview\n   - Topic health\n   - Consumer group status\n\nMetrics exposed via Prometheus endpoint for Grafana (internal platform use only).",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test metric calculations",
+          "Test lag threshold detection"
+        ],
+        "integration_tests": [
+          "Test JMX metrics collection",
+          "Test Prometheus endpoint",
+          "Test lag monitoring accuracy"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "All key metrics are collected",
+        "Prometheus endpoint exposes metrics",
+        "Consumer lag is tracked accurately",
+        "Alerts fire when thresholds exceeded",
+        "Dashboard data is aggregated correctly"
+      ],
+      "files_to_create": [
+        "tasks/docker/kafka/jmx-exporter-config.yml",
+        "services/kafka-service/src/monitoring/metrics-collector.ts",
+        "services/kafka-service/src/monitoring/lag-monitor.ts",
+        "services/kafka-service/src/monitoring/health-dashboard-data.ts",
+        "services/kafka-service/src/monitoring/index.ts"
+      ],
+      "files_to_modify": [
+        "tasks/docker-compose.yml"
+      ],
+      "docker_requirements": {
+        "services": ["jmx-exporter"],
+        "environment_variables": [
+          "JMX_PORT",
+          "LAG_ALERT_THRESHOLD"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/metrics",
+          "description": "Prometheus metrics endpoint"
+        },
+        {
+          "method": "GET",
+          "path": "/health",
+          "description": "Kafka health check"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["kafka", "monitoring", "metrics", "prometheus"]
+    }
+  ]
+}

@@ -1,0 +1,298 @@
+{
+  "task_group": "message-actions",
+  "description": "Message actions - reactions, replies, forwards, and edits",
+  "priority": "high",
+  "estimated_hours": 16,
+  "phase": 4,
+  "feature_area": "messages",
+  "tasks": [
+    {
+      "id": "MSG-009",
+      "task_name": "Message Reactions",
+      "feature_details": "Implement emoji reactions on messages.",
+      "feature_dependency": ["MSG-003"],
+      "ai_prompt": "Implement message reactions:\n\n1. Create services/messaging-service/src/messages/reactions/reaction.service.ts:\n   ```typescript\n   export class ReactionService {\n     constructor(\n       private messageRepo: MessageRepository,\n       private reactionRepo: ReactionRepository,\n       private socketEmitter: SocketEmitter,\n     ) {}\n\n     async addReaction(userId: string, messageId: string, emoji: string): Promise<void> {\n       // Validate emoji\n       if (!this.isValidEmoji(emoji)) {\n         throw new BadRequestException('Invalid emoji');\n       }\n\n       // Check if already reacted with same emoji\n       const existing = await this.reactionRepo.findByUserAndMessage(userId, messageId);\n       if (existing?.emoji === emoji) {\n         return; // Already reacted\n       }\n\n       // Remove previous reaction if exists\n       if (existing) {\n         await this.reactionRepo.remove(userId, messageId);\n       }\n\n       // Add reaction\n       await this.reactionRepo.add({\n         message_id: messageId,\n         user_id: userId,\n         emoji,\n         created_at: new Date(),\n       });\n\n       // Emit real-time event\n       await this.socketEmitter.emit('reaction:added', {\n         message_id: messageId,\n         user_id: userId,\n         emoji,\n       });\n     }\n\n     async removeReaction(userId: string, messageId: string): Promise<void>;\n\n     async getReactions(messageId: string): Promise<ReactionSummary>;\n   }\n\n   interface ReactionSummary {\n     [emoji: string]: {\n       count: number;\n       users: string[];\n       user_reacted: boolean;\n     };\n   }\n   ```\n\n2. Create services/messaging-service/src/messages/reactions/reaction.repository.ts:\n   - Store reactions in separate collection\n   - Efficient aggregation for counts\n   - Index on message_id + user_id\n\n3. Create services/gateway/src/routes/v1/messages/reactions.ts:\n   - POST /:id/reactions - Add reaction\n   - DELETE /:id/reactions - Remove reaction\n   - GET /:id/reactions - Get reaction details\n\n4. Emoji validation:\n   - Support standard Unicode emojis\n   - Optional: custom emoji support\n   - Blocklist inappropriate emojis\n\n5. Reaction limits:\n   - One reaction per user per message\n   - Changing reaction replaces previous\n   - Configurable emoji set",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test add reaction",
+          "Test remove reaction",
+          "Test reaction replacement"
+        ],
+        "integration_tests": [
+          "Test real-time events",
+          "Test aggregation",
+          "Test concurrent reactions"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Reactions can be added",
+        "Reactions can be removed",
+        "Summary is aggregated",
+        "Real-time updates work",
+        "One reaction per user"
+      ],
+      "files_to_create": [
+        "services/messaging-service/src/messages/reactions/reaction.service.ts",
+        "services/messaging-service/src/messages/reactions/reaction.repository.ts",
+        "services/gateway/src/routes/v1/messages/reactions.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/v1/messages/:id/reactions",
+          "description": "Add reaction to message"
+        },
+        {
+          "method": "DELETE",
+          "path": "/v1/messages/:id/reactions",
+          "description": "Remove reaction from message"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/messages/:id/reactions",
+          "description": "Get reactions on message"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "message_reactions",
+            "description": "Store message reactions"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "message_reactions",
+            "fields": ["message_id", "user_id"],
+            "unique": true
+          },
+          {
+            "collection": "message_reactions",
+            "fields": ["message_id", "emoji"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["messaging", "reactions", "emoji"]
+    },
+    {
+      "id": "MSG-010",
+      "task_name": "Message Replies and Threads",
+      "feature_details": "Implement message replies and threaded conversations.",
+      "feature_dependency": ["MSG-003"],
+      "ai_prompt": "Implement message replies:\n\n1. Create services/messaging-service/src/messages/threads/thread.service.ts:\n   ```typescript\n   export class ThreadService {\n     async createReply(\n       userId: string,\n       parentMessageId: string,\n       content: MessageContent,\n     ): Promise<Message> {\n       // Get parent message\n       const parent = await this.messageRepo.findById(parentMessageId);\n       if (!parent) {\n         throw new NotFoundException('Parent message not found');\n       }\n\n       // Create reply with reference\n       const reply = await this.messageService.sendMessage(userId, {\n         conversation_id: parent.conversation_id,\n         type: content.type,\n         content,\n         reply_to: parentMessageId,\n       });\n\n       // Update parent thread count\n       await this.messageRepo.incrementThreadCount(parentMessageId);\n\n       return reply;\n     }\n\n     async getThreadReplies(\n       messageId: string,\n       options: PaginationOptions,\n     ): Promise<Message[]>;\n\n     async getThreadParticipants(messageId: string): Promise<User[]>;\n   }\n   ```\n\n2. Reply structure:\n   ```typescript\n   interface MessageWithThread extends Message {\n     reply_to?: string;\n     reply_to_message?: Message; // Populated when fetching\n     thread_count?: number;\n     thread_participants?: string[];\n   }\n   ```\n\n3. Create services/gateway/src/routes/v1/messages/threads.ts:\n   - POST /:id/replies - Create reply\n   - GET /:id/replies - Get thread replies\n   - GET /:id/thread - Get thread details\n\n4. Reply display:\n   - Show quoted message preview\n   - Click to jump to original\n   - Thread indicator on parent\n\n5. Nested replies:\n   - Support nested reply threads\n   - Flatten in API response\n   - UI handles display\n\n6. Thread notifications:\n   - Notify thread participants\n   - \"Also in this thread\" mentions",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test reply creation",
+          "Test thread count update",
+          "Test nested replies"
+        ],
+        "integration_tests": [
+          "Test thread fetching",
+          "Test participant tracking",
+          "Test notifications"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Replies can be created",
+        "Thread count is tracked",
+        "Replies can be fetched",
+        "Participants are tracked",
+        "Nested replies work"
+      ],
+      "files_to_create": [
+        "services/messaging-service/src/messages/threads/thread.service.ts",
+        "services/gateway/src/routes/v1/messages/threads.ts"
+      ],
+      "files_to_modify": [
+        "services/messaging-service/src/messages/message.entity.ts"
+      ],
+      "docker_requirements": {
+        "services": ["mongodb"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/v1/messages/:id/replies",
+          "description": "Create reply to message"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/messages/:id/replies",
+          "description": "Get thread replies"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/messages/:id/thread",
+          "description": "Get thread details"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [
+          {
+            "collection": "messages",
+            "fields": ["reply_to", "created_at"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["messaging", "replies", "threads"]
+    },
+    {
+      "id": "MSG-011",
+      "task_name": "Message Forwarding",
+      "feature_details": "Implement forwarding messages to other conversations.",
+      "feature_dependency": ["MSG-003"],
+      "ai_prompt": "Implement message forwarding:\n\n1. Create services/messaging-service/src/messages/forward/forward.service.ts:\n   ```typescript\n   export class ForwardService {\n     async forwardMessage(\n       userId: string,\n       messageId: string,\n       targetConversationIds: string[],\n     ): Promise<Message[]> {\n       // Get original message\n       const original = await this.messageRepo.findById(messageId);\n       if (!original) {\n         throw new NotFoundException('Message not found');\n       }\n\n       // Validate access to target conversations\n       for (const convId of targetConversationIds) {\n         if (!await this.canSendTo(userId, convId)) {\n           throw new ForbiddenException(`Cannot forward to conversation ${convId}`);\n         }\n       }\n\n       // Create forwarded messages\n       const forwarded: Message[] = [];\n       for (const convId of targetConversationIds) {\n         const fwd = await this.messageService.sendMessage(userId, {\n           conversation_id: convId,\n           type: original.type,\n           content: original.content,\n           forwarded_from: messageId,\n         });\n         forwarded.push(fwd);\n       }\n\n       return forwarded;\n     }\n\n     async forwardMultiple(\n       userId: string,\n       messageIds: string[],\n       targetConversationId: string,\n     ): Promise<Message[]>;\n   }\n   ```\n\n2. Forward metadata:\n   ```typescript\n   interface ForwardInfo {\n     forwarded_from: string; // Original message ID\n     original_sender_id: string;\n     original_conversation_id: string;\n     forward_count: number; // How many times forwarded\n   }\n   ```\n\n3. Create services/gateway/src/routes/v1/messages/forward.ts:\n   - POST /:id/forward - Forward single message\n   - POST /forward-multiple - Forward multiple messages\n\n4. Forward rules:\n   - Maintain original content\n   - Show \"Forwarded\" label\n   - Show original sender name\n   - Track forward chain (limit depth)\n\n5. Forward limits:\n   - Max 5 conversations at once\n   - Max 10 messages at once\n   - Rate limiting on forwards\n\n6. Privacy:\n   - Option to forward without sender info\n   - Respect original message privacy settings\n   - Don't forward system messages",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test forward logic",
+          "Test permission checks",
+          "Test forward limits"
+        ],
+        "integration_tests": [
+          "Test multi-conversation forward",
+          "Test multi-message forward",
+          "Test privacy settings"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Messages can be forwarded",
+        "Multiple targets supported",
+        "Forward metadata tracked",
+        "Permissions checked",
+        "Limits enforced"
+      ],
+      "files_to_create": [
+        "services/messaging-service/src/messages/forward/forward.service.ts",
+        "services/gateway/src/routes/v1/messages/forward.ts"
+      ],
+      "files_to_modify": [
+        "services/messaging-service/src/messages/message.entity.ts"
+      ],
+      "docker_requirements": {
+        "services": ["mongodb"],
+        "environment_variables": [
+          "MAX_FORWARD_TARGETS",
+          "MAX_FORWARD_MESSAGES"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/v1/messages/:id/forward",
+          "description": "Forward message to conversations"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/messages/forward-multiple",
+          "description": "Forward multiple messages"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [
+          {
+            "collection": "messages",
+            "fields": ["forwarded_from"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["messaging", "forward", "share"]
+    },
+    {
+      "id": "MSG-012",
+      "task_name": "Message Editing and History",
+      "feature_details": "Implement message editing with edit history tracking.",
+      "feature_dependency": ["MSG-003"],
+      "ai_prompt": "Implement message editing:\n\n1. Create services/messaging-service/src/messages/edit/edit.service.ts:\n   ```typescript\n   export class EditService {\n     async editMessage(\n       userId: string,\n       messageId: string,\n       newContent: MessageContent,\n     ): Promise<Message> {\n       // Get message\n       const message = await this.messageRepo.findById(messageId);\n       if (!message) {\n         throw new NotFoundException('Message not found');\n       }\n\n       // Verify ownership\n       if (message.sender_id !== userId) {\n         throw new ForbiddenException('Can only edit own messages');\n       }\n\n       // Check edit window (e.g., 15 minutes)\n       if (!this.isWithinEditWindow(message.created_at)) {\n         throw new BadRequestException('Edit window expired');\n       }\n\n       // Save edit history\n       await this.editHistoryRepo.add({\n         message_id: messageId,\n         previous_content: message.content,\n         edited_at: new Date(),\n       });\n\n       // Update message\n       const updated = await this.messageRepo.update(messageId, {\n         content: newContent,\n         edited: true,\n         edited_at: new Date(),\n       });\n\n       // Emit real-time event\n       await this.socketEmitter.emit('message:edited', {\n         conversation_id: message.conversation_id,\n         message: updated,\n       });\n\n       return updated;\n     }\n\n     async getEditHistory(messageId: string): Promise<EditHistory[]>;\n   }\n\n   interface EditHistory {\n     id: string;\n     message_id: string;\n     previous_content: MessageContent;\n     edited_at: Date;\n   }\n   ```\n\n2. Create services/messaging-service/src/messages/edit/edit-history.repository.ts:\n   - Store edit history\n   - Index on message_id\n   - Limit history entries\n\n3. Create services/gateway/src/routes/v1/messages/edit.ts:\n   - PUT /:id - Edit message (existing)\n   - GET /:id/history - Get edit history\n\n4. Edit rules:\n   - Only text content can be edited\n   - Media messages: only caption\n   - Show \"edited\" indicator\n   - Optional: show edit history\n\n5. Edit window:\n   - Configurable time window\n   - Default: 15 minutes\n   - Premium: longer or unlimited\n\n6. Delete vs Edit:\n   - Soft delete marks as deleted\n   - Edit history preserved\n   - Deleted messages show placeholder",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test edit logic",
+          "Test window expiry",
+          "Test history tracking"
+        ],
+        "integration_tests": [
+          "Test real-time update",
+          "Test history retrieval",
+          "Test permission checks"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Messages can be edited",
+        "Edit history tracked",
+        "Edit window enforced",
+        "Edited indicator shown",
+        "Real-time updates work"
+      ],
+      "files_to_create": [
+        "services/messaging-service/src/messages/edit/edit.service.ts",
+        "services/messaging-service/src/messages/edit/edit-history.repository.ts",
+        "services/gateway/src/routes/v1/messages/edit.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb"],
+        "environment_variables": [
+          "MESSAGE_EDIT_WINDOW_MINUTES"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "PUT",
+          "path": "/v1/messages/:id",
+          "description": "Edit message"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/messages/:id/history",
+          "description": "Get edit history"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "message_edit_history",
+            "description": "Store message edit history"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "message_edit_history",
+            "fields": ["message_id", "edited_at"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["messaging", "edit", "history"]
+    }
+  ]
+}

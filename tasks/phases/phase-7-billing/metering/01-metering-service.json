@@ -1,0 +1,93 @@
+{
+  "feature_group": "metering-service",
+  "description": "Usage metering and tracking service",
+  "tasks": [
+    {
+      "task-name": "Metering Service Setup",
+      "feature-details": "Create the usage metering service that consumes events from Kafka and aggregates usage metrics per tenant. Service tracks messages, API calls, and active users. Data stored in MongoDB with time-series collections.",
+      "feature-dependency": ["KAFKA-001", "MONGO-001"],
+      "ai-prompt": "Create the metering service in services/metering:\n\n1. Fastify service setup:\n   - Port: 3011\n   - Health endpoints\n   - Pino logging\n   - Graceful shutdown\n\n2. Kafka consumer for usage events:\n   - Topic: 'usage.events'\n   - Consumer group: 'metering-service'\n   - Event types:\n     - 'message.sent' - Message was sent\n     - 'api.request' - API request made\n     - 'user.active' - User activity detected\n     - 'media.uploaded' - Media file uploaded\n   - Batch processing for efficiency\n\n3. MongoDB collections:\n   - 'usage_events' - Raw event storage (time-series)\n   - 'usage_daily' - Daily aggregates\n   - 'usage_monthly' - Monthly aggregates (for billing)\n   - 'active_users' - MAU tracking\n\n4. UsageEventSchema:\n   - tenantId: string\n   - eventType: string\n   - timestamp: Date\n   - metadata: {\n       userId?: string\n       messageId?: string\n       bytes?: number\n       endpoint?: string\n     }\n\n5. Aggregation logic:\n   - Increment counters in daily/monthly aggregates\n   - Use MongoDB $inc for atomic updates\n   - Track unique users per day/month for MAU\n\n6. API endpoints:\n   - GET /usage/:tenantId - Current usage\n   - GET /usage/:tenantId/history - Usage history\n   - GET /usage/:tenantId/mau - MAU count\n\n7. Docker configuration",
+      "testing-instructions": "1. Start service and verify health endpoint\n2. Produce usage events to Kafka\n3. Verify events are consumed and stored\n4. Check daily aggregates are updated\n5. Test MAU calculation with unique users\n6. Test API returns correct usage\n7. Test batch processing efficiency\n8. Test graceful shutdown",
+      "acceptance_criteria": [
+        "Service consumes Kafka events",
+        "Events are stored in time-series collection",
+        "Aggregates are updated atomically",
+        "MAU counts unique users correctly",
+        "API returns accurate usage data",
+        "Batch processing is efficient",
+        "Service handles high volume"
+      ],
+      "files_to_create": [
+        "services/metering/src/index.ts",
+        "services/metering/src/consumers/usage-consumer.ts",
+        "services/metering/src/models/usage-event.ts",
+        "services/metering/src/models/usage-aggregate.ts",
+        "services/metering/src/models/active-users.ts",
+        "services/metering/src/services/aggregation.ts",
+        "services/metering/src/routes/usage.ts",
+        "services/metering/Dockerfile",
+        "services/metering/package.json"
+      ],
+      "docker_requirements": {
+        "image": "node:20-alpine",
+        "ports": ["3011:3011"],
+        "environment": {
+          "KAFKA_BROKERS": "kafka:9092",
+          "MONGODB_URI": "mongodb://mongodb:27017/caas"
+        }
+      },
+      "task_id": "BILLING-001"
+    },
+    {
+      "task-name": "Usage Event Producers",
+      "feature-details": "Implement usage event producers in existing services to emit events to Kafka. Add tracking to messaging service, API gateway, and media service. Ensure minimal performance impact.",
+      "feature-dependency": ["BILLING-001", "MSG-001", "GW-001"],
+      "ai-prompt": "Add usage event production to existing services:\n\n1. Create shared UsageEventProducer utility:\n   Location: packages/shared/src/usage/\n   - UsageEventProducer class\n   - produceEvent(event: UsageEvent): Promise<void>\n   - Batch buffering to reduce Kafka calls\n   - Flush on interval (every 5 seconds)\n   - Async/fire-and-forget (don't block main flow)\n\n2. UsageEvent interface:\n   - type: 'message.sent' | 'api.request' | 'user.active' | 'media.uploaded'\n   - tenantId: string\n   - appId: string\n   - timestamp: Date\n   - metadata: Record<string, any>\n\n3. Integration in Messaging Service:\n   - Emit 'message.sent' when message is created\n   - Include: tenantId, appId, userId, conversationId\n   - Don't await (fire and forget)\n\n4. Integration in API Gateway:\n   - Emit 'api.request' on each API call\n   - Include: tenantId, appId, endpoint, method\n   - Use Fastify onResponse hook\n   - Exclude internal endpoints\n\n5. Integration in Media Service:\n   - Emit 'media.uploaded' when file uploaded\n   - Include: tenantId, appId, size (bytes), mimeType\n\n6. User activity tracking:\n   - Emit 'user.active' on significant actions\n   - Deduplicate: only once per user per hour\n   - Use Redis to track emitted users\n\n7. Performance considerations:\n   - Batching reduces Kafka calls\n   - Fire-and-forget prevents blocking\n   - Graceful degradation on Kafka failure",
+      "testing-instructions": "1. Test message sending emits usage event\n2. Test API call emits usage event\n3. Test media upload emits usage event\n4. Test batching reduces Kafka calls\n5. Test fire-and-forget doesn't block\n6. Test user activity deduplication\n7. Test graceful degradation on Kafka down\n8. Measure performance impact (<1ms added latency)",
+      "acceptance_criteria": [
+        "Usage events are emitted for all tracked actions",
+        "Events include required metadata",
+        "Batching reduces Kafka overhead",
+        "Main request flow is not blocked",
+        "User activity is deduplicated",
+        "Performance impact is minimal",
+        "Kafka failure doesn't affect main service"
+      ],
+      "files_to_create": [
+        "packages/shared/src/usage/usage-event-producer.ts",
+        "packages/shared/src/usage/types.ts",
+        "packages/shared/src/usage/index.ts"
+      ],
+      "docker_requirements": null,
+      "task_id": "BILLING-002"
+    },
+    {
+      "task-name": "Usage Aggregation Jobs",
+      "feature-details": "Create scheduled jobs for aggregating usage data daily and monthly. Calculate totals for billing, generate usage reports, and cleanup old raw data.",
+      "feature-dependency": ["BILLING-001"],
+      "ai-prompt": "Create usage aggregation jobs in services/metering:\n\n1. BullMQ job queue setup:\n   - Queue: 'metering-jobs'\n   - Redis connection\n   - Workers with concurrency control\n\n2. Daily Aggregation Job:\n   - Schedule: Every day at 00:05 UTC\n   - For each tenant:\n     - Sum events by type for previous day\n     - Calculate unique active users\n     - Store in 'usage_daily' collection\n   - Use MongoDB aggregation pipeline\n   - Process in batches for large datasets\n\n3. Monthly Aggregation Job:\n   - Schedule: 1st of month at 01:00 UTC\n   - Aggregate daily totals into monthly\n   - Calculate MAU from active_users\n   - Store in 'usage_monthly'\n   - This is used for billing\n\n4. Cleanup Job:\n   - Schedule: Weekly\n   - Delete raw events older than 30 days\n   - Keep aggregated data for 2 years\n   - Use TTL index as backup\n\n5. Report Generation Job:\n   - On-demand job triggered by API\n   - Generate usage report for tenant\n   - Return JSON or prepare for PDF\n\n6. Aggregation Worker:\n   - Process jobs from queue\n   - Error handling with retries\n   - Dead letter queue for failed jobs\n   - Logging and monitoring\n\n7. API endpoints:\n   - POST /jobs/aggregate/daily - Trigger daily (manual)\n   - POST /jobs/aggregate/monthly - Trigger monthly (manual)\n   - POST /jobs/report/:tenantId - Generate report\n   - GET /jobs/status/:jobId - Check job status\n\n8. Cron scheduling:\n   - Use node-cron or BullMQ repeat\n   - Ensure jobs run exactly once (not duplicated)",
+      "testing-instructions": "1. Test daily aggregation creates daily records\n2. Test monthly aggregation sums daily records\n3. Test MAU calculation is accurate\n4. Test cleanup removes old events\n5. Test manual job triggers work\n6. Test job retries on failure\n7. Test dead letter queue captures failures\n8. Test report generation returns data",
+      "acceptance_criteria": [
+        "Daily aggregation runs on schedule",
+        "Monthly aggregation runs on schedule",
+        "Aggregates are accurate",
+        "MAU is calculated correctly",
+        "Old data is cleaned up",
+        "Manual triggers work",
+        "Jobs are idempotent (can re-run safely)",
+        "Failures are handled gracefully"
+      ],
+      "files_to_create": [
+        "services/metering/src/jobs/queue.ts",
+        "services/metering/src/jobs/daily-aggregation.ts",
+        "services/metering/src/jobs/monthly-aggregation.ts",
+        "services/metering/src/jobs/cleanup.ts",
+        "services/metering/src/jobs/report-generation.ts",
+        "services/metering/src/jobs/worker.ts",
+        "services/metering/src/routes/jobs.ts"
+      ],
+      "docker_requirements": null,
+      "task_id": "BILLING-003"
+    }
+  ]
+}

@@ -1,0 +1,169 @@
+{
+  "task_group": "search-api",
+  "description": "Search API with filtering and highlighting",
+  "priority": "medium",
+  "estimated_hours": 12,
+  "phase": 4,
+  "feature_area": "search",
+  "tasks": [
+    {
+      "id": "SEARCH-004",
+      "task_name": "Message Search API",
+      "feature_details": "Implement message search with full-text search and filters.",
+      "feature_dependency": ["SEARCH-002"],
+      "ai_prompt": "Implement message search API:\n\n1. Create services/search-service/src/search/message-search.service.ts:\n   ```typescript\n   export class MessageSearchService {\n     async search(params: MessageSearchParams): Promise<SearchResult<Message>> {\n       const query = this.buildQuery(params);\n\n       const result = await this.esClient.search({\n         index: 'messages',\n         body: {\n           query,\n           highlight: {\n             fields: {\n               content: {\n                 pre_tags: ['<mark>'],\n                 post_tags: ['</mark>'],\n                 fragment_size: 100,\n                 number_of_fragments: 3,\n               },\n             },\n           },\n           sort: params.sort || [{ created_at: 'desc' }],\n           from: params.offset || 0,\n           size: params.limit || 20,\n         },\n       });\n\n       return {\n         hits: result.hits.hits.map(this.mapHit),\n         total: result.hits.total.value,\n         took: result.took,\n       };\n     }\n\n     private buildQuery(params: MessageSearchParams): object {\n       const must: object[] = [];\n       const filter: object[] = [];\n\n       // Full-text search\n       if (params.query) {\n         must.push({\n           multi_match: {\n             query: params.query,\n             fields: ['content^2', 'content.exact'],\n             fuzziness: 'AUTO',\n             operator: 'and',\n           },\n         });\n       }\n\n       // Tenant filter (required)\n       filter.push({ term: { tenant_id: params.tenantId } });\n\n       // Conversation filter\n       if (params.conversationId) {\n         filter.push({ term: { conversation_id: params.conversationId } });\n       }\n\n       // Sender filter\n       if (params.senderId) {\n         filter.push({ term: { sender_id: params.senderId } });\n       }\n\n       // Date range filter\n       if (params.from || params.to) {\n         filter.push({\n           range: {\n             created_at: {\n               gte: params.from,\n               lte: params.to,\n             },\n           },\n         });\n       }\n\n       return {\n         bool: {\n           must: must.length ? must : [{ match_all: {} }],\n           filter,\n         },\n       };\n     }\n   }\n   ```\n\n2. Create services/gateway/src/routes/v1/search/messages.ts:\n   ```typescript\n   fastify.get('/messages', {\n     schema: {\n       querystring: messageSearchQuerySchema,\n       response: { 200: searchResultSchema },\n     },\n     handler: async (request, reply) => {\n       const results = await searchService.search({\n         tenantId: request.user.tenant_id,\n         ...request.query,\n       });\n       return results;\n     },\n   });\n   ```\n\n3. Search parameters:\n   - query: Full-text search term\n   - conversation_id: Filter by conversation\n   - sender_id: Filter by sender\n   - from/to: Date range\n   - type: Message type filter\n\n4. Highlighting:\n   - Mark matching terms\n   - Fragment extraction\n   - Context around matches",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test query building",
+          "Test filter logic"
+        ],
+        "integration_tests": [
+          "Test full-text search",
+          "Test filtering",
+          "Test highlighting"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Full-text search works",
+        "Filters work",
+        "Highlighting works",
+        "Results paginated",
+        "Tenant isolated"
+      ],
+      "files_to_create": [
+        "services/search-service/src/search/message-search.service.ts",
+        "services/gateway/src/routes/v1/search/messages.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["elasticsearch"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/v1/search/messages",
+          "description": "Search messages"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["search", "api", "full-text"]
+    },
+    {
+      "id": "SEARCH-005",
+      "task_name": "Global Search API",
+      "feature_details": "Implement global search across messages, conversations, and users.",
+      "feature_dependency": ["SEARCH-004", "SEARCH-003"],
+      "ai_prompt": "Implement global search:\n\n1. Create services/search-service/src/search/global-search.service.ts:\n   ```typescript\n   export class GlobalSearchService {\n     async search(params: GlobalSearchParams): Promise<GlobalSearchResult> {\n       const [messages, conversations, users] = await Promise.all([\n         this.searchMessages(params),\n         this.searchConversations(params),\n         this.searchUsers(params),\n       ]);\n\n       return {\n         messages: messages.slice(0, 5),\n         conversations: conversations.slice(0, 5),\n         users: users.slice(0, 5),\n         query: params.query,\n       };\n     }\n\n     private async searchMessages(params: GlobalSearchParams): Promise<MessageHit[]> {\n       const result = await this.esClient.search({\n         index: 'messages',\n         body: {\n           query: {\n             bool: {\n               must: [\n                 { match: { content: params.query } },\n               ],\n               filter: [\n                 { term: { tenant_id: params.tenantId } },\n               ],\n             },\n           },\n           size: 10,\n           highlight: { fields: { content: {} } },\n         },\n       });\n\n       return result.hits.hits.map(this.mapMessageHit);\n     }\n\n     private async searchConversations(params: GlobalSearchParams): Promise<ConversationHit[]> {\n       const result = await this.esClient.search({\n         index: 'conversations',\n         body: {\n           query: {\n             bool: {\n               must: [\n                 {\n                   multi_match: {\n                     query: params.query,\n                     fields: ['name^2', 'participant_names'],\n                   },\n                 },\n               ],\n               filter: [\n                 { term: { tenant_id: params.tenantId } },\n                 { terms: { participant_ids: [params.userId] } },\n               ],\n             },\n           },\n           size: 10,\n         },\n       });\n\n       return result.hits.hits.map(this.mapConversationHit);\n     }\n   }\n   ```\n\n2. Create services/gateway/src/routes/v1/search/global.ts:\n   - GET /v1/search - Global search\n   - Returns categorized results\n\n3. Response format:\n   ```typescript\n   interface GlobalSearchResult {\n     messages: {\n       total: number;\n       hits: MessageHit[];\n     };\n     conversations: {\n       total: number;\n       hits: ConversationHit[];\n     };\n     users: {\n       total: number;\n       hits: UserHit[];\n     };\n   }\n   ```\n\n4. Optimize for quick results:\n   - Parallel queries\n   - Limited results per category\n   - \"See all\" links for each category",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test parallel queries",
+          "Test result mapping"
+        ],
+        "integration_tests": [
+          "Test global search",
+          "Test categorization"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Searches all categories",
+        "Results categorized",
+        "Fast response",
+        "Tenant isolated",
+        "User access respected"
+      ],
+      "files_to_create": [
+        "services/search-service/src/search/global-search.service.ts",
+        "services/gateway/src/routes/v1/search/global.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["elasticsearch"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/v1/search",
+          "description": "Global search across all entities"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["search", "api", "global"]
+    },
+    {
+      "id": "SEARCH-006",
+      "task_name": "Search Suggestions and Autocomplete",
+      "feature_details": "Implement search suggestions and user autocomplete for mentions.",
+      "feature_dependency": ["SEARCH-003"],
+      "ai_prompt": "Implement search suggestions:\n\n1. Create services/search-service/src/search/suggestions.service.ts:\n   ```typescript\n   export class SuggestionsService {\n     async getSearchSuggestions(\n       tenantId: string,\n       query: string,\n     ): Promise<Suggestion[]> {\n       const result = await this.esClient.search({\n         index: 'messages',\n         body: {\n           suggest: {\n             text: query,\n             completion: {\n               field: 'content.suggest',\n               size: 5,\n               fuzzy: {\n                 fuzziness: 'AUTO',\n               },\n             },\n           },\n         },\n       });\n\n       return result.suggest.completion[0].options.map(opt => ({\n         text: opt.text,\n         score: opt._score,\n       }));\n     }\n\n     async autocompleteUsers(\n       tenantId: string,\n       query: string,\n       conversationId?: string,\n     ): Promise<UserSuggestion[]> {\n       const filter: object[] = [\n         { term: { tenant_id: tenantId } },\n       ];\n\n       // Filter to conversation participants if specified\n       if (conversationId) {\n         const participants = await this.getConversationParticipants(conversationId);\n         filter.push({ terms: { id: participants } });\n       }\n\n       const result = await this.esClient.search({\n         index: 'users',\n         body: {\n           query: {\n             bool: {\n               must: [\n                 { match: { 'name.autocomplete': query } },\n               ],\n               filter,\n             },\n           },\n           size: 10,\n         },\n       });\n\n       return result.hits.hits.map(hit => ({\n         id: hit._source.id,\n         name: hit._source.name,\n         avatar_url: hit._source.avatar_url,\n       }));\n     }\n   }\n   ```\n\n2. Create services/gateway/src/routes/v1/search/suggestions.ts:\n   - GET /v1/search/suggestions - Get search suggestions\n   - GET /v1/search/users - Autocomplete users for @mentions\n\n3. Recent searches:\n   ```typescript\n   async getRecentSearches(userId: string): Promise<string[]> {\n     return this.redis.lrange(`recent_searches:${userId}`, 0, 9);\n   }\n\n   async saveRecentSearch(userId: string, query: string): Promise<void> {\n     await this.redis.lpush(`recent_searches:${userId}`, query);\n     await this.redis.ltrim(`recent_searches:${userId}`, 0, 9);\n   }\n   ```\n\n4. Popular searches:\n   - Track search frequency\n   - Show trending searches\n   - Filter inappropriate terms",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test suggestions logic",
+          "Test autocomplete"
+        ],
+        "integration_tests": [
+          "Test user autocomplete",
+          "Test recent searches"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Suggestions work",
+        "User autocomplete works",
+        "Recent searches tracked",
+        "Fast response",
+        "Fuzzy matching works"
+      ],
+      "files_to_create": [
+        "services/search-service/src/search/suggestions.service.ts",
+        "services/gateway/src/routes/v1/search/suggestions.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["elasticsearch", "redis"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/v1/search/suggestions",
+          "description": "Get search suggestions"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/search/users",
+          "description": "Autocomplete users for mentions"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["search", "suggestions", "autocomplete", "mentions"]
+    }
+  ]
+}

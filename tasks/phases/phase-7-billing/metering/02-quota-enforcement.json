@@ -1,0 +1,83 @@
+{
+  "feature_group": "quota-enforcement",
+  "description": "Usage quota limits and enforcement",
+  "tasks": [
+    {
+      "task-name": "Quota Definition and Storage",
+      "feature-details": "Define quota limits per plan tier and store quota configurations. Track current usage against limits. Provide API for checking quota status.",
+      "feature-dependency": ["BILLING-001"],
+      "ai-prompt": "Create quota management in services/metering:\n\n1. QuotaConfig type:\n   - planId: string\n   - limits: {\n       messagesPerMonth: number (-1 for unlimited)\n       mauLimit: number\n       apiCallsPerMinute: number\n       apiCallsPerMonth: number\n       mediaStorageBytes: number\n       maxConversations: number\n       maxUsersPerConversation: number\n     }\n   - overage: {\n       allowed: boolean\n       messagesPrice: number (per 1000)\n       mauPrice: number\n       storagePrice: number (per GB)\n     }\n\n2. Default plan quotas:\n   - 'free': 1000 MAU, 10000 messages, no overage\n   - 'pro': 10000 MAU, 100000 messages, overage allowed\n   - 'enterprise': unlimited\n\n3. TenantQuota model:\n   - tenantId: string\n   - planId: string\n   - customLimits?: Partial<QuotaLimits> (override plan)\n   - periodStart: Date\n   - currentUsage: {\n       messages: number\n       mau: number\n       apiCalls: number\n       storageBytes: number\n     }\n\n4. QuotaService:\n   - getQuota(tenantId): Promise<TenantQuota>\n   - checkLimit(tenantId, metric): Promise<QuotaCheck>\n   - incrementUsage(tenantId, metric, amount): Promise<void>\n   - resetPeriod(tenantId): Promise<void>\n   - setCustomLimits(tenantId, limits): Promise<void>\n\n5. QuotaCheck type:\n   - allowed: boolean\n   - current: number\n   - limit: number\n   - percentUsed: number\n   - overageApplied: boolean\n\n6. API endpoints:\n   - GET /quota/:tenantId - Get current quota status\n   - GET /quota/:tenantId/check/:metric - Check specific limit\n   - PUT /quota/:tenantId/limits - Set custom limits\n\n7. Caching:\n   - Cache quota in Redis (5 minute TTL)\n   - Invalidate on plan change\n   - Use write-through for usage updates",
+      "testing-instructions": "1. Test default plan quotas are correct\n2. Test getQuota returns tenant quota\n3. Test checkLimit returns accurate status\n4. Test incrementUsage updates counter\n5. Test custom limits override plan\n6. Test caching works correctly\n7. Test cache invalidation on change\n8. Test resetPeriod clears usage",
+      "acceptance_criteria": [
+        "Plan quotas are defined correctly",
+        "Tenant quotas are stored and retrieved",
+        "Usage tracking is accurate",
+        "Custom limits override defaults",
+        "Quota checks are fast (cached)",
+        "API returns correct status",
+        "Overage configuration works"
+      ],
+      "files_to_create": [
+        "services/metering/src/quota/types.ts",
+        "services/metering/src/quota/plans.ts",
+        "services/metering/src/models/tenant-quota.ts",
+        "services/metering/src/quota/quota-service.ts",
+        "services/metering/src/routes/quota.ts"
+      ],
+      "docker_requirements": null,
+      "task_id": "BILLING-004"
+    },
+    {
+      "task-name": "Quota Enforcement Middleware",
+      "feature-details": "Create middleware for API Gateway to enforce quotas. Check limits before processing requests and return appropriate errors when limits exceeded. Support soft limits with warnings.",
+      "feature-dependency": ["BILLING-004", "GW-001"],
+      "ai-prompt": "Create quota enforcement middleware for API Gateway:\n\n1. QuotaEnforcementMiddleware:\n   - Fastify preHandler hook\n   - Check tenant quota before request\n   - Return 429 if limit exceeded\n   - Add quota headers to response\n\n2. Quota check flow:\n   - Extract tenantId from request\n   - Get quota from metering service (cached)\n   - Check relevant metric:\n     - Messages: check on message send\n     - API calls: check on all requests\n     - Storage: check on upload\n   - If exceeded, check if overage allowed\n   - If no overage, reject request\n\n3. Response headers:\n   - X-Quota-Limit-Messages: number\n   - X-Quota-Remaining-Messages: number\n   - X-Quota-Reset: ISO date\n   - X-Quota-Overage: boolean\n\n4. Error response (429):\n   ```json\n   {\n     \"error\": \"quota_exceeded\",\n     \"message\": \"Monthly message limit exceeded\",\n     \"limit\": 10000,\n     \"current\": 10001,\n     \"upgradeUrl\": \"/billing/upgrade\",\n     \"resetAt\": \"2024-02-01T00:00:00Z\"\n   }\n   ```\n\n5. Rate limiting (API calls per minute):\n   - Use Redis sliding window\n   - Separate from monthly quota\n   - Return 429 with Retry-After header\n\n6. Soft limits:\n   - Warn at 80% usage\n   - X-Quota-Warning: '80% of message limit used'\n   - Emit event for notification\n\n7. Bypass routes:\n   - Exclude health endpoints\n   - Exclude billing endpoints\n   - Exclude internal routes\n\n8. Integration:\n   - Add to API gateway route registration\n   - Configure per-route (some routes don't count)",
+      "testing-instructions": "1. Test request passes when under limit\n2. Test request rejected when over limit (429)\n3. Test quota headers are included\n4. Test rate limiting works\n5. Test soft limit warning at 80%\n6. Test bypass routes are not checked\n7. Test overage allowed continues request\n8. Test error response format",
+      "acceptance_criteria": [
+        "Requests are checked against quota",
+        "429 returned when limit exceeded",
+        "Quota headers are included",
+        "Rate limiting prevents abuse",
+        "Soft limits trigger warnings",
+        "Bypass routes work",
+        "Overage mode allows continued usage",
+        "Minimal latency impact (<5ms)"
+      ],
+      "files_to_create": [
+        "services/gateway/src/middleware/quota-enforcement.ts",
+        "services/gateway/src/middleware/rate-limiter.ts",
+        "services/gateway/src/quota/quota-client.ts"
+      ],
+      "docker_requirements": null,
+      "task_id": "BILLING-005"
+    },
+    {
+      "task-name": "Usage Alerts and Notifications",
+      "feature-details": "Send alerts when tenants approach or exceed usage limits. Integrate with notification system for email and in-app alerts. Admin dashboard warnings.",
+      "feature-dependency": ["BILLING-004"],
+      "ai-prompt": "Create usage alert system in services/metering:\n\n1. AlertThresholds:\n   - Warning: 75% of limit\n   - Critical: 90% of limit\n   - Exceeded: 100% of limit\n   - Configurable per tenant\n\n2. UsageAlertService:\n   - checkThresholds(tenantId, metric, current, limit): Alert[]\n   - sendAlert(alert: Alert): Promise<void>\n   - getAlertHistory(tenantId): Promise<Alert[]>\n   - acknowledgeAlert(alertId): Promise<void>\n\n3. Alert model:\n   - id: string\n   - tenantId: string\n   - metric: 'messages' | 'mau' | 'storage'\n   - threshold: 'warning' | 'critical' | 'exceeded'\n   - currentValue: number\n   - limitValue: number\n   - createdAt: Date\n   - acknowledged: boolean\n   - notificationsSent: string[]\n\n4. Notification channels:\n   - Email: Send to tenant admin(s)\n   - Webhook: POST to configured URL\n   - In-app: Store for dashboard display\n   - Kafka: Emit event for integrations\n\n5. Email templates:\n   - Usage warning template\n   - Usage exceeded template\n   - Include: metric, current, limit, upgrade link\n   - Use SendGrid or similar\n\n6. Alert deduplication:\n   - Only send one alert per threshold per period\n   - Reset on new billing period\n   - Track in Redis\n\n7. API endpoints:\n   - GET /alerts/:tenantId - Get active alerts\n   - POST /alerts/:alertId/acknowledge - Mark as seen\n   - PUT /alerts/:tenantId/settings - Configure thresholds\n\n8. Scheduled check:\n   - Run hourly\n   - Check all tenants\n   - Generate alerts if thresholds crossed",
+      "testing-instructions": "1. Test alert generated at 75% usage\n2. Test alert generated at 90% usage\n3. Test alert generated at 100% usage\n4. Test email notification sent\n5. Test webhook notification sent\n6. Test in-app alert stored\n7. Test deduplication prevents spam\n8. Test acknowledgment marks alert\n9. Test custom thresholds work",
+      "acceptance_criteria": [
+        "Alerts are generated at thresholds",
+        "Email notifications are sent",
+        "Webhook notifications work",
+        "In-app alerts are stored",
+        "Duplicate alerts are prevented",
+        "Alerts can be acknowledged",
+        "Custom thresholds are respected",
+        "Scheduled check runs reliably"
+      ],
+      "files_to_create": [
+        "services/metering/src/alerts/types.ts",
+        "services/metering/src/alerts/usage-alert-service.ts",
+        "services/metering/src/alerts/notification-channels.ts",
+        "services/metering/src/alerts/email-templates.ts",
+        "services/metering/src/models/alert.ts",
+        "services/metering/src/routes/alerts.ts",
+        "services/metering/src/jobs/threshold-check.ts"
+      ],
+      "docker_requirements": null,
+      "task_id": "BILLING-006"
+    }
+  ]
+}

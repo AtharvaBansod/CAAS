@@ -1,0 +1,297 @@
+{
+  "task_group": "e2e-encryption",
+  "description": "End-to-end encryption implementation using Signal Protocol",
+  "priority": "critical",
+  "estimated_hours": 17,
+  "phase": 2,
+  "feature_area": "encryption",
+  "tasks": [
+    {
+      "id": "ENCRYPT-005",
+      "task_name": "Signal Protocol Implementation",
+      "feature_details": "Implement the Signal Protocol (Double Ratchet) for end-to-end encrypted messaging between users.",
+      "feature_dependency": ["ENCRYPT-003"],
+      "ai_prompt": "Implement Signal Protocol:\n\n1. Create services/crypto-service/src/e2e/signal/session-builder.ts:\n   ```typescript\n   export class SessionBuilder {\n     async buildOutgoingSession(\n       recipientUserId: string,\n       preKeyBundle: PreKeyBundle\n     ): Promise<Session>;\n\n     async processPreKeyMessage(\n       message: PreKeyMessage,\n       senderUserId: string\n     ): Promise<Session>;\n   }\n   ```\n\n2. Create services/crypto-service/src/e2e/signal/ratchet.ts:\n   - Double Ratchet implementation:\n     * Root key ratchet\n     * Sending chain ratchet\n     * Receiving chain ratchet\n   - Derive message keys from chain\n   - Handle out-of-order messages\n\n3. Create services/crypto-service/src/e2e/signal/x3dh.ts:\n   - X3DH key agreement:\n     * DH1: Identity key <-> Signed pre-key\n     * DH2: Ephemeral key <-> Identity key\n     * DH3: Ephemeral key <-> Signed pre-key\n     * DH4: Ephemeral key <-> One-time pre-key (if available)\n   - Derive initial shared secret\n\n4. Create services/crypto-service/src/e2e/signal/session-cipher.ts:\n   ```typescript\n   export class SessionCipher {\n     encrypt(plaintext: Buffer): Promise<CiphertextMessage>;\n     decrypt(ciphertext: CiphertextMessage): Promise<Buffer>;\n   }\n   ```\n\n5. Create services/crypto-service/src/e2e/signal/session-store.ts:\n   - Store session state\n   - Per-device sessions\n   - Session serialization\n   - Handle multiple sessions per user (multi-device)\n\n6. Message types:\n   - PreKeyMessage: Initial message with session setup\n   - Message: Regular encrypted message\n   - Include message version, type, device ID\n\n7. Create services/crypto-service/src/e2e/signal/message-types.ts:\n   - Serialize/deserialize message formats\n   - Protobuf or CBOR encoding\n\n8. Security considerations:\n   - Constant-time comparison\n   - Message replay prevention\n   - Session verification",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test X3DH key agreement",
+          "Test ratchet steps",
+          "Test encryption/decryption"
+        ],
+        "integration_tests": [
+          "Test full session establishment",
+          "Test message exchange",
+          "Test out-of-order handling"
+        ],
+        "e2e_tests": [
+          "Test Alice-Bob encrypted conversation"
+        ]
+      },
+      "acceptance_criteria": [
+        "Sessions establish correctly",
+        "Messages encrypt/decrypt properly",
+        "Ratchet advances on each message",
+        "Out-of-order messages work",
+        "Multi-device sessions work"
+      ],
+      "files_to_create": [
+        "services/crypto-service/src/e2e/signal/session-builder.ts",
+        "services/crypto-service/src/e2e/signal/ratchet.ts",
+        "services/crypto-service/src/e2e/signal/x3dh.ts",
+        "services/crypto-service/src/e2e/signal/session-cipher.ts",
+        "services/crypto-service/src/e2e/signal/session-store.ts",
+        "services/crypto-service/src/e2e/signal/message-types.ts",
+        "services/crypto-service/src/e2e/signal/types.ts",
+        "services/crypto-service/src/e2e/signal/index.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb", "redis"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "e2e_sessions",
+            "description": "Store encrypted session state"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "e2e_sessions",
+            "fields": ["user_id", "recipient_id", "device_id"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 6,
+      "tags": ["encryption", "e2e", "signal-protocol", "double-ratchet"]
+    },
+    {
+      "id": "ENCRYPT-006",
+      "task_name": "Message Encryption Service",
+      "feature_details": "Create the high-level message encryption service that handles E2E encrypted message sending and receiving.",
+      "feature_dependency": ["ENCRYPT-005"],
+      "ai_prompt": "Create message encryption service:\n\n1. Create services/crypto-service/src/e2e/message-encryption-service.ts:\n   ```typescript\n   export class MessageEncryptionService {\n     async encryptMessage(\n       senderId: string,\n       recipientId: string,\n       message: MessageContent\n     ): Promise<EncryptedMessage>;\n\n     async decryptMessage(\n       recipientId: string,\n       senderId: string,\n       encryptedMessage: EncryptedMessage\n     ): Promise<MessageContent>;\n\n     async hasSession(userId1: string, userId2: string): Promise<boolean>;\n   }\n   ```\n\n2. Encrypted message structure:\n   ```typescript\n   interface EncryptedMessage {\n     type: 'prekey' | 'message';\n     sender_device_id: number;\n     registration_id: number;\n     ciphertext: string;  // Base64\n     timestamp: number;\n   }\n\n   interface MessageContent {\n     type: 'text' | 'media' | 'file';\n     body?: string;\n     media_key?: Buffer;\n     thumbnail?: Buffer;\n     metadata: Record<string, unknown>;\n   }\n   ```\n\n3. Create services/crypto-service/src/e2e/session-manager.ts:\n   - Manage session lifecycle\n   - Create session on first message\n   - Handle session not found\n   - Session cleanup for deleted users\n\n4. Create services/crypto-service/src/e2e/multi-device.ts:\n   - Encrypt to all recipient devices\n   - Handle device add/remove\n   - Sync sessions across sender devices\n\n5. Create services/gateway/src/routes/v1/messages/encrypted.ts:\n   - POST /v1/messages/encrypt - Encrypt message (client-side encryption)\n   - POST /v1/messages/decrypt - Decrypt message\n   - These are optional server-assisted encryption\n\n6. Client-side encryption flow:\n   a. Client gets recipient's pre-key bundle\n   b. Client establishes session\n   c. Client encrypts message locally\n   d. Client sends encrypted payload\n   e. Server stores without decrypting\n\n7. Server-assisted encryption (optional):\n   - For platforms without crypto library\n   - Server holds user's private keys\n   - Less secure but more compatible\n\n8. Create services/crypto-service/src/e2e/encryption-mode.ts:\n   - Configure encryption mode per tenant:\n     * CLIENT_E2E: Full client-side E2E\n     * SERVER_ASSISTED: Server-assisted\n     * TRANSPORT_ONLY: TLS only (no E2E)",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test message encryption",
+          "Test message decryption",
+          "Test session creation"
+        ],
+        "integration_tests": [
+          "Test full encryption flow",
+          "Test multi-device",
+          "Test session management"
+        ],
+        "e2e_tests": [
+          "Test encrypted messaging flow"
+        ]
+      },
+      "acceptance_criteria": [
+        "Messages are encrypted correctly",
+        "Sessions are established on demand",
+        "Multi-device encryption works",
+        "Server-assisted mode works",
+        "Encryption mode is configurable"
+      ],
+      "files_to_create": [
+        "services/crypto-service/src/e2e/message-encryption-service.ts",
+        "services/crypto-service/src/e2e/session-manager.ts",
+        "services/crypto-service/src/e2e/multi-device.ts",
+        "services/crypto-service/src/e2e/encryption-mode.ts",
+        "services/crypto-service/src/e2e/types.ts",
+        "services/crypto-service/src/e2e/index.ts",
+        "services/gateway/src/routes/v1/messages/encrypted.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [
+          "DEFAULT_ENCRYPTION_MODE"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/v1/messages/encrypt",
+          "description": "Server-assisted message encryption"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/messages/decrypt",
+          "description": "Server-assisted message decryption"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["encryption", "e2e", "messaging", "service"]
+    },
+    {
+      "id": "ENCRYPT-007",
+      "task_name": "Group Encryption (Sender Keys)",
+      "feature_details": "Implement Sender Keys protocol for efficient group messaging encryption.",
+      "feature_dependency": ["ENCRYPT-005"],
+      "ai_prompt": "Implement group encryption:\n\n1. Create services/crypto-service/src/e2e/groups/sender-key-service.ts:\n   ```typescript\n   export class SenderKeyService {\n     createSenderKey(groupId: string, userId: string): Promise<SenderKeyDistribution>;\n     distributeSenderKey(groupId: string, userId: string, recipientId: string): Promise<void>;\n     processSenderKeyDistribution(distribution: SenderKeyDistribution): Promise<void>;\n     encryptGroupMessage(groupId: string, userId: string, message: Buffer): Promise<Buffer>;\n     decryptGroupMessage(groupId: string, senderId: string, ciphertext: Buffer): Promise<Buffer>;\n   }\n   ```\n\n2. Sender Key structure:\n   ```typescript\n   interface SenderKey {\n     chain_id: number;\n     chain_key: Buffer;\n     signing_key: KeyPair;\n   }\n\n   interface SenderKeyDistribution {\n     group_id: string;\n     sender_id: string;\n     sender_device_id: number;\n     chain_id: number;\n     chain_key: Buffer;\n     signing_key_public: Buffer;\n   }\n   ```\n\n3. Create services/crypto-service/src/e2e/groups/sender-key-store.ts:\n   - Store sender keys per (group, sender)\n   - Handle key rotation\n   - Cleanup old keys\n\n4. Create services/crypto-service/src/e2e/groups/group-session-builder.ts:\n   - Build group sessions\n   - Distribute sender keys to new members\n   - Handle member removal (key rotation)\n\n5. Group key distribution flow:\n   a. Sender creates sender key for group\n   b. Sender encrypts sender key to each member (using Signal sessions)\n   c. Members store sender key\n   d. Sender encrypts messages with sender key\n   e. Members decrypt using stored sender key\n\n6. Create services/crypto-service/src/e2e/groups/member-change-handler.ts:\n   - On member add: Distribute sender keys to new member\n   - On member remove: Rotate all sender keys\n   - Handle admin changes\n\n7. Create services/gateway/src/routes/v1/groups/:id/keys.ts:\n   - POST /v1/groups/:id/keys/distribute - Distribute sender key\n   - GET /v1/groups/:id/keys - Get group encryption info\n\n8. Optimization:\n   - Cache sender keys\n   - Batch key distribution\n   - Lazy key distribution on first message",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test sender key creation",
+          "Test group encryption",
+          "Test key rotation"
+        ],
+        "integration_tests": [
+          "Test key distribution",
+          "Test member changes",
+          "Test group messaging"
+        ],
+        "e2e_tests": [
+          "Test group encrypted conversation"
+        ]
+      },
+      "acceptance_criteria": [
+        "Sender keys are created correctly",
+        "Distribution uses E2E channels",
+        "Group messages encrypt/decrypt",
+        "Member removal triggers rotation",
+        "Performance scales with group size"
+      ],
+      "files_to_create": [
+        "services/crypto-service/src/e2e/groups/sender-key-service.ts",
+        "services/crypto-service/src/e2e/groups/sender-key-store.ts",
+        "services/crypto-service/src/e2e/groups/group-session-builder.ts",
+        "services/crypto-service/src/e2e/groups/member-change-handler.ts",
+        "services/crypto-service/src/e2e/groups/types.ts",
+        "services/crypto-service/src/e2e/groups/index.ts",
+        "services/gateway/src/routes/v1/groups/keys.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb", "redis"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/v1/groups/:id/keys/distribute",
+          "description": "Distribute sender key to group"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/groups/:id/keys",
+          "description": "Get group encryption info"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "sender_keys",
+            "description": "Store sender keys for group encryption"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "sender_keys",
+            "fields": ["group_id", "sender_id", "device_id"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["encryption", "e2e", "groups", "sender-keys"]
+    },
+    {
+      "id": "ENCRYPT-008",
+      "task_name": "Safety Numbers and Verification",
+      "feature_details": "Implement safety number generation and verification for users to confirm encryption security.",
+      "feature_dependency": ["ENCRYPT-005"],
+      "ai_prompt": "Implement safety numbers:\n\n1. Create services/crypto-service/src/verification/safety-number.ts:\n   ```typescript\n   export class SafetyNumberGenerator {\n     generate(user1Id: string, user1IdentityKey: Buffer, user2Id: string, user2IdentityKey: Buffer): string;\n     generateQRCode(safetyNumber: string): Promise<Buffer>;\n     compare(stored: string, scanned: string): boolean;\n   }\n   ```\n\n2. Safety number format:\n   - 60 digits grouped in 12 groups of 5\n   - Example: 12345 67890 12345 67890 12345 67890 12345 67890 12345 67890 12345 67890\n   - Derived from both users' identity keys\n   - Order-independent (same number for both users)\n\n3. Create services/crypto-service/src/verification/safety-number-generator.ts:\n   - SHA-512 hash of concatenated identity keys\n   - Convert to digits using modulo\n   - Ensure consistency regardless of key order\n\n4. Create services/crypto-service/src/verification/qr-code.ts:\n   - Generate scannable QR code\n   - Include: version, user IDs, identity key fingerprints\n   - SVG and PNG output\n\n5. Create services/gateway/src/routes/v1/verification/index.ts:\n   - GET /v1/verification/:userId/safety-number - Get safety number\n   - GET /v1/verification/:userId/qr-code - Get QR code\n   - POST /v1/verification/:userId/verify - Mark as verified\n   - DELETE /v1/verification/:userId/verify - Remove verification\n\n6. Create services/crypto-service/src/verification/verification-store.ts:\n   - Store verification status per user pair\n   - Track when verified\n   - Invalidate on key change\n\n7. Create services/crypto-service/src/verification/key-change-detector.ts:\n   - Detect identity key changes\n   - Notify affected verifications\n   - Show warning in UI\n   - Require re-verification\n\n8. UI considerations:\n   - Show verification status on chat\n   - Warning for unverified conversations\n   - Warning when key changes\n   - Easy verification flow",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test safety number generation",
+          "Test order independence",
+          "Test QR code generation"
+        ],
+        "integration_tests": [
+          "Test verification flow",
+          "Test key change detection",
+          "Test verification storage"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Safety numbers are consistent",
+        "Order doesn't matter",
+        "QR codes are scannable",
+        "Verification persists",
+        "Key changes invalidate verification"
+      ],
+      "files_to_create": [
+        "services/crypto-service/src/verification/safety-number.ts",
+        "services/crypto-service/src/verification/safety-number-generator.ts",
+        "services/crypto-service/src/verification/qr-code.ts",
+        "services/crypto-service/src/verification/verification-store.ts",
+        "services/crypto-service/src/verification/key-change-detector.ts",
+        "services/crypto-service/src/verification/types.ts",
+        "services/crypto-service/src/verification/index.ts",
+        "services/gateway/src/routes/v1/verification/index.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["mongodb"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/v1/verification/:userId/safety-number",
+          "description": "Get safety number for conversation"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/verification/:userId/qr-code",
+          "description": "Get verification QR code"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/verification/:userId/verify",
+          "description": "Mark conversation as verified"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "verifications",
+            "description": "Store user verification status"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "verifications",
+            "fields": ["user1_id", "user2_id"],
+            "options": { "unique": true }
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 3,
+      "tags": ["encryption", "verification", "safety-numbers", "security"]
+    }
+  ]
+}

@@ -1,0 +1,218 @@
+{
+  "task_group": "socket-room-management",
+  "description": "Room management, broadcasts, and tenant isolation for Socket.IO",
+  "priority": "high",
+  "estimated_hours": 16,
+  "phase": 3,
+  "feature_area": "socket-service",
+  "tasks": [
+    {
+      "id": "SOCKET-009",
+      "task_name": "Room Join and Leave Management",
+      "feature_details": "Implement room join and leave functionality with authorization and tenant isolation.",
+      "feature_dependency": ["SOCKET-007", "AUTHZ-004"],
+      "ai_prompt": "Implement room join/leave management:\n\n1. Create services/socket-service/src/rooms/room-manager.ts:\n   ```typescript\n   export class RoomManager {\n     async joinRoom(socket: Socket, roomId: string): Promise<JoinResult>;\n     async leaveRoom(socket: Socket, roomId: string): Promise<void>;\n     async leaveAllRooms(socket: Socket): Promise<void>;\n     async getRoomMembers(roomId: string): Promise<RoomMember[]>;\n     async isUserInRoom(userId: string, roomId: string): Promise<boolean>;\n   }\n\n   interface JoinResult {\n     success: boolean;\n     room_id: string;\n     members: RoomMember[];\n     error?: string;\n   }\n   ```\n\n2. Create services/socket-service/src/rooms/room-authorizer.ts:\n   ```typescript\n   export class RoomAuthorizer {\n     async canJoinRoom(userId: string, roomId: string, tenantId: string): Promise<boolean>;\n     async canSendToRoom(userId: string, roomId: string): Promise<boolean>;\n   }\n   ```\n\n3. Room naming convention:\n   - `tenant:{tenant_id}` - Tenant-wide room\n   - `conversation:{conversation_id}` - Conversation room\n   - `user:{user_id}` - User's personal room\n   - `presence:{tenant_id}` - Presence updates room\n\n4. Create services/socket-service/src/events/room-events.ts:\n   ```typescript\n   socket.on('join_room', async (data: { room_id: string }) => {\n     const result = await roomManager.joinRoom(socket, data.room_id);\n     socket.emit('room_joined', result);\n     if (result.success) {\n       socket.to(data.room_id).emit('member_joined', {\n         room_id: data.room_id,\n         user: socket.data.user,\n       });\n     }\n   });\n   ```\n\n5. Create services/socket-service/src/rooms/room-state-store.ts:\n   - Store room membership in Redis\n   - Track last activity per room\n   - Room metadata storage\n\n6. Tenant isolation:\n   - Validate tenant ownership of room\n   - Prefix rooms with tenant ID\n   - Cross-tenant access denied by default",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test room join logic",
+          "Test authorization checks",
+          "Test tenant isolation"
+        ],
+        "integration_tests": [
+          "Test join/leave flow",
+          "Test cross-tenant rejection",
+          "Test room member tracking"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Users can join authorized rooms",
+        "Unauthorized joins are rejected",
+        "Room members are tracked correctly",
+        "Join/leave events are broadcast",
+        "Tenant isolation is enforced"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/rooms/room-manager.ts",
+        "services/socket-service/src/rooms/room-authorizer.ts",
+        "services/socket-service/src/rooms/room-state-store.ts",
+        "services/socket-service/src/events/room-events.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["redis"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["socket", "rooms", "authorization", "tenant-isolation"]
+    },
+    {
+      "id": "SOCKET-010",
+      "task_name": "Room Broadcasting System",
+      "feature_details": "Implement efficient message broadcasting to room members across all socket nodes.",
+      "feature_dependency": ["SOCKET-009", "SOCKET-003"],
+      "ai_prompt": "Implement room broadcasting:\n\n1. Create services/socket-service/src/broadcast/broadcaster.ts:\n   ```typescript\n   export class RoomBroadcaster {\n     async broadcastToRoom(roomId: string, event: string, data: unknown): Promise<void>;\n     async broadcastToRoomExcept(roomId: string, event: string, data: unknown, excludeSocketId: string): Promise<void>;\n     async broadcastToUser(userId: string, event: string, data: unknown): Promise<void>;\n     async broadcastToTenant(tenantId: string, event: string, data: unknown): Promise<void>;\n   }\n   ```\n\n2. Create services/socket-service/src/broadcast/broadcast-queue.ts:\n   - Queue broadcasts for batching\n   - Prioritize broadcasts\n   - Handle broadcast failures\n   - Retry logic\n\n3. Create services/socket-service/src/broadcast/targeted-sender.ts:\n   ```typescript\n   export class TargetedSender {\n     async sendToSocket(socketId: string, event: string, data: unknown): Promise<void>;\n     async sendToSockets(socketIds: string[], event: string, data: unknown): Promise<void>;\n     async sendWithAck(socketId: string, event: string, data: unknown, timeout: number): Promise<unknown>;\n   }\n   ```\n\n4. Create services/socket-service/src/broadcast/acknowledgment-tracker.ts:\n   - Track message acknowledgments\n   - Retry unacknowledged messages\n   - Dead letter handling\n   - Delivery confirmation\n\n5. Broadcast optimization:\n   - Binary encoding for large payloads\n   - Compression for broadcasts\n   - Rate limiting per room\n   - Batch small messages\n\n6. Create services/socket-service/src/broadcast/broadcast-metrics.ts:\n   - Messages broadcast per room\n   - Broadcast latency\n   - Delivery success rate\n   - Failed deliveries",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test broadcast logic",
+          "Test batching",
+          "Test acknowledgments"
+        ],
+        "integration_tests": [
+          "Test cross-node broadcasts",
+          "Test large room broadcasts",
+          "Test delivery confirmation"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Messages reach all room members",
+        "Cross-node broadcasting works",
+        "Excluded sockets don't receive",
+        "Acknowledgments are tracked",
+        "Performance is acceptable"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/broadcast/broadcaster.ts",
+        "services/socket-service/src/broadcast/broadcast-queue.ts",
+        "services/socket-service/src/broadcast/targeted-sender.ts",
+        "services/socket-service/src/broadcast/acknowledgment-tracker.ts",
+        "services/socket-service/src/broadcast/broadcast-metrics.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["redis"],
+        "environment_variables": [
+          "BROADCAST_BATCH_SIZE",
+          "BROADCAST_BATCH_INTERVAL_MS"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["socket", "broadcast", "rooms", "messaging"]
+    },
+    {
+      "id": "SOCKET-011",
+      "task_name": "Automatic Room Rejoining",
+      "feature_details": "Implement automatic room rejoining on reconnection to maintain seamless user experience.",
+      "feature_dependency": ["SOCKET-009", "SOCKET-007"],
+      "ai_prompt": "Implement automatic room rejoining:\n\n1. Create services/socket-service/src/rooms/room-recovery.ts:\n   ```typescript\n   export class RoomRecoveryService {\n     async saveUserRooms(userId: string, rooms: string[]): Promise<void>;\n     async getUserRooms(userId: string): Promise<string[]>;\n     async rejoinRooms(socket: Socket): Promise<RejoinResult>;\n     async clearUserRooms(userId: string): Promise<void>;\n   }\n\n   interface RejoinResult {\n     rejoined: string[];\n     failed: Array<{ room_id: string; reason: string }>;\n   }\n   ```\n\n2. Create services/socket-service/src/rooms/room-subscription-store.ts:\n   - Store room subscriptions in Redis\n   - Per-user room list\n   - Expiration for stale subscriptions\n   - Sync with actual room state\n\n3. Create services/socket-service/src/rooms/rejoin-handler.ts:\n   ```typescript\n   export async function handleRejoin(socket: Socket): Promise<void> {\n     const userId = socket.data.user.id;\n     const savedRooms = await roomRecovery.getUserRooms(userId);\n\n     for (const roomId of savedRooms) {\n       // Verify authorization still valid\n       const canJoin = await roomAuthorizer.canJoinRoom(userId, roomId);\n       if (canJoin) {\n         await roomManager.joinRoom(socket, roomId);\n       } else {\n         // Remove from saved rooms\n         await roomRecovery.removeRoom(userId, roomId);\n       }\n     }\n\n     // Notify client of rejoined rooms\n     socket.emit('rooms_rejoined', { rooms: savedRooms });\n   }\n   ```\n\n4. Create services/socket-service/src/rooms/missed-events-queue.ts:\n   - Queue events during disconnection\n   - Replay on reconnection\n   - Event ordering\n   - TTL for missed events\n\n5. Room subscription lifecycle:\n   - On join: save to user's room list\n   - On leave: remove from user's room list\n   - On disconnect: keep room list\n   - On reconnect: rejoin from saved list\n   - On logout: clear room list",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test room saving",
+          "Test room recovery",
+          "Test rejoin logic"
+        ],
+        "integration_tests": [
+          "Test reconnection rejoining",
+          "Test authorization recheck",
+          "Test missed events replay"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Rooms are saved on join",
+        "Rooms are restored on reconnect",
+        "Authorization is rechecked",
+        "Missed events are delivered",
+        "Stale subscriptions expire"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/rooms/room-recovery.ts",
+        "services/socket-service/src/rooms/room-subscription-store.ts",
+        "services/socket-service/src/rooms/rejoin-handler.ts",
+        "services/socket-service/src/rooms/missed-events-queue.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["redis"],
+        "environment_variables": [
+          "ROOM_SUBSCRIPTION_TTL",
+          "MISSED_EVENTS_TTL"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["socket", "rooms", "reconnection", "recovery"]
+    },
+    {
+      "id": "SOCKET-012",
+      "task_name": "Room Rate Limiting and Abuse Prevention",
+      "feature_details": "Implement rate limiting and abuse prevention for room operations and broadcasts.",
+      "feature_dependency": ["SOCKET-010", "GATEWAY-005"],
+      "ai_prompt": "Implement room rate limiting:\n\n1. Create services/socket-service/src/ratelimit/room-rate-limiter.ts:\n   ```typescript\n   export class RoomRateLimiter {\n     async checkJoinLimit(userId: string, tenantId: string): Promise<RateLimitResult>;\n     async checkMessageLimit(userId: string, roomId: string): Promise<RateLimitResult>;\n     async checkBroadcastLimit(roomId: string): Promise<RateLimitResult>;\n   }\n\n   interface RateLimitResult {\n     allowed: boolean;\n     remaining: number;\n     reset_at: Date;\n     retry_after_ms?: number;\n   }\n   ```\n\n2. Limits to implement:\n   - Room joins per minute per user\n   - Messages per minute per room\n   - Messages per minute per user\n   - Broadcasts per second per room\n   - Typing events per second per user\n\n3. Create services/socket-service/src/ratelimit/sliding-window.ts:\n   - Redis-based sliding window\n   - Multiple time windows\n   - Per-tenant limits\n   - Burst allowance\n\n4. Create services/socket-service/src/abuse/spam-detector.ts:\n   ```typescript\n   export class SpamDetector {\n     detectSpam(userId: string, content: string): Promise<SpamResult>;\n     detectFlood(userId: string): Promise<FloodResult>;\n     reportAbuse(userId: string, type: AbuseType): Promise<void>;\n   }\n   ```\n\n5. Create services/socket-service/src/abuse/connection-limiter.ts:\n   - Max connections per user\n   - Max connections per IP\n   - Max connections per tenant\n   - Gradual backoff\n\n6. Create services/socket-service/src/ratelimit/rate-limit-middleware.ts:\n   - Apply limits to socket events\n   - Emit rate limit errors\n   - Log violations\n   - Temporary bans for repeat offenders\n\n7. Tenant-configurable limits:\n   - Allow tenants to adjust their limits\n   - Plan-based limits\n   - Override capability",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test rate limit logic",
+          "Test sliding window",
+          "Test spam detection"
+        ],
+        "integration_tests": [
+          "Test limit enforcement",
+          "Test burst handling",
+          "Test ban functionality"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Rate limits are enforced",
+        "Users receive rate limit errors",
+        "Spam is detected",
+        "Repeat offenders are banned",
+        "Limits are configurable"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/ratelimit/room-rate-limiter.ts",
+        "services/socket-service/src/ratelimit/sliding-window.ts",
+        "services/socket-service/src/ratelimit/rate-limit-middleware.ts",
+        "services/socket-service/src/abuse/spam-detector.ts",
+        "services/socket-service/src/abuse/connection-limiter.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["redis"],
+        "environment_variables": [
+          "ROOM_JOIN_LIMIT_PER_MINUTE",
+          "MESSAGE_LIMIT_PER_MINUTE",
+          "MAX_CONNECTIONS_PER_USER"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["socket", "rate-limiting", "abuse-prevention", "security"]
+    }
+  ]
+}

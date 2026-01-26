@@ -1,0 +1,114 @@
+{
+  "feature_group": "invoice-system",
+  "description": "Invoice generation, PDF creation, and delivery",
+  "tasks": [
+    {
+      "task-name": "Invoice Model and Generation",
+      "feature-details": "Create invoice data model and generation logic. Generate invoices from Stripe invoice data combined with usage data. Support draft, open, paid, and void statuses.",
+      "feature-dependency": ["BILLING-011", "BILLING-003"],
+      "ai-prompt": "Create invoice system in services/billing:\n\n1. Invoice model:\n   - id: string\n   - invoiceNumber: string (INV-2024-0001)\n   - tenantId: string\n   - subscriptionId: string\n   - stripeInvoiceId: string\n   - status: 'draft' | 'open' | 'paid' | 'void' | 'uncollectible'\n   - periodStart: Date\n   - periodEnd: Date\n   - dueDate: Date\n   - paidAt?: Date\n   - subtotal: number (cents)\n   - tax: number\n   - total: number\n   - amountDue: number\n   - amountPaid: number\n   - currency: string\n   - lineItems: LineItem[]\n   - customerDetails: {\n       name: string\n       email: string\n       address: BillingAddress\n     }\n   - metadata: Record<string, any>\n   - pdfUrl?: string\n   - createdAt: Date\n   - updatedAt: Date\n\n2. LineItem type:\n   - description: string\n   - quantity: number\n   - unitPrice: number (cents)\n   - amount: number\n   - type: 'subscription' | 'usage' | 'discount' | 'tax'\n   - metadata?: Record<string, any>\n\n3. InvoiceService:\n   - createFromStripe(stripeInvoice): Promise<Invoice>\n   - get(invoiceId): Promise<Invoice>\n   - listByTenant(tenantId, options): Promise<Invoice[]>\n   - addUsageLineItems(invoiceId): Promise<Invoice>\n   - finalize(invoiceId): Promise<Invoice>\n   - void(invoiceId): Promise<Invoice>\n   - markPaid(invoiceId, paymentDetails): Promise<Invoice>\n\n4. Invoice number generation:\n   - Format: INV-YYYY-NNNNN\n   - Sequential per year\n   - Atomic increment in MongoDB\n\n5. Usage line items:\n   - Fetch from metering service\n   - Calculate overage charges\n   - Add as line items\n   - Group by metric type\n\n6. API endpoints:\n   - GET /invoices - List invoices (tenant filtered)\n   - GET /invoices/:id - Get invoice\n   - GET /invoices/:id/pdf - Download PDF\n   - POST /invoices/:id/void - Void invoice (admin)",
+      "testing-instructions": "1. Test invoice creation from Stripe data\n2. Test invoice number is sequential\n3. Test line items are correct\n4. Test usage line items are added\n5. Test status transitions\n6. Test list returns tenant's invoices\n7. Test void marks invoice void\n8. Test total calculation is accurate",
+      "acceptance_criteria": [
+        "Invoices are created from Stripe events",
+        "Invoice numbers are sequential",
+        "Line items include subscription and usage",
+        "Usage overage is calculated correctly",
+        "Status transitions work",
+        "Tenant can list their invoices",
+        "Admin can void invoices",
+        "Calculations are accurate"
+      ],
+      "files_to_create": [
+        "services/billing/src/models/invoice.ts",
+        "services/billing/src/models/line-item.ts",
+        "services/billing/src/invoices/invoice-service.ts",
+        "services/billing/src/invoices/invoice-number.ts",
+        "services/billing/src/invoices/usage-line-items.ts",
+        "services/billing/src/routes/invoices.ts"
+      ],
+      "docker_requirements": null,
+      "task_id": "BILLING-013"
+    },
+    {
+      "task-name": "PDF Invoice Generation",
+      "feature-details": "Generate PDF invoices with professional layout, company branding, and all required invoice details. Store PDFs in object storage and provide download links.",
+      "feature-dependency": ["BILLING-013"],
+      "ai-prompt": "Create PDF invoice generation in services/billing:\n\n1. Install dependencies:\n   - pdfkit or puppeteer for PDF generation\n   - @aws-sdk/client-s3 for storage\n\n2. InvoicePDFGenerator:\n   - generate(invoice: Invoice): Promise<Buffer>\n   - Returns PDF as buffer\n   - Professional invoice layout\n\n3. PDF Layout:\n   Header:\n   - CAAS logo\n   - Company name and address\n   - Invoice number and date\n   \n   Customer:\n   - Name and address\n   - Account ID\n   \n   Invoice Details:\n   - Period covered\n   - Due date\n   - Payment status\n   \n   Line Items Table:\n   - Description | Quantity | Unit Price | Amount\n   - Each line item\n   - Subtotal\n   - Tax (if applicable)\n   - Total\n   \n   Footer:\n   - Payment instructions\n   - Terms and conditions\n   - Support contact\n\n4. PDF Storage:\n   - Upload to MinIO/S3\n   - Path: invoices/{tenantId}/{year}/{invoiceNumber}.pdf\n   - Generate signed URL for download\n   - URL expires in 1 hour\n\n5. InvoicePDFService:\n   - generateAndStore(invoiceId): Promise<string> (returns URL)\n   - getDownloadUrl(invoiceId): Promise<string>\n   - regenerate(invoiceId): Promise<string>\n\n6. Template customization:\n   - Support for white-labeling (future)\n   - Configurable logo\n   - Configurable colors\n\n7. Scheduled generation:\n   - Generate PDF when invoice is finalized\n   - Store URL in invoice document\n   - Retry on failure\n\n8. API integration:\n   - GET /invoices/:id/pdf returns PDF directly\n   - GET /invoices/:id/pdf-url returns signed URL",
+      "testing-instructions": "1. Test PDF is generated with correct layout\n2. Test all invoice data is included\n3. Test line items are in table\n4. Test totals are correct\n5. Test PDF is uploaded to storage\n6. Test signed URL is accessible\n7. Test URL expiration works\n8. Test regeneration creates new PDF",
+      "acceptance_criteria": [
+        "PDF has professional layout",
+        "All invoice data is included",
+        "Line items are properly formatted",
+        "Totals are accurate",
+        "PDF is stored in object storage",
+        "Download URLs are signed and expire",
+        "Regeneration works",
+        "PDF renders correctly in viewers"
+      ],
+      "files_to_create": [
+        "services/billing/src/invoices/pdf-generator.ts",
+        "services/billing/src/invoices/pdf-templates.ts",
+        "services/billing/src/invoices/pdf-storage.ts",
+        "services/billing/src/invoices/pdf-service.ts",
+        "services/billing/assets/invoice-logo.png"
+      ],
+      "docker_requirements": null,
+      "task_id": "BILLING-014"
+    },
+    {
+      "task-name": "Invoice Email Delivery",
+      "feature-details": "Send invoice emails to customers when invoices are generated. Include PDF attachment or link, payment summary, and call-to-action for payment.",
+      "feature-dependency": ["BILLING-014"],
+      "ai-prompt": "Create invoice email delivery in services/billing:\n\n1. Install email dependencies:\n   - @sendgrid/mail or nodemailer\n   - Configure SMTP or SendGrid\n\n2. InvoiceEmailService:\n   - sendInvoice(invoiceId): Promise<void>\n   - sendPaymentReminder(invoiceId): Promise<void>\n   - sendPaymentConfirmation(invoiceId): Promise<void>\n   - sendPaymentFailed(invoiceId): Promise<void>\n\n3. Invoice Email Template:\n   Subject: 'Invoice #{invoiceNumber} from CAAS'\n   \n   Content:\n   - Greeting\n   - Invoice summary (amount, due date)\n   - Line items summary (optional)\n   - 'Pay Now' button (link to Stripe checkout)\n   - 'View Invoice' button (PDF link)\n   - Payment methods accepted\n   - Contact for questions\n\n4. Payment Reminder Template:\n   Subject: 'Payment Reminder: Invoice #{invoiceNumber}'\n   \n   Content:\n   - Friendly reminder\n   - Amount due\n   - Due date (overdue warning if past)\n   - Pay now button\n\n5. Payment Confirmation Template:\n   Subject: 'Payment Received: Invoice #{invoiceNumber}'\n   \n   Content:\n   - Thank you message\n   - Payment amount\n   - Transaction ID\n   - Receipt PDF link\n\n6. Payment Failed Template:\n   Subject: 'Payment Failed: Action Required'\n   \n   Content:\n   - Payment failed notice\n   - Amount\n   - Reason (if available)\n   - Update payment method link\n   - Contact support\n\n7. Email sending:\n   - Queue emails using BullMQ\n   - Retry on failure\n   - Track delivery status\n   - Store email log\n\n8. Scheduling:\n   - Send invoice on finalization\n   - Reminder 3 days before due\n   - Reminder on due date\n   - Follow-up 3 days after overdue\n\n9. API:\n   - POST /invoices/:id/send-email - Manually trigger\n   - GET /invoices/:id/email-log - View email history",
+      "testing-instructions": "1. Test invoice email is sent\n2. Test email contains correct data\n3. Test PDF link works\n4. Test pay now button works\n5. Test reminder emails are sent\n6. Test payment confirmation is sent\n7. Test failed payment email is sent\n8. Test email is queued for retry\n9. Test email log is created",
+      "acceptance_criteria": [
+        "Invoice emails are sent on finalization",
+        "Email templates look professional",
+        "PDF links work",
+        "Payment links work",
+        "Reminders are sent on schedule",
+        "Confirmations are sent on payment",
+        "Failed payment emails are sent",
+        "Email delivery is reliable"
+      ],
+      "files_to_create": [
+        "services/billing/src/emails/email-service.ts",
+        "services/billing/src/emails/invoice-email-service.ts",
+        "services/billing/src/emails/templates/invoice.html",
+        "services/billing/src/emails/templates/reminder.html",
+        "services/billing/src/emails/templates/payment-confirmation.html",
+        "services/billing/src/emails/templates/payment-failed.html",
+        "services/billing/src/jobs/email-job.ts",
+        "services/billing/src/models/email-log.ts"
+      ],
+      "docker_requirements": null,
+      "task_id": "BILLING-015"
+    },
+    {
+      "task-name": "Billing Dashboard Integration",
+      "feature-details": "Create API endpoints and data structures for the billing section of the admin portal. Provide subscription overview, usage summary, invoice history, and payment method management.",
+      "feature-dependency": ["BILLING-008", "BILLING-013", "PORTAL-008"],
+      "ai-prompt": "Create billing dashboard API in services/billing:\n\n1. Billing Overview Endpoint:\n   GET /dashboard/:tenantId/overview\n   Response:\n   - currentPlan: { name, price, billingCycle }\n   - subscription: { status, nextBillingDate, cancelAt }\n   - usage: {\n       messages: { used, limit, percentage }\n       mau: { used, limit, percentage }\n       storage: { used, limit, percentage }\n     }\n   - estimatedNextBill: number\n   - lastPayment: { amount, date, status }\n\n2. Usage History Endpoint:\n   GET /dashboard/:tenantId/usage-history\n   Query: ?period=30d|90d|1y\n   Response:\n   - data: [{ date, messages, mau, apiCalls }]\n   - Aggregated by day/week/month based on period\n   - For charts in dashboard\n\n3. Invoice List Endpoint:\n   GET /dashboard/:tenantId/invoices\n   Query: ?page=1&limit=10&status=paid\n   Response:\n   - invoices: Invoice[]\n   - pagination: { total, page, limit }\n   - Summary: total paid, total pending\n\n4. Payment Methods Endpoint:\n   GET /dashboard/:tenantId/payment-methods\n   Response:\n   - methods: [{ id, brand, last4, expMonth, expYear, isDefault }]\n   - Can add/remove/set default\n\n5. Upgrade/Downgrade Preview:\n   POST /dashboard/:tenantId/preview-change\n   Body: { newPlanId }\n   Response:\n   - currentPlan: Plan\n   - newPlan: Plan\n   - proration: number (credit or charge)\n   - effectiveDate: Date\n   - features: { added: [], removed: [] }\n\n6. Cancel Subscription Preview:\n   GET /dashboard/:tenantId/cancel-preview\n   Response:\n   - currentPeriodEnd: Date\n   - refundAmount: number (if any)\n   - whatYouLose: string[]\n   - alternativeOptions: []\n\n7. Response formatting:\n   - Consistent structure\n   - Amounts in cents with currency\n   - Dates in ISO format\n   - Pagination where applicable",
+      "testing-instructions": "1. Test overview returns correct data\n2. Test usage history aggregates correctly\n3. Test invoice list pagination\n4. Test payment methods list\n5. Test upgrade preview shows proration\n6. Test downgrade preview shows effective date\n7. Test cancel preview shows end date\n8. Test authorization (tenant can only see own data)",
+      "acceptance_criteria": [
+        "Overview provides complete billing status",
+        "Usage history supports charts",
+        "Invoice list is paginated",
+        "Payment methods are manageable",
+        "Upgrade preview shows proration",
+        "Downgrade preview shows schedule",
+        "Cancel preview shows implications",
+        "All endpoints are authorized"
+      ],
+      "files_to_create": [
+        "services/billing/src/dashboard/overview.ts",
+        "services/billing/src/dashboard/usage-history.ts",
+        "services/billing/src/dashboard/payment-methods.ts",
+        "services/billing/src/dashboard/plan-change-preview.ts",
+        "services/billing/src/routes/dashboard.ts"
+      ],
+      "docker_requirements": null,
+      "task_id": "BILLING-016"
+    }
+  ]
+}

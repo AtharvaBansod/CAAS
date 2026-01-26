@@ -1,0 +1,95 @@
+{
+  "feature_group": "plan-management",
+  "description": "Subscription plan definitions and management",
+  "tasks": [
+    {
+      "task-name": "Plan Definition System",
+      "feature-details": "Create the plan definition system with configurable features, quotas, and pricing. Support plan versioning for grandfathering existing customers.",
+      "feature-dependency": ["BILLING-004"],
+      "ai-prompt": "Create plan management in services/billing:\n\n1. Create billing service:\n   - Port: 3012\n   - Fastify with TypeScript\n   - MongoDB for billing data\n   - Stripe SDK integration\n\n2. Plan model:\n   - id: string (uuid)\n   - slug: 'free' | 'pro' | 'enterprise'\n   - name: string\n   - description: string\n   - version: number (for versioning)\n   - pricing: {\n       monthly: number (cents)\n       yearly: number (cents, discounted)\n       currency: 'USD'\n     }\n   - quotas: QuotaLimits (from metering)\n   - features: {\n       e2eEncryption: boolean\n       customBranding: boolean\n       apiAccess: boolean\n       webhooks: boolean\n       prioritySupport: boolean\n       sla: string | null\n       ssoIntegration: boolean\n       auditLogs: boolean\n       ipWhitelisting: boolean\n     }\n   - isActive: boolean\n   - trialDays: number\n\n3. Default plans:\n   ```\n   Free:\n     - Price: $0\n     - MAU: 1,000\n     - Messages: 10,000/mo\n     - Features: basic\n   \n   Pro:\n     - Price: $99/mo, $990/yr\n     - MAU: 10,000\n     - Messages: 100,000/mo\n     - Features: all except enterprise\n   \n   Enterprise:\n     - Price: custom\n     - MAU: unlimited\n     - Messages: unlimited\n     - Features: all + SLA\n   ```\n\n4. PlanService:\n   - getPlans(): Promise<Plan[]>\n   - getPlan(planId): Promise<Plan>\n   - getPlanBySlug(slug): Promise<Plan>\n   - createPlan(plan): Promise<Plan>\n   - updatePlan(planId, updates): Promise<Plan>\n   - deprecatePlan(planId, newPlanId): Promise<void>\n\n5. Plan versioning:\n   - When plan changes, create new version\n   - Existing subscriptions keep old version\n   - Migration path to new version\n\n6. API endpoints:\n   - GET /plans - List active plans\n   - GET /plans/:id - Get plan details\n   - POST /plans - Create plan (admin)\n   - PUT /plans/:id - Update plan (admin)",
+      "testing-instructions": "1. Test default plans are seeded\n2. Test getPlan returns correct plan\n3. Test createPlan creates new plan\n4. Test updatePlan creates new version\n5. Test deprecated plans not in list\n6. Test features object is complete\n7. Test pricing is in cents\n8. Test trial days configuration",
+      "acceptance_criteria": [
+        "Default plans are available",
+        "Plans have correct quotas and features",
+        "Plan versioning works",
+        "Deprecated plans are hidden",
+        "Admin can create/update plans",
+        "Pricing is correctly structured",
+        "Trial period is configurable"
+      ],
+      "files_to_create": [
+        "services/billing/src/index.ts",
+        "services/billing/src/models/plan.ts",
+        "services/billing/src/services/plan-service.ts",
+        "services/billing/src/seeds/default-plans.ts",
+        "services/billing/src/routes/plans.ts",
+        "services/billing/Dockerfile",
+        "services/billing/package.json"
+      ],
+      "docker_requirements": {
+        "image": "node:20-alpine",
+        "ports": ["3012:3012"],
+        "environment": {
+          "MONGODB_URI": "mongodb://mongodb:27017/caas",
+          "STRIPE_SECRET_KEY": "${STRIPE_SECRET_KEY}"
+        }
+      },
+      "task_id": "BILLING-007"
+    },
+    {
+      "task-name": "Subscription Model and Assignment",
+      "feature-details": "Create subscription model that links tenants to plans. Handle subscription creation, updates, and cancellation. Track subscription lifecycle.",
+      "feature-dependency": ["BILLING-007"],
+      "ai-prompt": "Create subscription management in services/billing:\n\n1. Subscription model:\n   - id: string\n   - tenantId: string\n   - planId: string\n   - planVersion: number\n   - status: 'trialing' | 'active' | 'past_due' | 'canceled' | 'paused'\n   - billingCycle: 'monthly' | 'yearly'\n   - currentPeriodStart: Date\n   - currentPeriodEnd: Date\n   - trialStart?: Date\n   - trialEnd?: Date\n   - cancelAt?: Date\n   - canceledAt?: Date\n   - stripeSubscriptionId?: string\n   - paymentMethodId?: string\n   - metadata: Record<string, any>\n\n2. SubscriptionService:\n   - create(tenantId, planId, options): Promise<Subscription>\n   - get(subscriptionId): Promise<Subscription>\n   - getByTenant(tenantId): Promise<Subscription>\n   - upgrade(subscriptionId, newPlanId): Promise<Subscription>\n   - downgrade(subscriptionId, newPlanId): Promise<Subscription>\n   - cancel(subscriptionId, immediately?: boolean): Promise<Subscription>\n   - pause(subscriptionId): Promise<Subscription>\n   - resume(subscriptionId): Promise<Subscription>\n   - renew(subscriptionId): Promise<Subscription>\n\n3. Trial handling:\n   - New tenants get trial period\n   - Trial status tracked\n   - Notification before trial ends\n   - Convert to paid or free after trial\n\n4. Lifecycle events:\n   - Emit Kafka events for:\n     - subscription.created\n     - subscription.upgraded\n     - subscription.downgraded\n     - subscription.canceled\n     - subscription.renewed\n     - subscription.past_due\n\n5. Proration:\n   - Calculate proration on plan change\n   - Credit remaining time on old plan\n   - Charge difference for new plan\n\n6. API endpoints:\n   - GET /subscriptions/:tenantId - Get subscription\n   - POST /subscriptions - Create subscription\n   - POST /subscriptions/:id/upgrade - Upgrade plan\n   - POST /subscriptions/:id/downgrade - Downgrade plan\n   - POST /subscriptions/:id/cancel - Cancel\n   - POST /subscriptions/:id/resume - Resume\n\n7. Integration:\n   - Sync with metering service quotas\n   - Update feature flags on change",
+      "testing-instructions": "1. Test subscription creation\n2. Test trial period is applied\n3. Test upgrade changes plan\n4. Test downgrade schedules for period end\n5. Test cancel sets cancelAt\n6. Test immediate cancel cancels now\n7. Test Kafka events are emitted\n8. Test quota is synced on change",
+      "acceptance_criteria": [
+        "Subscriptions can be created",
+        "Trial period works correctly",
+        "Upgrades take effect immediately",
+        "Downgrades scheduled for period end",
+        "Cancellation works both ways",
+        "Lifecycle events are emitted",
+        "Proration is calculated correctly",
+        "Quotas are synced"
+      ],
+      "files_to_create": [
+        "services/billing/src/models/subscription.ts",
+        "services/billing/src/services/subscription-service.ts",
+        "services/billing/src/services/proration-service.ts",
+        "services/billing/src/events/subscription-events.ts",
+        "services/billing/src/routes/subscriptions.ts"
+      ],
+      "docker_requirements": null,
+      "task_id": "BILLING-008"
+    },
+    {
+      "task-name": "Feature Flag System",
+      "feature-details": "Implement feature flags that are controlled by subscription plan. Check feature access in services. Support custom feature overrides per tenant.",
+      "feature-dependency": ["BILLING-008"],
+      "ai-prompt": "Create feature flag system in services/billing:\n\n1. FeatureFlag type:\n   - e2eEncryption\n   - customBranding\n   - apiAccess\n   - webhooks\n   - prioritySupport\n   - ssoIntegration\n   - auditLogs\n   - ipWhitelisting\n   - mediaStorage\n   - videoChat\n   - multipleApps\n   - teamMembers\n\n2. TenantFeatures model:\n   - tenantId: string\n   - planFeatures: Record<FeatureFlag, boolean>\n   - customOverrides: Record<FeatureFlag, boolean>\n   - effectiveFeatures: Record<FeatureFlag, boolean>\n   - updatedAt: Date\n\n3. FeatureFlagService:\n   - getFeatures(tenantId): Promise<FeatureFlags>\n   - checkFeature(tenantId, feature): Promise<boolean>\n   - setOverride(tenantId, feature, enabled): Promise<void>\n   - removeOverride(tenantId, feature): Promise<void>\n   - syncFromPlan(tenantId, planId): Promise<void>\n\n4. Caching:\n   - Cache features in Redis\n   - TTL: 5 minutes\n   - Invalidate on subscription change\n   - Pub/sub for immediate invalidation\n\n5. Feature check middleware:\n   - Fastify decorator: request.hasFeature(feature)\n   - Return 403 if feature not enabled\n   - Include feature name in error\n\n6. API endpoints:\n   - GET /features/:tenantId - Get all features\n   - GET /features/:tenantId/:feature - Check single feature\n   - PUT /features/:tenantId/overrides - Set overrides (admin)\n\n7. Shared package:\n   - Create @caas/feature-flags package\n   - FeatureFlagClient for service integration\n   - HTTP client to billing service\n   - Local cache with TTL\n\n8. Integration in services:\n   - Import FeatureFlagClient\n   - Check before protected features\n   - Graceful degradation on service down",
+      "testing-instructions": "1. Test features derived from plan\n2. Test checkFeature returns correct value\n3. Test custom overrides work\n4. Test caching improves performance\n5. Test cache invalidation on change\n6. Test middleware blocks unauthorized\n7. Test shared package works\n8. Test graceful degradation",
+      "acceptance_criteria": [
+        "Features match subscription plan",
+        "Feature checks are fast (cached)",
+        "Custom overrides take precedence",
+        "Cache invalidation works",
+        "Middleware blocks unauthorized access",
+        "Shared package integrates easily",
+        "Graceful degradation on failure",
+        "All services can check features"
+      ],
+      "files_to_create": [
+        "services/billing/src/features/types.ts",
+        "services/billing/src/models/tenant-features.ts",
+        "services/billing/src/features/feature-flag-service.ts",
+        "services/billing/src/features/middleware.ts",
+        "services/billing/src/routes/features.ts",
+        "packages/feature-flags/package.json",
+        "packages/feature-flags/src/index.ts",
+        "packages/feature-flags/src/client.ts"
+      ],
+      "docker_requirements": null,
+      "task_id": "BILLING-009"
+    }
+  ]
+}

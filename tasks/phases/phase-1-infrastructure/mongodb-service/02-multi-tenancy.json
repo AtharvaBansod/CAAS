@@ -1,0 +1,246 @@
+{
+  "task_group": "mongodb-multi-tenancy",
+  "description": "Multi-tenant architecture implementation for CAAS platform supporting shared, collection-per-tenant, and database-per-tenant isolation models",
+  "priority": "critical",
+  "estimated_hours": 25,
+  "phase": 1,
+  "feature_area": "mongodb-service",
+  "tasks": [
+    {
+      "id": "MONGO-005",
+      "task_name": "Tenant Connection Factory",
+      "feature_details": "Implement a tenant-aware connection factory that manages database connections based on tenant isolation model (shared, collection, database). Supports connection pooling per tenant and efficient resource management.",
+      "feature_dependency": ["MONGO-002"],
+      "ai_prompt": "Create a sophisticated tenant connection factory system:\n\n1. Create src/tenancy/tenant-connection-factory.ts:\n   - TenantConnectionFactory class (singleton pattern)\n   - Methods:\n     * getConnection(tenantId: string): Promise<Connection>\n     * releaseConnection(tenantId: string): void\n     * getTenantConfig(tenantId: string): TenantConfig\n     * warmupConnections(tenantIds: string[]): Promise<void>\n   - Connection caching with LRU eviction for inactive tenants\n   - Connection health monitoring\n\n2. Create src/tenancy/isolation-strategies/:\n   - IsolationStrategy interface\n   - SharedCollectionStrategy - Uses shared collections with tenant_id filter\n   - CollectionPerTenantStrategy - Prefixes collections with tenant_id\n   - DatabasePerTenantStrategy - Separate database per tenant\n\n3. Create src/tenancy/tenant-context.ts:\n   - TenantContext class using AsyncLocalStorage\n   - Methods:\n     * setCurrentTenant(tenantId: string)\n     * getCurrentTenant(): string\n     * runWithTenant(tenantId: string, fn: () => Promise<T>): Promise<T>\n   - Middleware-friendly design for Express/Fastify\n\n4. Create src/tenancy/tenant-resolver.ts:\n   - Resolve tenant ID from various sources:\n     * JWT token claims\n     * API key lookup\n     * Request headers (X-Tenant-ID)\n     * URL path parameters\n\n5. Configuration:\n   - Define tenant isolation level per tier\n   - Free/Starter: shared collections\n   - Pro: collection-per-tenant\n   - Enterprise: database-per-tenant\n\nMust handle concurrent requests for multiple tenants efficiently.",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test connection factory returns correct connection type",
+          "Test LRU eviction works correctly",
+          "Test tenant context isolation between async operations",
+          "Test tenant resolver from different sources"
+        ],
+        "integration_tests": [
+          "Test shared collection isolation",
+          "Test collection-per-tenant isolation",
+          "Test database-per-tenant isolation",
+          "Test concurrent multi-tenant operations",
+          "Test connection pool exhaustion handling"
+        ],
+        "e2e_tests": [
+          "Full request flow with tenant resolution",
+          "Multi-tenant concurrent access test"
+        ]
+      },
+      "acceptance_criteria": [
+        "Correct isolation strategy used based on tenant tier",
+        "Connection pooling works efficiently",
+        "Tenant context propagates through async operations",
+        "No cross-tenant data leakage",
+        "Inactive tenant connections are cleaned up",
+        "Health monitoring detects connection issues"
+      ],
+      "files_to_create": [
+        "services/mongodb-service/src/tenancy/tenant-connection-factory.ts",
+        "services/mongodb-service/src/tenancy/tenant-context.ts",
+        "services/mongodb-service/src/tenancy/tenant-resolver.ts",
+        "services/mongodb-service/src/tenancy/types.ts",
+        "services/mongodb-service/src/tenancy/index.ts",
+        "services/mongodb-service/src/tenancy/isolation-strategies/isolation-strategy.interface.ts",
+        "services/mongodb-service/src/tenancy/isolation-strategies/shared-collection.strategy.ts",
+        "services/mongodb-service/src/tenancy/isolation-strategies/collection-per-tenant.strategy.ts",
+        "services/mongodb-service/src/tenancy/isolation-strategies/database-per-tenant.strategy.ts",
+        "services/mongodb-service/src/tenancy/isolation-strategies/index.ts"
+      ],
+      "files_to_modify": [
+        "services/mongodb-service/src/index.ts"
+      ],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [
+          "DEFAULT_ISOLATION_STRATEGY"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 8,
+      "tags": ["mongodb", "multi-tenancy", "isolation", "connection-pooling"]
+    },
+    {
+      "id": "MONGO-006",
+      "task_name": "Tenant-Aware Repository Implementation",
+      "feature_details": "Extend the base repository to be tenant-aware, automatically injecting tenant context into all database operations and ensuring data isolation.",
+      "feature_dependency": ["MONGO-003", "MONGO-005"],
+      "ai_prompt": "Create tenant-aware repository extensions:\n\n1. Create src/repositories/tenant-aware.repository.ts:\n   - TenantAwareRepository<T> extends BaseRepository<T>\n   - Automatically injects tenant_id from TenantContext\n   - Validates tenant_id is present before any operation\n   - Overrides all query methods to enforce tenant isolation\n\n2. Create src/repositories/platform.repository.ts:\n   - PlatformRepository for non-tenant-scoped data\n   - Used for: saas_clients, applications, api_keys, platform_admins\n   - Admin-only access, no tenant filtering\n\n3. Create concrete repositories:\n   - src/repositories/user.repository.ts\n   - src/repositories/conversation.repository.ts\n   - src/repositories/message.repository.ts\n   - src/repositories/file.repository.ts\n   - src/repositories/group.repository.ts\n\n4. Each repository should have:\n   - Entity-specific query methods\n   - Optimized aggregation pipelines\n   - Proper type definitions for entities\n\n5. Message repository special methods:\n   - findByConversation with cursor pagination\n   - findUnreadCount(userId)\n   - markAsRead(messageIds, userId)\n   - searchMessages(query, options)\n\n6. User repository special methods:\n   - findByExternalId(externalId)\n   - updatePresence(userId, status)\n   - findActiveUsers(since: Date)\n   - searchUsers(query)\n\nEnsure all operations log tenant_id for audit purposes.",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test tenant_id injection in queries",
+          "Test error thrown when tenant context missing",
+          "Test entity-specific methods return correct types"
+        ],
+        "integration_tests": [
+          "Test user CRUD with tenant isolation",
+          "Test conversation queries",
+          "Test message pagination",
+          "Test cross-tenant queries are blocked"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "All tenant operations require valid tenant context",
+        "Queries automatically include tenant_id filter",
+        "Platform repositories work without tenant context",
+        "Entity-specific methods are properly typed",
+        "Audit logs include tenant_id"
+      ],
+      "files_to_create": [
+        "services/mongodb-service/src/repositories/tenant-aware.repository.ts",
+        "services/mongodb-service/src/repositories/platform.repository.ts",
+        "services/mongodb-service/src/repositories/user.repository.ts",
+        "services/mongodb-service/src/repositories/conversation.repository.ts",
+        "services/mongodb-service/src/repositories/message.repository.ts",
+        "services/mongodb-service/src/repositories/file.repository.ts",
+        "services/mongodb-service/src/repositories/group.repository.ts"
+      ],
+      "files_to_modify": [
+        "services/mongodb-service/src/repositories/index.ts"
+      ],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 8,
+      "tags": ["mongodb", "repository", "multi-tenancy", "data-access"]
+    },
+    {
+      "id": "MONGO-007",
+      "task_name": "Tenant Provisioning and Lifecycle",
+      "feature_details": "Implement tenant provisioning system that creates the appropriate database/collections when a new SAAS client is onboarded, and handles tenant lifecycle events.",
+      "feature_dependency": ["MONGO-005"],
+      "ai_prompt": "Create tenant provisioning and lifecycle management:\n\n1. Create src/tenancy/tenant-provisioner.ts:\n   - TenantProvisioner class\n   - Methods:\n     * provision(tenantConfig: TenantConfig): Promise<ProvisionResult>\n     * upgrade(tenantId: string, newTier: Tier): Promise<void>\n     * downgrade(tenantId: string, newTier: Tier): Promise<void>\n     * suspend(tenantId: string): Promise<void>\n     * resume(tenantId: string): Promise<void>\n     * delete(tenantId: string, options: DeleteOptions): Promise<void>\n\n2. Provisioning steps:\n   - Validate tenant configuration\n   - Create database (for dedicated isolation)\n   - Create collections with schemas\n   - Create indexes\n   - Set up database user with limited permissions\n   - Initialize tenant settings\n   - Emit provisioning events\n\n3. Create src/tenancy/tenant-migrator.ts:\n   - Handle tier upgrades (e.g., shared → dedicated)\n   - Data migration between isolation strategies\n   - Rollback support on failure\n   - Progress tracking for large migrations\n\n4. Create src/tenancy/tenant-cleanup.ts:\n   - Soft delete: Mark tenant as deleted, retain data\n   - Hard delete: Remove all tenant data\n   - Export data before deletion (GDPR compliance)\n   - Cleanup orphaned data\n\n5. Events to emit:\n   - tenant.provisioned\n   - tenant.upgraded\n   - tenant.downgraded\n   - tenant.suspended\n   - tenant.deleted\n   - tenant.data_exported\n\nAll operations should be transactional where possible.",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test provisioning configuration validation",
+          "Test upgrade path determination",
+          "Test cleanup logic"
+        ],
+        "integration_tests": [
+          "Test full tenant provisioning flow",
+          "Test tier upgrade with data migration",
+          "Test tenant suspension and resume",
+          "Test soft delete retains data",
+          "Test hard delete removes all data"
+        ],
+        "e2e_tests": [
+          "Complete tenant lifecycle test"
+        ]
+      },
+      "acceptance_criteria": [
+        "New tenants are provisioned correctly",
+        "Tier upgrades migrate data without loss",
+        "Tier downgrades handle data appropriately",
+        "Suspended tenants cannot access data",
+        "Deleted tenant data can be recovered (soft delete)",
+        "Hard delete permanently removes all data",
+        "All lifecycle events are emitted"
+      ],
+      "files_to_create": [
+        "services/mongodb-service/src/tenancy/tenant-provisioner.ts",
+        "services/mongodb-service/src/tenancy/tenant-migrator.ts",
+        "services/mongodb-service/src/tenancy/tenant-cleanup.ts",
+        "services/mongodb-service/src/tenancy/tenant-lifecycle-events.ts"
+      ],
+      "files_to_modify": [
+        "services/mongodb-service/src/tenancy/index.ts"
+      ],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": ["All tenant collections created dynamically"],
+        "indexes": ["All indexes created per tenant"],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 6,
+      "tags": ["mongodb", "multi-tenancy", "provisioning", "lifecycle"]
+    },
+    {
+      "id": "MONGO-008",
+      "task_name": "Resource Quotas and Usage Tracking",
+      "feature_details": "Implement resource quota enforcement and usage tracking per tenant, including message counts, storage usage, and API call limits.",
+      "feature_dependency": ["MONGO-006"],
+      "ai_prompt": "Create resource quota and usage tracking system:\n\n1. Create src/quotas/quota-manager.ts:\n   - QuotaManager class\n   - Methods:\n     * checkQuota(tenantId: string, resource: Resource, quantity: number): QuotaCheckResult\n     * incrementUsage(tenantId: string, resource: Resource, quantity: number): void\n     * getUsage(tenantId: string): TenantUsage\n     * resetMonthlyUsage(): void\n\n2. Resources to track:\n   - messages_count: Number of messages sent\n   - users_count: Number of active users\n   - storage_bytes: Total file storage used\n   - api_calls: API requests made\n   - concurrent_connections: Active socket connections\n   - voice_minutes: Voice call duration\n   - video_minutes: Video call duration\n\n3. Create src/quotas/quota-enforcement.ts:\n   - Middleware that checks quotas before operations\n   - Graceful degradation when near limits\n   - Alert thresholds (80%, 90%, 100%)\n   - Overage handling based on plan\n\n4. Create src/quotas/usage-aggregator.ts:\n   - Batch usage updates (don't write to DB on every operation)\n   - Use Redis for real-time counts\n   - Periodic sync to MongoDB\n   - Daily/monthly rollup aggregations\n\n5. Create src/quotas/quota-alerts.ts:\n   - Alert when approaching limits\n   - Alert on quota exceeded\n   - Emit events for notification service\n\nPerformance is critical - quota checks must add < 5ms latency.",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test quota check logic",
+          "Test usage increment calculations",
+          "Test alert threshold detection"
+        ],
+        "integration_tests": [
+          "Test quota enforcement blocks operations",
+          "Test usage aggregation accuracy",
+          "Test monthly reset",
+          "Test Redis sync reliability"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Quota checks complete in < 5ms",
+        "Usage is accurately tracked",
+        "Quotas are enforced before operations",
+        "Alerts fire at correct thresholds",
+        "Monthly usage resets correctly",
+        "Overage handling works per plan rules"
+      ],
+      "files_to_create": [
+        "services/mongodb-service/src/quotas/quota-manager.ts",
+        "services/mongodb-service/src/quotas/quota-enforcement.ts",
+        "services/mongodb-service/src/quotas/usage-aggregator.ts",
+        "services/mongodb-service/src/quotas/quota-alerts.ts",
+        "services/mongodb-service/src/quotas/types.ts",
+        "services/mongodb-service/src/quotas/index.ts"
+      ],
+      "files_to_modify": [
+        "services/mongodb-service/src/index.ts"
+      ],
+      "docker_requirements": {
+        "services": ["redis"],
+        "environment_variables": [
+          "REDIS_URL",
+          "QUOTA_SYNC_INTERVAL_MS"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": ["usage_records", "quota_alerts"],
+        "indexes": ["tenant_id_resource_period"],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 3,
+      "tags": ["mongodb", "quotas", "usage-tracking", "rate-limiting"]
+    }
+  ]
+}

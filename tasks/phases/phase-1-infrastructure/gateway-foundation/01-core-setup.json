@@ -1,0 +1,264 @@
+{
+  "task_group": "gateway-core-setup",
+  "description": "Core gateway setup with Fastify, Docker configuration, and foundational architecture",
+  "priority": "critical",
+  "estimated_hours": 18,
+  "phase": 1,
+  "feature_area": "gateway-foundation",
+  "tasks": [
+    {
+      "id": "GATEWAY-001",
+      "task_name": "Gateway Docker Configuration",
+      "feature_details": "Set up the Docker configuration for the public gateway service with multi-stage builds, health checks, and production optimizations.",
+      "feature_dependency": [],
+      "ai_prompt": "Create the Gateway Docker configuration:\n\n1. Create services/gateway/Dockerfile:\n   ```dockerfile\n   # Build stage\n   FROM node:20-alpine AS builder\n   WORKDIR /app\n   COPY package*.json ./\n   RUN npm ci --only=production && npm cache clean --force\n   COPY . .\n   RUN npm run build\n\n   # Production stage\n   FROM node:20-alpine\n   WORKDIR /app\n   RUN addgroup -g 1001 -S nodejs && \\\n       adduser -S gateway -u 1001\n   COPY --from=builder /app/dist ./dist\n   COPY --from=builder /app/node_modules ./node_modules\n   COPY --from=builder /app/package*.json ./\n   USER gateway\n   EXPOSE 3000 3001\n   HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \\\n     CMD wget --quiet --tries=1 --spider http://localhost:3000/health || exit 1\n   CMD [\"node\", \"dist/main.js\"]\n   ```\n\n2. Create docker-compose.gateway.yml:\n   - Gateway service configuration\n   - Environment variables\n   - Network configuration\n   - Volume mounts for development\n   - Hot reload with nodemon\n\n3. Environment variables to configure:\n   - PORT=3000\n   - METRICS_PORT=3001\n   - NODE_ENV=development|production\n   - LOG_LEVEL=debug|info|warn|error\n   - MONGODB_URI=mongodb://...\n   - REDIS_URL=redis://...\n   - KAFKA_BROKERS=kafka-1:9092,...\n   - JWT_SECRET (for token validation)\n   - CORS_ORIGINS\n   - RATE_LIMIT_* variables\n\n4. Create .dockerignore for the gateway\n\n5. Add gateway service to main tasks/docker-compose.yml\n\n6. Create health check endpoint stub",
+      "testing_instructions": {
+        "unit_tests": [],
+        "integration_tests": [
+          "Test container builds successfully",
+          "Test container starts and passes health check",
+          "Test environment variables are loaded"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Docker image builds in under 2 minutes",
+        "Image size under 200MB",
+        "Health check passes within 10 seconds",
+        "Non-root user runs the application",
+        "Development hot reload works"
+      ],
+      "files_to_create": [
+        "services/gateway/Dockerfile",
+        "services/gateway/Dockerfile.dev",
+        "services/gateway/.dockerignore",
+        "services/gateway/docker-compose.gateway.yml"
+      ],
+      "files_to_modify": [
+        "tasks/docker-compose.yml"
+      ],
+      "docker_requirements": {
+        "services": ["gateway"],
+        "environment_variables": [
+          "PORT",
+          "METRICS_PORT",
+          "NODE_ENV",
+          "LOG_LEVEL",
+          "MONGODB_URI",
+          "REDIS_URL",
+          "KAFKA_BROKERS"
+        ],
+        "volumes": [
+          "./services/gateway:/app:delegated"
+        ],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/health",
+          "description": "Health check endpoint"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["docker", "gateway", "infrastructure"]
+    },
+    {
+      "id": "GATEWAY-002",
+      "task_name": "Fastify Application Bootstrap",
+      "feature_details": "Initialize the Fastify application with TypeScript, plugins, and core configuration for the API gateway.",
+      "feature_dependency": ["GATEWAY-001"],
+      "ai_prompt": "Bootstrap the Fastify application:\n\n1. Create services/gateway/package.json:\n   Dependencies:\n   - fastify@^4.28.0\n   - @fastify/cors\n   - @fastify/helmet\n   - @fastify/rate-limit\n   - @fastify/swagger\n   - @fastify/swagger-ui\n   - @fastify/sensible\n   - @fastify/cookie\n   - @fastify/jwt\n   - @fastify/redis\n   - pino (logging)\n   - zod (validation)\n   - uuid\n   \n   DevDependencies:\n   - typescript\n   - @types/node\n   - tsx (development)\n   - vitest (testing)\n   - @fastify/type-provider-zod\n\n2. Create services/gateway/src/main.ts:\n   ```typescript\n   import Fastify from 'fastify';\n   import { registerPlugins } from './plugins';\n   import { registerRoutes } from './routes';\n   import { config } from './config';\n\n   const app = Fastify({\n     logger: {\n       level: config.logLevel,\n       transport: {\n         target: 'pino-pretty',\n         options: { colorize: true }\n       }\n     },\n     trustProxy: true,\n     requestIdHeader: 'x-request-id',\n     requestIdLogLabel: 'requestId',\n     genReqId: () => crypto.randomUUID()\n   });\n\n   await registerPlugins(app);\n   await registerRoutes(app);\n\n   await app.listen({ port: config.port, host: '0.0.0.0' });\n   ```\n\n3. Create services/gateway/src/config/index.ts:\n   - Load all environment variables\n   - Validate required config\n   - Type-safe config object\n\n4. Create services/gateway/src/plugins/index.ts:\n   - Register all Fastify plugins\n   - CORS, Helmet, Rate Limit, etc.\n\n5. Create services/gateway/tsconfig.json\n\n6. Create services/gateway/vitest.config.ts\n\n7. Create npm scripts:\n   - dev: tsx watch src/main.ts\n   - build: tsc\n   - start: node dist/main.js\n   - test: vitest",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test config loading",
+          "Test environment validation"
+        ],
+        "integration_tests": [
+          "Test server starts successfully",
+          "Test plugins are registered",
+          "Test request ID generation"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Server starts on configured port",
+        "Logging works with request IDs",
+        "All plugins are registered",
+        "TypeScript compiles without errors",
+        "Development hot reload works"
+      ],
+      "files_to_create": [
+        "services/gateway/package.json",
+        "services/gateway/tsconfig.json",
+        "services/gateway/vitest.config.ts",
+        "services/gateway/src/main.ts",
+        "services/gateway/src/config/index.ts",
+        "services/gateway/src/config/schema.ts",
+        "services/gateway/src/plugins/index.ts",
+        "services/gateway/src/plugins/cors.ts",
+        "services/gateway/src/plugins/helmet.ts",
+        "services/gateway/src/plugins/swagger.ts",
+        "services/gateway/src/types/fastify.d.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 5,
+      "tags": ["fastify", "gateway", "typescript", "bootstrap"]
+    },
+    {
+      "id": "GATEWAY-003",
+      "task_name": "Project Structure and Base Classes",
+      "feature_details": "Establish the project structure with base classes, utility functions, and shared types for the gateway service.",
+      "feature_dependency": ["GATEWAY-002"],
+      "ai_prompt": "Create the gateway project structure:\n\n1. Directory structure:\n   ```\n   services/gateway/\n   ├── src/\n   │   ├── config/           # Configuration\n   │   ├── plugins/          # Fastify plugins\n   │   ├── routes/           # Route handlers\n   │   │   ├── v1/           # API v1 routes\n   │   │   └── internal/     # Internal routes\n   │   ├── middleware/       # Custom middleware\n   │   ├── services/         # Business logic services\n   │   ├── repositories/     # Data access layer\n   │   ├── schemas/          # Request/response schemas\n   │   ├── errors/           # Custom error classes\n   │   ├── utils/            # Utility functions\n   │   └── types/            # TypeScript types\n   ├── tests/\n   │   ├── unit/\n   │   ├── integration/\n   │   └── fixtures/\n   └── docs/\n   ```\n\n2. Create src/errors/http-errors.ts:\n   - BadRequestError\n   - UnauthorizedError\n   - ForbiddenError\n   - NotFoundError\n   - ConflictError\n   - TooManyRequestsError\n   - InternalServerError\n\n3. Create src/errors/error-handler.ts:\n   - Global error handler\n   - Error serialization\n   - Logging integration\n\n4. Create src/utils/response.ts:\n   - StandardResponse<T> type\n   - success() helper\n   - paginated() helper\n   - error() helper\n\n5. Create src/utils/request-context.ts:\n   - RequestContext class\n   - Tenant context\n   - User context\n   - Trace context\n\n6. Create src/types/common.ts:\n   - Pagination types\n   - Sort types\n   - Filter types\n\n7. Create src/schemas/common.ts:\n   - Zod schemas for common types\n   - Pagination schema\n   - ID schema\n   - Timestamp schema",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test error classes",
+          "Test response helpers",
+          "Test utility functions"
+        ],
+        "integration_tests": [
+          "Test error handler integration",
+          "Test request context propagation"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Project structure is established",
+        "Error classes are reusable",
+        "Response helpers produce consistent format",
+        "Request context is accessible in handlers",
+        "Common schemas are validated"
+      ],
+      "files_to_create": [
+        "services/gateway/src/errors/http-errors.ts",
+        "services/gateway/src/errors/error-handler.ts",
+        "services/gateway/src/errors/error-codes.ts",
+        "services/gateway/src/errors/index.ts",
+        "services/gateway/src/utils/response.ts",
+        "services/gateway/src/utils/request-context.ts",
+        "services/gateway/src/utils/pagination.ts",
+        "services/gateway/src/utils/crypto.ts",
+        "services/gateway/src/utils/index.ts",
+        "services/gateway/src/types/common.ts",
+        "services/gateway/src/types/tenant.ts",
+        "services/gateway/src/types/user.ts",
+        "services/gateway/src/types/index.ts",
+        "services/gateway/src/schemas/common.ts",
+        "services/gateway/src/schemas/pagination.ts",
+        "services/gateway/src/schemas/index.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 5,
+      "tags": ["gateway", "structure", "base-classes", "utilities"]
+    },
+    {
+      "id": "GATEWAY-004",
+      "task_name": "Health and Readiness Endpoints",
+      "feature_details": "Implement comprehensive health check and readiness endpoints for Kubernetes probes and monitoring.",
+      "feature_dependency": ["GATEWAY-002"],
+      "ai_prompt": "Implement health and readiness endpoints:\n\n1. Create src/routes/internal/health.ts:\n   ```typescript\n   // GET /health - Liveness probe (lightweight)\n   {\n     status: 'ok',\n     timestamp: 1234567890,\n     uptime: 3600\n   }\n\n   // GET /ready - Readiness probe (checks dependencies)\n   {\n     status: 'ok' | 'degraded' | 'error',\n     timestamp: 1234567890,\n     checks: {\n       mongodb: { status: 'ok', latency: 5 },\n       redis: { status: 'ok', latency: 2 },\n       kafka: { status: 'ok', latency: 10 }\n     }\n   }\n\n   // GET /health/detailed - Full health details (for debugging)\n   {\n     status: 'ok',\n     version: '1.0.0',\n     git_commit: 'abc123',\n     uptime: 3600,\n     memory: { used: 100, total: 512 },\n     cpu: { usage: 25 },\n     checks: { ... }\n   }\n   ```\n\n2. Create src/services/health-check.ts:\n   - HealthCheckService class\n   - Check MongoDB connection\n   - Check Redis connection\n   - Check Kafka broker connectivity\n   - Timeout handling for each check\n   - Caching of check results (1 second)\n\n3. Create src/routes/internal/metrics.ts:\n   - Prometheus metrics endpoint\n   - Use prom-client library\n   - Expose on separate port (3001)\n\n4. Default metrics to collect:\n   - http_request_duration_seconds\n   - http_requests_total\n   - nodejs_gc_duration_seconds\n   - nodejs_heap_size_bytes\n   - Custom business metrics\n\n5. Create src/plugins/metrics.ts:\n   - Fastify plugin for metrics collection\n   - Request timing\n   - Response size tracking",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test health check logic",
+          "Test status aggregation"
+        ],
+        "integration_tests": [
+          "Test /health returns 200",
+          "Test /ready checks dependencies",
+          "Test /metrics returns Prometheus format",
+          "Test degraded state when dependency fails"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "/health responds in <10ms",
+        "/ready checks all dependencies",
+        "Degraded dependencies show degraded status",
+        "Metrics are in Prometheus format",
+        "Kubernetes probes work correctly"
+      ],
+      "files_to_create": [
+        "services/gateway/src/routes/internal/health.ts",
+        "services/gateway/src/routes/internal/metrics.ts",
+        "services/gateway/src/routes/internal/index.ts",
+        "services/gateway/src/services/health-check.ts",
+        "services/gateway/src/plugins/metrics.ts"
+      ],
+      "files_to_modify": [
+        "services/gateway/src/routes/index.ts"
+      ],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [
+          "HEALTH_CHECK_TIMEOUT_MS",
+          "METRICS_PORT"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/health",
+          "description": "Liveness probe"
+        },
+        {
+          "method": "GET",
+          "path": "/ready",
+          "description": "Readiness probe with dependency checks"
+        },
+        {
+          "method": "GET",
+          "path": "/health/detailed",
+          "description": "Detailed health information"
+        },
+        {
+          "method": "GET",
+          "path": ":3001/metrics",
+          "description": "Prometheus metrics"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["gateway", "health-check", "kubernetes", "prometheus"]
+    }
+  ]
+}

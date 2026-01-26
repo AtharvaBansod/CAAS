@@ -1,0 +1,69 @@
+{
+  "feature_group": "docker-config",
+  "description": "Docker configuration and containerization",
+  "tasks": [
+    {
+      "task-name": "Multi-Stage Dockerfiles",
+      "feature-details": "Create optimized multi-stage Dockerfiles for all services. Separate build and runtime stages to minimize image size. Use distroless or alpine base images for security.",
+      "feature-dependency": [],
+      "ai-prompt": "Create optimized Dockerfiles for all services:\n\n1. Base Dockerfile template for Node.js services:\n   ```dockerfile\n   # Build stage\n   FROM node:20-alpine AS builder\n   WORKDIR /app\n   COPY package*.json ./\n   COPY tsconfig.json ./\n   RUN npm ci --only=production && npm cache clean --force\n   RUN npm run build\n   \n   # Production stage\n   FROM node:20-alpine AS production\n   WORKDIR /app\n   RUN addgroup -g 1001 -S nodejs\n   RUN adduser -S nodejs -u 1001\n   COPY --from=builder /app/dist ./dist\n   COPY --from=builder /app/node_modules ./node_modules\n   COPY package.json ./\n   USER nodejs\n   EXPOSE 3000\n   CMD [\"node\", \"dist/index.js\"]\n   ```\n\n2. Service-specific Dockerfiles:\n   - services/gateway/Dockerfile\n   - services/messaging/Dockerfile\n   - services/socket/Dockerfile\n   - services/media/Dockerfile\n   - services/billing/Dockerfile\n   - services/metering/Dockerfile\n   - services/auth/Dockerfile\n   - apps/admin-portal/Dockerfile (Next.js)\n\n3. Next.js Dockerfile:\n   - Build with next build\n   - Standalone output mode\n   - Static files copied\n   - Much smaller than default\n\n4. Optimization:\n   - Use .dockerignore\n   - Layer caching for dependencies\n   - No dev dependencies in production\n   - Security scanning with Trivy\n\n5. .dockerignore file:\n   - node_modules\n   - .git\n   - *.md\n   - tests/\n   - coverage/\n   - .env*\n\n6. Health check:\n   ```dockerfile\n   HEALTHCHECK --interval=30s --timeout=3s \\\n     CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1\n   ```\n\n7. Size targets:\n   - Node.js services: < 200MB\n   - Next.js app: < 300MB\n   - Use alpine base for all",
+      "testing-instructions": "1. Build each Dockerfile and verify success\n2. Check image sizes are within targets\n3. Test container starts and health check passes\n4. Verify no dev dependencies included\n5. Scan with Trivy for vulnerabilities\n6. Test non-root user works\n7. Test .dockerignore excludes files\n8. Compare sizes: builder vs production",
+      "acceptance_criteria": [
+        "All services have Dockerfiles",
+        "Multi-stage builds reduce size",
+        "Images under target sizes",
+        "Health checks are defined",
+        "Non-root user configured",
+        "No dev dependencies in image",
+        "Security scan passes",
+        ".dockerignore configured"
+      ],
+      "files_to_create": [
+        "services/gateway/Dockerfile",
+        "services/messaging/Dockerfile",
+        "services/socket/Dockerfile",
+        "services/media/Dockerfile",
+        "services/billing/Dockerfile",
+        "services/metering/Dockerfile",
+        "services/auth/Dockerfile",
+        "apps/admin-portal/Dockerfile",
+        ".dockerignore"
+      ],
+      "docker_requirements": null,
+      "task_id": "DEPLOY-001"
+    },
+    {
+      "task-name": "Docker Compose Development",
+      "feature-details": "Create comprehensive Docker Compose configuration for local development. Include all services, databases, and infrastructure. Support hot-reload and debugging.",
+      "feature-dependency": ["DEPLOY-001"],
+      "ai-prompt": "Create Docker Compose for development:\n\n1. docker-compose.yml (core):\n   - MongoDB replica set (3 nodes)\n   - Kafka with Zookeeper\n   - Redis Cluster or single node\n   - MinIO for object storage\n   - Elasticsearch\n\n2. docker-compose.services.yml:\n   - All application services\n   - Build from Dockerfiles\n   - Volume mounts for hot-reload\n   - Environment variables from .env\n\n3. docker-compose.monitoring.yml (INTERNAL platform monitoring only):\n   - Prometheus (metrics collection)\n   - Grafana (internal dashboards)\n   - Loki (log aggregation)\n   - Jaeger (distributed tracing)\n   Note: Client-facing analytics are in Admin Portal using React/Recharts\n\n4. docker-compose.override.yml (local):\n   - Debug ports exposed\n   - Additional volume mounts\n   - Relaxed resource limits\n\n5. Service configuration:\n   ```yaml\n   gateway:\n     build:\n       context: ./services/gateway\n       target: development\n     volumes:\n       - ./services/gateway/src:/app/src\n       - ./packages:/app/packages\n     environment:\n       - NODE_ENV=development\n       - DEBUG=*\n     ports:\n       - \"3001:3001\"\n       - \"9229:9229\"  # Debug port\n     depends_on:\n       - mongodb\n       - redis\n       - kafka\n   ```\n\n6. Database initialization:\n   - MongoDB init scripts\n   - Kafka topic creation\n   - Redis configuration\n\n7. Networks:\n   - Internal network for services\n   - External network for ingress\n\n8. Volumes:\n   - Named volumes for data persistence\n   - Bind mounts for source code\n\n9. Helper scripts:\n   - scripts/docker-up.sh\n   - scripts/docker-down.sh\n   - scripts/docker-logs.sh\n   - scripts/docker-reset.sh\n\n10. .env.example:\n    - All required environment variables\n    - Default values for development\n\n11. Makefile targets:\n    - make dev - Start development\n    - make down - Stop all\n    - make logs - View logs\n    - make reset - Clear data",
+      "testing-instructions": "1. Run docker-compose up and verify all services start\n2. Test hot-reload by changing source code\n3. Verify databases are accessible\n4. Test health endpoints of all services\n5. Verify debug ports are exposed\n6. Test make commands work\n7. Verify data persists in volumes\n8. Test reset clears all data",
+      "acceptance_criteria": [
+        "All services start successfully",
+        "Hot-reload works for development",
+        "Databases are properly configured",
+        "Debug ports are accessible",
+        "Helper scripts work",
+        "Data persists in volumes",
+        "Easy to reset environment",
+        "Documentation is clear"
+      ],
+      "files_to_create": [
+        "docker-compose.yml",
+        "docker-compose.services.yml",
+        "docker-compose.monitoring.yml",
+        "docker-compose.override.yml",
+        "docker/mongodb/init.js",
+        "docker/kafka/create-topics.sh",
+        "scripts/docker-up.sh",
+        "scripts/docker-down.sh",
+        "scripts/docker-logs.sh",
+        "scripts/docker-reset.sh",
+        ".env.example",
+        "Makefile"
+      ],
+      "docker_requirements": null,
+      "task_id": "DEPLOY-002"
+    }
+  ]
+}

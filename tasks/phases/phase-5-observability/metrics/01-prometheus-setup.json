@@ -1,0 +1,195 @@
+{
+  "task_group": "prometheus-setup",
+  "description": "Prometheus metrics collection and service instrumentation",
+  "priority": "high",
+  "estimated_hours": 16,
+  "phase": 5,
+  "feature_area": "metrics",
+  "tasks": [
+    {
+      "id": "METRIC-001",
+      "task_name": "Prometheus Service Setup",
+      "feature_details": "Set up Prometheus for metrics collection.",
+      "feature_dependency": [],
+      "ai_prompt": "Set up Prometheus:\n\n1. Create infrastructure/prometheus/prometheus.yml:\n   ```yaml\n   global:\n     scrape_interval: 15s\n     evaluation_interval: 15s\n\n   alerting:\n     alertmanagers:\n       - static_configs:\n           - targets:\n               - alertmanager:9093\n\n   rule_files:\n     - /etc/prometheus/rules/*.yml\n\n   scrape_configs:\n     - job_name: 'prometheus'\n       static_configs:\n         - targets: ['localhost:9090']\n\n     - job_name: 'gateway'\n       static_configs:\n         - targets: ['gateway:3000']\n       metrics_path: /metrics\n\n     - job_name: 'messaging-service'\n       static_configs:\n         - targets: ['messaging-service:3001']\n       metrics_path: /metrics\n\n     - job_name: 'socket-service'\n       static_configs:\n         - targets: ['socket-service:3002']\n       metrics_path: /metrics\n\n     - job_name: 'media-service'\n       static_configs:\n         - targets: ['media-service:3003']\n       metrics_path: /metrics\n\n     - job_name: 'mongodb'\n       static_configs:\n         - targets: ['mongodb-exporter:9216']\n\n     - job_name: 'redis'\n       static_configs:\n         - targets: ['redis-exporter:9121']\n\n     - job_name: 'kafka'\n       static_configs:\n         - targets: ['kafka-exporter:9308']\n   ```\n\n2. Update docker-compose.yml:\n   ```yaml\n   prometheus:\n     image: prom/prometheus:v2.47.2\n     ports:\n       - \"9090:9090\"\n     volumes:\n       - ./infrastructure/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml\n       - ./infrastructure/prometheus/rules:/etc/prometheus/rules\n       - prometheus_data:/prometheus\n     command:\n       - '--config.file=/etc/prometheus/prometheus.yml'\n       - '--storage.tsdb.path=/prometheus'\n       - '--storage.tsdb.retention.time=15d'\n     networks:\n       - caas-network\n\n   mongodb-exporter:\n     image: percona/mongodb_exporter:0.40.0\n     environment:\n       - MONGODB_URI=mongodb://mongodb:27017\n     networks:\n       - caas-network\n\n   redis-exporter:\n     image: oliver006/redis_exporter:latest\n     environment:\n       - REDIS_ADDR=redis://redis:6379\n     networks:\n       - caas-network\n   ```\n\n3. Service discovery (optional):\n   - Docker service discovery\n   - Kubernetes service discovery\n\n4. Retention:\n   - 15 days local storage\n   - Remote write to long-term storage (optional)",
+      "testing_instructions": {
+        "unit_tests": [],
+        "integration_tests": [
+          "Test Prometheus startup",
+          "Test target discovery",
+          "Test metric scraping"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Prometheus running",
+        "All targets discovered",
+        "Metrics being scraped",
+        "Exporters working"
+      ],
+      "files_to_create": [
+        "infrastructure/prometheus/prometheus.yml"
+      ],
+      "files_to_modify": [
+        "docker-compose.yml"
+      ],
+      "docker_requirements": {
+        "services": ["prometheus", "mongodb-exporter", "redis-exporter"],
+        "environment_variables": [],
+        "volumes": ["prometheus_data"],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["metrics", "prometheus", "setup"]
+    },
+    {
+      "id": "METRIC-002",
+      "task_name": "Service Instrumentation",
+      "feature_details": "Instrument services with Prometheus metrics.",
+      "feature_dependency": ["METRIC-001"],
+      "ai_prompt": "Instrument services with metrics:\n\n1. Create packages/shared/src/metrics/metrics.ts:\n   ```typescript\n   import { Registry, Counter, Histogram, Gauge, collectDefaultMetrics } from 'prom-client';\n\n   export class MetricsService {\n     private registry: Registry;\n\n     // HTTP metrics\n     readonly httpRequestsTotal: Counter;\n     readonly httpRequestDuration: Histogram;\n     readonly httpRequestsInFlight: Gauge;\n\n     // Business metrics\n     readonly messagesTotal: Counter;\n     readonly activeConnections: Gauge;\n     readonly kafkaMessagesProduced: Counter;\n     readonly kafkaMessagesConsumed: Counter;\n\n     constructor(serviceName: string) {\n       this.registry = new Registry();\n       this.registry.setDefaultLabels({ service: serviceName });\n\n       // Collect default Node.js metrics\n       collectDefaultMetrics({ register: this.registry });\n\n       // HTTP metrics\n       this.httpRequestsTotal = new Counter({\n         name: 'http_requests_total',\n         help: 'Total HTTP requests',\n         labelNames: ['method', 'path', 'status'],\n         registers: [this.registry],\n       });\n\n       this.httpRequestDuration = new Histogram({\n         name: 'http_request_duration_seconds',\n         help: 'HTTP request duration in seconds',\n         labelNames: ['method', 'path', 'status'],\n         buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10],\n         registers: [this.registry],\n       });\n\n       this.httpRequestsInFlight = new Gauge({\n         name: 'http_requests_in_flight',\n         help: 'HTTP requests currently in flight',\n         registers: [this.registry],\n       });\n\n       // Business metrics\n       this.messagesTotal = new Counter({\n         name: 'messages_total',\n         help: 'Total messages sent',\n         labelNames: ['tenant_id', 'type'],\n         registers: [this.registry],\n       });\n\n       this.activeConnections = new Gauge({\n         name: 'active_connections',\n         help: 'Active WebSocket connections',\n         labelNames: ['tenant_id'],\n         registers: [this.registry],\n       });\n     }\n\n     async getMetrics(): Promise<string> {\n       return this.registry.metrics();\n     }\n   }\n   ```\n\n2. Create services/gateway/src/plugins/metrics.ts:\n   ```typescript\n   export const metricsPlugin: FastifyPluginAsync = async (fastify) => {\n     const metrics = new MetricsService('gateway');\n\n     // Metrics endpoint\n     fastify.get('/metrics', async (request, reply) => {\n       reply.type('text/plain');\n       return metrics.getMetrics();\n     });\n\n     // Instrument requests\n     fastify.addHook('onRequest', async (request) => {\n       request.startTime = Date.now();\n       metrics.httpRequestsInFlight.inc();\n     });\n\n     fastify.addHook('onResponse', async (request, reply) => {\n       const duration = (Date.now() - request.startTime) / 1000;\n       const labels = {\n         method: request.method,\n         path: this.normalizePath(request.url),\n         status: reply.statusCode.toString(),\n       };\n\n       metrics.httpRequestsTotal.inc(labels);\n       metrics.httpRequestDuration.observe(labels, duration);\n       metrics.httpRequestsInFlight.dec();\n     });\n   };\n   ```\n\n3. Path normalization:\n   - Replace IDs with :id\n   - Limit cardinality\n\n4. Apply to all services",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test metric registration",
+          "Test counter increments"
+        ],
+        "integration_tests": [
+          "Test /metrics endpoint",
+          "Test request instrumentation"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "All services instrumented",
+        "HTTP metrics collected",
+        "Business metrics collected",
+        "/metrics endpoint works"
+      ],
+      "files_to_create": [
+        "packages/shared/src/metrics/metrics.ts",
+        "services/gateway/src/plugins/metrics.ts"
+      ],
+      "files_to_modify": [
+        "services/gateway/src/main.ts"
+      ],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/metrics",
+          "description": "Prometheus metrics endpoint"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["metrics", "instrumentation", "prometheus"]
+    },
+    {
+      "id": "METRIC-003",
+      "task_name": "Custom Business Metrics",
+      "feature_details": "Implement custom business metrics for messaging platform.",
+      "feature_dependency": ["METRIC-002"],
+      "ai_prompt": "Implement business metrics:\n\n1. Create packages/shared/src/metrics/business-metrics.ts:\n   ```typescript\n   export class BusinessMetrics {\n     // Message metrics\n     readonly messagesSent: Counter;\n     readonly messagesDelivered: Counter;\n     readonly messagesRead: Counter;\n     readonly messagesFailed: Counter;\n\n     // Conversation metrics\n     readonly conversationsCreated: Counter;\n     readonly conversationsActive: Gauge;\n\n     // User metrics\n     readonly usersOnline: Gauge;\n     readonly userRegistrations: Counter;\n\n     // Media metrics\n     readonly mediaUploads: Counter;\n     readonly mediaBytes: Counter;\n\n     // Call metrics\n     readonly callsStarted: Counter;\n     readonly callDuration: Histogram;\n\n     constructor(registry: Registry) {\n       this.messagesSent = new Counter({\n         name: 'messages_sent_total',\n         help: 'Total messages sent',\n         labelNames: ['tenant_id', 'type'],\n         registers: [registry],\n       });\n\n       this.usersOnline = new Gauge({\n         name: 'users_online',\n         help: 'Currently online users',\n         labelNames: ['tenant_id'],\n         registers: [registry],\n       });\n\n       this.callDuration = new Histogram({\n         name: 'call_duration_seconds',\n         help: 'Call duration in seconds',\n         labelNames: ['tenant_id', 'type'],\n         buckets: [30, 60, 120, 300, 600, 1800, 3600],\n         registers: [registry],\n       });\n\n       // ... other metrics\n     }\n\n     recordMessageSent(tenantId: string, type: string): void {\n       this.messagesSent.inc({ tenant_id: tenantId, type });\n     }\n\n     recordCallEnded(tenantId: string, type: string, durationSeconds: number): void {\n       this.callDuration.observe({ tenant_id: tenantId, type }, durationSeconds);\n     }\n   }\n   ```\n\n2. Create packages/shared/src/metrics/kafka-metrics.ts:\n   ```typescript\n   export class KafkaMetrics {\n     readonly messagesProduced: Counter;\n     readonly messagesConsumed: Counter;\n     readonly consumerLag: Gauge;\n     readonly processingTime: Histogram;\n\n     constructor(registry: Registry) {\n       this.consumerLag = new Gauge({\n         name: 'kafka_consumer_lag',\n         help: 'Kafka consumer lag',\n         labelNames: ['topic', 'partition', 'group'],\n         registers: [registry],\n       });\n     }\n   }\n   ```\n\n3. Integrate with message service:\n   ```typescript\n   async sendMessage(dto: SendMessageDto): Promise<Message> {\n     const message = await this.messageRepo.create(dto);\n     this.metrics.recordMessageSent(dto.tenant_id, dto.type);\n     return message;\n   }\n   ```\n\n4. Per-tenant metrics:\n   - Aggregate by tenant_id label\n   - Used for billing/usage tracking\n   - Cardinality consideration",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test metric recording",
+          "Test label handling"
+        ],
+        "integration_tests": [
+          "Test metric aggregation",
+          "Test per-tenant metrics"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Message metrics recorded",
+        "User metrics recorded",
+        "Call metrics recorded",
+        "Per-tenant aggregation works"
+      ],
+      "files_to_create": [
+        "packages/shared/src/metrics/business-metrics.ts",
+        "packages/shared/src/metrics/kafka-metrics.ts"
+      ],
+      "files_to_modify": [
+        "services/messaging-service/src/messages/message.service.ts"
+      ],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["metrics", "business", "tenants"]
+    },
+    {
+      "id": "METRIC-004",
+      "task_name": "Grafana Dashboards for Metrics",
+      "feature_details": "Create Grafana dashboards for internal platform monitoring.",
+      "feature_dependency": ["METRIC-001", "METRIC-002"],
+      "ai_prompt": "Create Grafana dashboards (internal):\n\n1. Create infrastructure/grafana/provisioning/dashboards/services.json:\n   ```json\n   {\n     \"title\": \"Service Overview\",\n     \"panels\": [\n       {\n         \"title\": \"Request Rate\",\n         \"type\": \"graph\",\n         \"targets\": [{\n           \"expr\": \"sum(rate(http_requests_total[5m])) by (service)\",\n           \"legendFormat\": \"{{service}}\"\n         }]\n       },\n       {\n         \"title\": \"Error Rate\",\n         \"type\": \"graph\",\n         \"targets\": [{\n           \"expr\": \"sum(rate(http_requests_total{status=~\\\"5..\\\"}[5m])) by (service)\"\n         }]\n       },\n       {\n         \"title\": \"P99 Latency\",\n         \"type\": \"graph\",\n         \"targets\": [{\n           \"expr\": \"histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, service))\"\n         }]\n       },\n       {\n         \"title\": \"Active Connections\",\n         \"type\": \"stat\",\n         \"targets\": [{\n           \"expr\": \"sum(active_connections)\"\n         }]\n       }\n     ]\n   }\n   ```\n\n2. Create infrastructure/grafana/provisioning/dashboards/business.json:\n   ```json\n   {\n     \"title\": \"Business Metrics\",\n     \"panels\": [\n       {\n         \"title\": \"Messages per Minute\",\n         \"type\": \"graph\",\n         \"targets\": [{\n           \"expr\": \"sum(rate(messages_sent_total[1m])) * 60\"\n         }]\n       },\n       {\n         \"title\": \"Online Users\",\n         \"type\": \"stat\",\n         \"targets\": [{\n           \"expr\": \"sum(users_online)\"\n         }]\n       },\n       {\n         \"title\": \"Messages by Type\",\n         \"type\": \"piechart\",\n         \"targets\": [{\n           \"expr\": \"sum(increase(messages_sent_total[24h])) by (type)\"\n         }]\n       }\n     ]\n   }\n   ```\n\n3. Create infrastructure/grafana/provisioning/dashboards/infrastructure.json:\n   - MongoDB metrics\n   - Redis metrics\n   - Kafka metrics\n   - Node.js metrics\n\n4. Dashboard organization:\n   - Folder: CAAS Platform\n   - Sub-folders: Services, Business, Infrastructure\n   - Variables for time range, tenant filter\n\n5. Note: These dashboards are for internal CAAS platform team only.",
+      "testing_instructions": {
+        "unit_tests": [],
+        "integration_tests": [
+          "Test dashboard loading",
+          "Test queries",
+          "Test variables"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Service dashboard works",
+        "Business dashboard works",
+        "Infrastructure dashboard works",
+        "Variables work",
+        "Alerts visible"
+      ],
+      "files_to_create": [
+        "infrastructure/grafana/provisioning/dashboards/services.json",
+        "infrastructure/grafana/provisioning/dashboards/business.json",
+        "infrastructure/grafana/provisioning/dashboards/infrastructure.json"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["grafana"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["metrics", "grafana", "dashboards", "internal"]
+    }
+  ]
+}

@@ -1,0 +1,240 @@
+{
+  "task_group": "presence-sync",
+  "description": "Cross-node presence synchronization and conflict resolution",
+  "priority": "high",
+  "estimated_hours": 16,
+  "phase": 3,
+  "feature_area": "presence",
+  "tasks": [
+    {
+      "id": "PRESENCE-005",
+      "task_name": "Cross-Node Presence Synchronization",
+      "feature_details": "Implement synchronization of presence state across multiple socket nodes.",
+      "feature_dependency": ["PRESENCE-001", "SOCKET-003"],
+      "ai_prompt": "Implement cross-node presence sync:\n\n1. Create services/socket-service/src/presence/presence-sync.ts:\n   ```typescript\n   export class PresenceSync {\n     async publishPresenceChange(userId: string, presence: UserPresence): Promise<void>;\n     async subscribeToPresenceChanges(handler: PresenceChangeHandler): void;\n     async syncPresenceState(): Promise<void>;\n   }\n   ```\n\n2. Create services/socket-service/src/presence/presence-pubsub.ts:\n   ```typescript\n   export class PresencePubSub {\n     private pubClient: RedisClient;\n     private subClient: RedisClient;\n\n     async publish(channel: string, message: PresenceMessage): Promise<void>;\n     subscribe(channel: string, handler: (message: PresenceMessage) => void): void;\n     unsubscribe(channel: string): void;\n   }\n   ```\n\n3. Channel structure:\n   - `presence:{tenant_id}` - Tenant-wide presence updates\n   - `presence:user:{user_id}` - Individual user updates\n   - `presence:sync` - Sync coordination\n\n4. Create services/socket-service/src/presence/presence-aggregator.ts:\n   - Aggregate presence from multiple devices\n   - Determine effective presence status\n   - Handle conflicting states\n\n5. Create services/socket-service/src/presence/node-presence-state.ts:\n   - Local node's view of presence\n   - Sync with global state\n   - Reconciliation on node startup\n\n6. Synchronization protocol:\n   ```\n   1. Node receives connect -> Update Redis, publish change\n   2. Other nodes receive change -> Update local cache\n   3. Periodic full sync -> Reconcile state\n   4. Node restart -> Full state rebuild\n   ```\n\n7. Performance optimizations:\n   - Batch presence updates\n   - Debounce rapid changes\n   - Local caching with TTL",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test pub/sub messaging",
+          "Test aggregation logic",
+          "Test sync protocol"
+        ],
+        "integration_tests": [
+          "Test multi-node sync",
+          "Test node restart sync",
+          "Test conflict resolution"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Presence syncs across all nodes",
+        "Changes are propagated quickly",
+        "Node restart recovers state",
+        "Aggregation is correct",
+        "Performance is acceptable"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/presence/presence-sync.ts",
+        "services/socket-service/src/presence/presence-pubsub.ts",
+        "services/socket-service/src/presence/presence-aggregator.ts",
+        "services/socket-service/src/presence/node-presence-state.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["redis"],
+        "environment_variables": [
+          "PRESENCE_SYNC_INTERVAL_MS",
+          "PRESENCE_BATCH_SIZE"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["presence", "sync", "distributed", "pubsub"]
+    },
+    {
+      "id": "PRESENCE-006",
+      "task_name": "Presence Conflict Resolution",
+      "feature_details": "Handle conflicts when presence updates arrive out of order or from multiple sources.",
+      "feature_dependency": ["PRESENCE-005"],
+      "ai_prompt": "Implement presence conflict resolution:\n\n1. Create services/socket-service/src/presence/conflict-resolver.ts:\n   ```typescript\n   export class PresenceConflictResolver {\n     resolve(existing: UserPresence, incoming: UserPresence): UserPresence;\n     mergeDevicePresence(devices: DevicePresence[]): PresenceStatus;\n     resolveTimestampConflict(timestamps: Date[]): Date;\n   }\n   ```\n\n2. Conflict scenarios:\n   - Same user, different nodes, simultaneous update\n   - Out-of-order message delivery\n   - Device disconnect during network partition\n   - Clock skew between nodes\n\n3. Create services/socket-service/src/presence/vector-clock.ts:\n   ```typescript\n   export class VectorClock {\n     increment(nodeId: string): VectorClock;\n     merge(other: VectorClock): VectorClock;\n     compare(other: VectorClock): 'before' | 'after' | 'concurrent';\n     toJSON(): Record<string, number>;\n   }\n   ```\n\n4. Create services/socket-service/src/presence/lww-register.ts:\n   - Last-Write-Wins register for presence\n   - Timestamp-based resolution\n   - Node ID as tiebreaker\n\n5. Resolution strategies:\n   - Status: Most recent timestamp wins\n   - Multi-device: ANY online = online\n   - Custom status: Most recent wins\n   - Conflicting offline: Latest wins\n\n6. Create services/socket-service/src/presence/presence-repair.ts:\n   - Detect inconsistent state\n   - Trigger state repair\n   - Log conflicts for analysis\n   - Metrics on conflict frequency",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test conflict resolution",
+          "Test vector clock",
+          "Test LWW register"
+        ],
+        "integration_tests": [
+          "Test concurrent updates",
+          "Test network partition",
+          "Test repair process"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Conflicts are resolved deterministically",
+        "Out-of-order messages handled",
+        "Multi-device aggregation works",
+        "State eventually converges",
+        "Conflicts are logged"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/presence/conflict-resolver.ts",
+        "services/socket-service/src/presence/vector-clock.ts",
+        "services/socket-service/src/presence/lww-register.ts",
+        "services/socket-service/src/presence/presence-repair.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["redis"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["presence", "conflict-resolution", "crdt", "distributed"]
+    },
+    {
+      "id": "PRESENCE-007",
+      "task_name": "Presence Caching Layer",
+      "feature_details": "Implement efficient caching layer for presence data to reduce Redis lookups.",
+      "feature_dependency": ["PRESENCE-005"],
+      "ai_prompt": "Implement presence caching:\n\n1. Create services/socket-service/src/presence/presence-cache.ts:\n   ```typescript\n   export class PresenceCache {\n     private localCache: LRUCache<string, UserPresence>;\n\n     async get(userId: string): Promise<UserPresence | null>;\n     async set(userId: string, presence: UserPresence): Promise<void>;\n     async invalidate(userId: string): Promise<void>;\n     async getBatch(userIds: string[]): Promise<Map<string, UserPresence | null>>;\n   }\n   ```\n\n2. Caching strategy:\n   - L1: In-memory LRU cache per node\n   - L2: Redis as shared cache\n   - Write-through on updates\n   - Pub/sub for invalidation\n\n3. Create services/socket-service/src/presence/cache-invalidator.ts:\n   ```typescript\n   export class CacheInvalidator {\n     async invalidateLocally(userId: string): Promise<void>;\n     async broadcastInvalidation(userId: string): Promise<void>;\n     subscribeToInvalidations(): void;\n   }\n   ```\n\n4. Create services/socket-service/src/presence/presence-prefetcher.ts:\n   - Prefetch presence for room members\n   - Warm cache on conversation open\n   - Background refresh for hot users\n\n5. Cache configuration:\n   - Max cache size\n   - TTL per entry\n   - Eviction policy\n   - Cache hit/miss metrics\n\n6. Create services/socket-service/src/presence/cache-metrics.ts:\n   - Track hit rate\n   - Track latency improvement\n   - Track memory usage\n   - Prometheus metrics",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test cache get/set",
+          "Test invalidation",
+          "Test batch operations"
+        ],
+        "integration_tests": [
+          "Test cache coherence",
+          "Test invalidation broadcast",
+          "Test prefetching"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Caching reduces Redis lookups",
+        "Cache is invalidated correctly",
+        "Batch operations are efficient",
+        "Metrics are tracked",
+        "Memory usage is bounded"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/presence/presence-cache.ts",
+        "services/socket-service/src/presence/cache-invalidator.ts",
+        "services/socket-service/src/presence/presence-prefetcher.ts",
+        "services/socket-service/src/presence/cache-metrics.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["redis"],
+        "environment_variables": [
+          "PRESENCE_CACHE_MAX_SIZE",
+          "PRESENCE_CACHE_TTL_MS"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["presence", "caching", "performance", "lru"]
+    },
+    {
+      "id": "PRESENCE-008",
+      "task_name": "Presence Analytics and Metrics",
+      "feature_details": "Implement analytics and metrics collection for presence data and patterns.",
+      "feature_dependency": ["PRESENCE-001", "KAFKA-008"],
+      "ai_prompt": "Implement presence analytics:\n\n1. Create services/socket-service/src/presence/presence-analytics.ts:\n   ```typescript\n   export class PresenceAnalytics {\n     async trackStatusChange(userId: string, from: PresenceStatus, to: PresenceStatus): Promise<void>;\n     async getOnlineStats(tenantId: string): Promise<OnlineStats>;\n     async getActivityPatterns(tenantId: string, timeRange: TimeRange): Promise<ActivityPattern[]>;\n   }\n\n   interface OnlineStats {\n     total_users: number;\n     online: number;\n     away: number;\n     busy: number;\n     offline: number;\n     peak_online: number;\n     peak_time: Date;\n   }\n   ```\n\n2. Create services/socket-service/src/presence/presence-events-producer.ts:\n   ```typescript\n   // Produce presence events to Kafka for analytics\n   export class PresenceEventsProducer {\n     async produce(event: PresenceEvent): Promise<void>;\n   }\n\n   interface PresenceEvent {\n     event_type: 'status_change' | 'connect' | 'disconnect';\n     user_id: string;\n     tenant_id: string;\n     previous_status?: PresenceStatus;\n     new_status: PresenceStatus;\n     timestamp: Date;\n     device_info?: DeviceInfo;\n   }\n   ```\n\n3. Create services/socket-service/src/presence/presence-aggregations.ts:\n   - Per-tenant online counts\n   - Per-conversation online counts\n   - Historical online trends\n   - Peak usage times\n\n4. Metrics to track:\n   - Current online users (gauge)\n   - Status changes per minute (counter)\n   - Average session duration\n   - Connection frequency\n   - Device distribution\n\n5. Create services/gateway/src/routes/v1/analytics/presence.ts:\n   - GET /v1/analytics/presence/realtime - Real-time presence stats\n   - GET /v1/analytics/presence/history - Historical data\n   - GET /v1/analytics/presence/patterns - Usage patterns\n\n6. Dashboard data (for clientFacingUI):\n   - Current online user count\n   - Online users chart (time series)\n   - Status distribution pie chart\n   - Peak hours heatmap",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test event production",
+          "Test stats calculation",
+          "Test aggregations"
+        ],
+        "integration_tests": [
+          "Test Kafka integration",
+          "Test analytics API",
+          "Test historical queries"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "Presence events are produced to Kafka",
+        "Real-time stats are accurate",
+        "Historical data is queryable",
+        "API endpoints work",
+        "Dashboard data is available"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/presence/presence-analytics.ts",
+        "services/socket-service/src/presence/presence-events-producer.ts",
+        "services/socket-service/src/presence/presence-aggregations.ts",
+        "services/gateway/src/routes/v1/analytics/presence.ts"
+      ],
+      "files_to_modify": [],
+      "docker_requirements": {
+        "services": ["kafka", "mongodb"],
+        "environment_variables": [
+          "PRESENCE_ANALYTICS_ENABLED"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/v1/analytics/presence/realtime",
+          "description": "Get real-time presence statistics"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/analytics/presence/history",
+          "description": "Get historical presence data"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/analytics/presence/patterns",
+          "description": "Get usage patterns"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "presence_analytics",
+            "description": "Store aggregated presence analytics"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "presence_analytics",
+            "fields": ["tenant_id", "timestamp"]
+          }
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 4,
+      "tags": ["presence", "analytics", "metrics", "kafka"]
+    }
+  ]
+}
