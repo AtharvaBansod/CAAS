@@ -324,16 +324,16 @@ Phase 8: Deployment (14 tasks)
 ### Development Environment
 ```bash
 # Start all development services
-docker-compose -f tasks/docker-compose.yml up -d
+docker-compose -f local/docker-compose.yml up -d
 
 # Start specific services
-docker-compose -f tasks/docker-compose.yml up -d mongodb redis kafka
+docker-compose -f local/docker-compose.yml up -d mongodb redis kafka
 ```
 
 ### Production Environment
 ```bash
 # Production deployment
-docker-compose -f tasks/docker-compose.prod.yml up -d
+docker-compose -f local/docker-compose.yml --profile multi-node up -d
 ```
 
 ### Required Services by Phase

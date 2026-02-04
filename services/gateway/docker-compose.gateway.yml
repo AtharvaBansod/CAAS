@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: caas-gateway
+    restart: always
+    ports:
+      - "${PORT:-3000}:3000"
+      - "${METRICS_PORT:-3001}:3001"
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
+      - PORT=3000
+      - METRICS_PORT=3001
+      - MONGODB_URI=${MONGODB_URI}
+      - REDIS_URL=${REDIS_URL}
+      - KAFKA_BROKERS=${KAFKA_BROKERS}
+      - JWT_PRIVATE_KEY=${JWT_PRIVATE_KEY}
+      - JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY}
+      - CORS_ORIGINS=${CORS_ORIGINS}
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    networks:
+      - caas-network
+
+networks:
+  caas-network:
+    external: true
+    name: caas_caas-network

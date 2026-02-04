@@ -1,0 +1,76 @@
+# ============================================================
+# CAAS Project .dockerignore
+# ============================================================
+# Note: package-lock.json is INCLUDED because it ensures
+# reproducible builds inside Docker containers
+
+# Dependencies (installed fresh via npm ci in Docker)
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Environment files (passed via docker-compose)
+.env
+.env.local
+.env.*.local
+services/**/.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation (not needed in containers)
+docs/
+*.md
+!README.md
+
+# Root level docs
+SYSTEM_OVERVIEW.md
+SYSTEM_STATUS.md
+TESTING_GUIDE.md
+DEPLOYMENT_SUMMARY.md
+
+# Tests
+tests/
+*.test.ts
+*.test.js
+*.spec.ts
+*.spec.js
+coverage/
+
+# Old dist (will be built in Docker)
+dist/
+
+# Logs
+*.log
+
+# Obsolete directories
+local/
+tmp/
+temp/
+deepDive/
+flowdiagram/
+rnd/
+schemas/
+roadmaps/
+artifacts/
+
+# Task/planning files
+tasks/
+
+# Scripts not needed in containers
+*.ps1
+*.sh

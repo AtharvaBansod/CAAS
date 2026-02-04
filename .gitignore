@@ -1,2 +1,171 @@
+# ============================================================
+# CAAS Project .gitignore
+# ============================================================
+
+# ============================================================
+# LOCAL DEVELOPMENT (Never commit these!)
+# ============================================================
+
+# Environment files with secrets
+local/.env
+services/**/.env
+.env
+.env.local
+.env.production
+
+# MongoDB keyfile (security)
+local/docker/mongodb/mongo-keyfile
+
+# Docker volumes data
+local/volumes/
+local/data/
+
+# ============================================================
+# NODE.JS
+# ============================================================
+
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Build outputs
+dist/
+build/
+*.js.map
+*.d.ts.map
+
+# Test coverage
+coverage/
+.nyc_output/
+*.lcov
+
+# ============================================================
+# TYPESCRIPT
+# ============================================================
+
+*.tsbuildinfo
+.tsbuildinfo
+
+# ============================================================
+# LOGS
+# ============================================================
+
+logs/
+*.log
+
+# ============================================================
+# OS FILES
+# ============================================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.directory
+
+# ============================================================
+# IDE / EDITORS
+# ============================================================
+
+# VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# JetBrains (WebStorm, IntelliJ, etc.)
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*.swn
+
+# Obsidian
 .obsidian
+
+# Qodo
 .qodo
+
+# ============================================================
+# DOCKER
+# ============================================================
+
+# Docker compose override
+docker-compose.override.yml
+
+# ============================================================
+# MONGODB
+# ============================================================
+
+# Database dumps
+*.dump
+*.bson
+dumps/
+
+# ============================================================
+# CERTIFICATES / KEYS
+# ============================================================
+
+# SSL/TLS certificates
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.pfx
+
+# SSH keys (don't commit private keys!)
+id_rsa
+id_rsa.pub
+
+# ============================================================
+# TEMPORARY FILES
+# ============================================================
+
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup
+
+# ============================================================
+# BUILD ARTIFACTS
+# ============================================================
+
+# Compiled binaries
+*.exe
+*.dll
+*.so
+*.dylib
+
+# ============================================================
+# MISC
+# ============================================================
+
+# Cache
+.cache/
+*.cache
