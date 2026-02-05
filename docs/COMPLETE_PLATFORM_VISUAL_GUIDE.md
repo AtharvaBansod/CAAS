@@ -1,11 +1,12 @@
-# 🎯 CAAS Platform - Complete Visual Guide
+# CAAS Platform - Complete Visual Guide
+
 > **Chat-As-A-Service: The Complete Picture for Everyone**
 > 
 > This document explains EVERY feature of the CAAS platform using visual diagrams that anyone can understand!
 
 ---
 
-## 📖 Table of Contents
+## Table of Contents
 
 1. [What is CAAS?](#1-what-is-caas)
 2. [The Big Picture](#2-the-big-picture)
@@ -13,11 +14,11 @@
 4. [How SAAS Companies Join CAAS](#4-how-saas-companies-join-caas)
 5. [How End Users Connect](#5-how-end-users-connect)
 6. [All Chat Features](#6-all-chat-features)
-7. [Security & Protection](#7-security--protection)
+7. [Security and Protection](#7-security-and-protection)
 8. [Behind the Scenes - Technical Infrastructure](#8-behind-the-scenes---technical-infrastructure)
 9. [Developer Tools](#9-developer-tools)
-10. [Billing & Pricing](#10-billing--pricing)
-11. [Monitoring & Analytics](#11-monitoring--analytics)
+10. [Billing and Pricing](#10-billing-and-pricing)
+11. [Monitoring and Analytics](#11-monitoring-and-analytics)
 12. [Complete Data Flow](#12-complete-data-flow)
 
 ---
@@ -27,54 +28,71 @@
 ## The Simple Explanation
 
 ```mermaid
-mindmap
-  root((CAAS Platform))
-    What It Does
-      Provides chat features
-      Handles real-time messaging
-      Manages user connections
-      Stores conversations securely
+flowchart TB
+    subgraph CAAS["CAAS Platform"]
+        direction TB
+        WhatItDoes["What It Does"]
+        WhoBenefits["Who Benefits"]
+        WhyExists["Why It Exists"]
+    end
     
-    Who Benefits
-      SAAS Companies
-        Save development time
-        Focus on their core business
-        Get enterprise chat features
-      End Users
-        Seamless chat experience
-        Fast real-time messaging
-        Secure conversations
+    subgraph Features["Core Features"]
+        F1["Provides chat features"]
+        F2["Handles real-time messaging"]
+        F3["Manages user connections"]
+        F4["Stores conversations securely"]
+    end
     
-    Why It Exists
-      Building chat is HARD
-      Socket management is complex
-      Security is challenging
-      Let experts handle it
+    subgraph Benefits["Key Benefits"]
+        B1["SAAS Companies save time"]
+        B2["End Users get great chat"]
+        B3["Enterprise-grade security"]
+    end
+    
+    subgraph Reasons["Why We Exist"]
+        R1["Building chat is HARD"]
+        R2["Socket management is complex"]
+        R3["Let experts handle it"]
+    end
+    
+    CAAS --> Features
+    CAAS --> Benefits
+    CAAS --> Reasons
+    
+    WhatItDoes --> F1 & F2 & F3 & F4
+    WhoBenefits --> B1 & B2 & B3
+    WhyExists --> R1 & R2 & R3
 ```
 
 ## The Problem We Solve
 
 ```mermaid
 flowchart LR
-    subgraph "❌ Without CAAS"
-        A1[SAAS Company 1] --> B1[Builds Own Chat]
-        A2[SAAS Company 2] --> B2[Builds Own Chat]
-        A3[SAAS Company 3] --> B3[Builds Own Chat]
-        B1 --> C1[❌ Months of Work]
-        B2 --> C2[❌ High Costs]
-        B3 --> C3[❌ Security Risks]
+    subgraph Without["WITHOUT CAAS"]
+        A1["SAAS Company 1"] --> B1["Builds Own Chat"]
+        A2["SAAS Company 2"] --> B2["Builds Own Chat"]
+        A3["SAAS Company 3"] --> B3["Builds Own Chat"]
+        B1 --> C1["Months of Work"]
+        B2 --> C2["High Costs"]
+        B3 --> C3["Security Risks"]
     end
     
-    subgraph "✅ With CAAS"
-        D1[SAAS Company 1] --> E[CAAS Platform]
-        D2[SAAS Company 2] --> E
-        D3[SAAS Company 3] --> E
-        E --> F1[✅ Instant Chat]
-        E --> F2[✅ Low Cost]
-        E --> F3[✅ Enterprise Security]
+    subgraph With["WITH CAAS"]
+        D1["SAAS Company 1"] --> E["CAAS Platform"]
+        D2["SAAS Company 2"] --> E
+        D3["SAAS Company 3"] --> E
+        E --> F1["Instant Chat"]
+        E --> F2["Low Cost"]
+        E --> F3["Enterprise Security"]
     end
     
     style E fill:#4CAF50,color:#fff
+    style C1 fill:#f44336,color:#fff
+    style C2 fill:#f44336,color:#fff
+    style C3 fill:#f44336,color:#fff
+    style F1 fill:#4CAF50,color:#fff
+    style F2 fill:#4CAF50,color:#fff
+    style F3 fill:#4CAF50,color:#fff
 ```
 
 ---
@@ -85,52 +103,46 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-    subgraph "🌐 THE INTERNET"
-        direction TB
+    subgraph Customers["SAAS COMPANIES - Our Customers"]
+        S1["Pet Social App"]
+        S2["Education Platform"]
+        S3["Healthcare Portal"]
+        S4["E-commerce Site"]
     end
     
-    subgraph "🏢 SAAS COMPANIES (Our Customers)"
-        S1[Pet Social App]
-        S2[Education Platform]
-        S3[Healthcare Portal]
-        S4[E-commerce Site]
+    subgraph Users["END USERS - Their Customers"]
+        U1["Pet Owner Alice"]
+        U2["Student Bob"]
+        U3["Patient Carol"]
+        U4["Shopper Dave"]
     end
     
-    subgraph "👥 END USERS (Their Customers)"
-        U1[Pet Owner Alice]
-        U2[Student Bob]
-        U3[Patient Carol]
-        U4[Shopper Dave]
-    end
-    
-    subgraph "🌟 CAAS PLATFORM"
-        direction TB
-        
-        subgraph "Entry Point"
-            GW[🚪 API Gateway<br/>Single Entry Point]
+    subgraph Platform["CAAS PLATFORM"]
+        subgraph Entry["Entry Point"]
+            GW["API Gateway - Single Entry Point"]
         end
         
-        subgraph "Core Services"
-            AUTH[🔐 Authentication<br/>Who are you?]
-            SOCKET[⚡ Socket Service<br/>Real-time Connection]
-            MSG[💬 Messaging<br/>Send/Receive]
-            MEDIA[📁 Media Service<br/>Files & Images]
+        subgraph Core["Core Services"]
+            AUTH["Authentication - Who are you?"]
+            SOCKET["Socket Service - Real-time"]
+            MSG["Messaging - Send/Receive"]
+            MEDIA["Media Service - Files"]
         end
         
-        subgraph "Security Layer"
-            CRYPTO[🔒 Encryption<br/>End-to-End]
-            AUTHZ[🛡️ Authorization<br/>What can you do?]
+        subgraph Security["Security Layer"]
+            CRYPTO["Encryption - End-to-End"]
+            AUTHZ["Authorization - Permissions"]
         end
         
-        subgraph "Data Layer"
-            MONGO[(💾 MongoDB<br/>Stores Data)]
-            REDIS[(⚡ Redis<br/>Cache & Speed)]
-            KAFKA[📨 Kafka<br/>Message Queue]
+        subgraph Data["Data Layer"]
+            MONGO["MongoDB - Stores Data"]
+            REDIS["Redis - Cache"]
+            KAFKA["Kafka - Message Queue"]
         end
         
-        subgraph "Business Layer"
-            BILLING[💳 Billing<br/>Usage & Payments]
-            ANALYTICS[📊 Analytics<br/>Insights]
+        subgraph Business["Business Layer"]
+            BILLING["Billing - Payments"]
+            ANALYTICS["Analytics - Insights"]
         end
     end
     
@@ -153,7 +165,8 @@ flowchart TB
     S1 --> ANALYTICS
     
     style GW fill:#2196F3,color:#fff
-    style CAAS fill:#e3f2fd
+    style AUTH fill:#4CAF50,color:#fff
+    style MONGO fill:#9C27B0,color:#fff
 ```
 
 ---
@@ -164,23 +177,22 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-    subgraph "🏛️ CAAS Platform Team"
-        ADMIN[👑 Platform Admin<br/>━━━━━━━━━━━━━━<br/>• Manages entire platform<br/>• Creates SAAS accounts<br/>• Monitors everything<br/>• Full control access]
+    subgraph PlatformTeam["CAAS Platform Team"]
+        ADMIN["Platform Admin - Full Control"]
     end
     
-    subgraph "🏢 SAAS Company Level"
-        SAAS_ADMIN[🏢 SAAS Admin<br/>━━━━━━━━━━━━━━<br/>• Company owner/manager<br/>• Creates applications<br/>• Manages API keys<br/>• Views billing & usage]
-        
-        DEVELOPER[👨‍💻 SAAS Developer<br/>━━━━━━━━━━━━━━<br/>• Integrates CAAS SDK<br/>• Configures chat features<br/>• Tests implementation<br/>• Builds their app]
+    subgraph SAASLevel["SAAS Company Level"]
+        SAAS_ADMIN["SAAS Admin - Company Manager"]
+        DEVELOPER["SAAS Developer - Integrator"]
     end
     
-    subgraph "👥 End User Level"
-        END_USER[👤 End User<br/>━━━━━━━━━━━━━━<br/>• Uses the SAAS app<br/>• Chats with others<br/>• Shares files/media<br/>• No CAAS knowledge needed]
+    subgraph EndUserLevel["End User Level"]
+        END_USER["End User - App Consumer"]
     end
     
-    ADMIN -->|Provides service to| SAAS_ADMIN
-    SAAS_ADMIN -->|Employs| DEVELOPER
-    DEVELOPER -->|Builds app for| END_USER
+    ADMIN -->|"Provides service to"| SAAS_ADMIN
+    SAAS_ADMIN -->|"Employs"| DEVELOPER
+    DEVELOPER -->|"Builds app for"| END_USER
     
     style ADMIN fill:#7B1FA2,color:#fff
     style SAAS_ADMIN fill:#1976D2,color:#fff
@@ -188,32 +200,64 @@ flowchart TB
     style END_USER fill:#F57C00,color:#fff
 ```
 
-## User Journey Map
+## Platform Admin Responsibilities
 
 ```mermaid
-journey
-    title Complete User Journey Through CAAS
+flowchart LR
+    ADMIN["Platform Admin"]
     
-    section SAAS Company Onboarding
-      Sign up for CAAS: 5: SAAS Admin
-      Verify email: 4: SAAS Admin
-      Complete company profile: 4: SAAS Admin
-      Create first application: 5: SAAS Admin
-      Get API keys: 5: SAAS Admin
+    ADMIN --> M1["Manages entire platform"]
+    ADMIN --> M2["Creates SAAS accounts"]
+    ADMIN --> M3["Monitors everything"]
+    ADMIN --> M4["Full control access"]
+    ADMIN --> M5["System configuration"]
     
-    section Developer Integration
-      Install CAAS SDK: 5: Developer
-      Configure API keys: 4: Developer
-      Add chat components: 5: Developer
-      Test chat features: 4: Developer
-      Deploy to production: 5: Developer
+    style ADMIN fill:#7B1FA2,color:#fff
+```
+
+## SAAS Admin Responsibilities
+
+```mermaid
+flowchart LR
+    SAAS["SAAS Admin"]
     
-    section End User Experience
-      Open SAAS app: 5: End User
-      Auto-connects to CAAS: 5: End User
-      Start chatting: 5: End User
-      Share files: 5: End User
-      Video call: 5: End User
+    SAAS --> S1["Company owner/manager"]
+    SAAS --> S2["Creates applications"]
+    SAAS --> S3["Manages API keys"]
+    SAAS --> S4["Views billing and usage"]
+    SAAS --> S5["Team management"]
+    
+    style SAAS fill:#1976D2,color:#fff
+```
+
+## Developer Responsibilities
+
+```mermaid
+flowchart LR
+    DEV["Developer"]
+    
+    DEV --> D1["Integrates CAAS SDK"]
+    DEV --> D2["Configures chat features"]
+    DEV --> D3["Tests implementation"]
+    DEV --> D4["Builds their app"]
+    DEV --> D5["Deploys to production"]
+    
+    style DEV fill:#388E3C,color:#fff
+```
+
+## End User Experience
+
+```mermaid
+flowchart LR
+    USER["End User"]
+    
+    USER --> U1["Uses the SAAS app"]
+    USER --> U2["Chats with others"]
+    USER --> U3["Shares files/media"]
+    USER --> U4["Makes video calls"]
+    USER --> U5["No CAAS knowledge needed"]
+    
+    style USER fill:#F57C00,color:#fff
 ```
 
 ---
@@ -225,94 +269,89 @@ journey
 ```mermaid
 sequenceDiagram
     autonumber
-    participant SC as 🏢 SAAS Company
-    participant WEB as 🖥️ CAAS Portal
-    participant GW as 🚪 Gateway
-    participant AUTH as 🔐 Auth Service
-    participant DB as 💾 Database
-    participant EMAIL as 📧 Email Service
+    participant SC as SAAS Company
+    participant WEB as CAAS Portal
+    participant GW as Gateway
+    participant AUTH as Auth Service
+    participant DB as Database
+    participant EMAIL as Email Service
     
-    Note over SC,EMAIL: Step 1: Registration
+    Note over SC,EMAIL: Step 1 - Registration
     SC->>WEB: Visit caas.com/signup
     WEB->>SC: Show registration form
-    SC->>WEB: Fill company details<br/>(name, email, plan)
+    SC->>WEB: Fill company details
     WEB->>GW: POST /api/v1/clients/register
-    GW->>AUTH: Validate & hash password
+    GW->>AUTH: Validate and hash password
     AUTH->>DB: Store company record
     DB-->>AUTH: Company ID created
     AUTH->>EMAIL: Send verification email
-    EMAIL-->>SC: 📨 "Verify your email"
+    EMAIL-->>SC: Verify your email
     
-    Note over SC,EMAIL: Step 2: Verification
+    Note over SC,EMAIL: Step 2 - Verification
     SC->>EMAIL: Click verification link
-    EMAIL->>GW: GET /api/v1/verify/{token}
+    EMAIL->>GW: GET /api/v1/verify/token
     GW->>DB: Mark email verified
-    GW-->>SC: ✅ Email verified!
+    GW-->>SC: Email verified!
     
-    Note over SC,EMAIL: Step 3: First Login
+    Note over SC,EMAIL: Step 3 - First Login
     SC->>WEB: Login with credentials
     WEB->>GW: POST /api/v1/auth/login
     GW->>AUTH: Validate credentials
     AUTH->>AUTH: Generate JWT token
-    AUTH-->>WEB: Token + Session
-    WEB-->>SC: Welcome to Dashboard! 🎉
+    AUTH-->>WEB: Token and Session
+    WEB-->>SC: Welcome to Dashboard!
     
-    Note over SC,EMAIL: Step 4: Create Application
-    SC->>WEB: Click "Create Application"
+    Note over SC,EMAIL: Step 4 - Create Application
+    SC->>WEB: Click Create Application
     WEB->>SC: Show application form
-    SC->>WEB: Enter app name & settings
+    SC->>WEB: Enter app name and settings
     WEB->>GW: POST /api/v1/applications
     GW->>DB: Create application record
     GW->>AUTH: Generate API keys
-    AUTH-->>GW: Primary + Secondary keys
+    AUTH-->>GW: Primary and Secondary keys
     GW-->>WEB: Application created!
-    WEB-->>SC: 🔑 Here are your API keys!
+    WEB-->>SC: Here are your API keys!
 ```
 
-## What SAAS Companies Get
+## What SAAS Companies Get - Dashboard
 
 ```mermaid
-mindmap
-  root((SAAS Company<br/>Dashboard))
-    📊 Overview
-      Active users count
-      Messages sent today
-      Storage used
-      Connection status
+flowchart TB
+    subgraph Dashboard["SAAS Company Dashboard"]
+        OVERVIEW["Overview"]
+        APPS["Applications"]
+        KEYS["API Keys"]
+        WEBHOOKS["Webhooks"]
+        TEAM["Team"]
+        BILLING["Billing"]
+        ANALYTICS["Analytics"]
+    end
     
-    📱 Applications
-      Create new apps
-      Manage existing apps
-      Environment settings
-      Feature toggles
+    OVERVIEW --> O1["Active users count"]
+    OVERVIEW --> O2["Messages sent today"]
+    OVERVIEW --> O3["Storage used"]
     
-    🔑 API Keys
-      Primary key
-      Secondary key
-      Rotate keys
-      Usage tracking
+    APPS --> A1["Create new apps"]
+    APPS --> A2["Manage existing apps"]
+    APPS --> A3["Environment settings"]
     
-    🌐 Webhooks
-      Event notifications
-      Delivery status
-      Retry settings
+    KEYS --> K1["Primary key"]
+    KEYS --> K2["Secondary key"]
+    KEYS --> K3["Rotate keys"]
     
-    👥 Team
-      Invite developers
-      Manage roles
-      Access control
+    WEBHOOKS --> W1["Event notifications"]
+    WEBHOOKS --> W2["Delivery status"]
     
-    💳 Billing
-      Current plan
-      Usage metrics
-      Invoices
-      Upgrade options
+    TEAM --> T1["Invite developers"]
+    TEAM --> T2["Manage roles"]
     
-    📈 Analytics
-      User activity
-      Message volume
-      Peak hours
-      Trends
+    BILLING --> B1["Current plan"]
+    BILLING --> B2["Usage metrics"]
+    BILLING --> B3["Invoices"]
+    
+    ANALYTICS --> AN1["User activity"]
+    ANALYTICS --> AN2["Message volume"]
+    ANALYTICS --> AN3["Trends"]
 ```
 
 ---
@@ -324,50 +363,50 @@ mindmap
 ```mermaid
 sequenceDiagram
     autonumber
-    participant USER as 👤 End User
-    participant APP as 📱 SAAS App
-    participant SDK as 📦 CAAS SDK
-    participant GW as 🚪 Gateway
-    participant AUTH as 🔐 Auth
-    participant SOCKET as ⚡ Socket
-    participant ROOM as 🏠 Chat Room
+    participant USER as End User
+    participant APP as SAAS App
+    participant SDK as CAAS SDK
+    participant GW as Gateway
+    participant AUTH as Auth
+    participant SOCKET as Socket
+    participant ROOM as Chat Room
     
-    Note over USER,ROOM: Step 1: User Opens SAAS App
+    Note over USER,ROOM: Step 1 - User Opens SAAS App
     USER->>APP: Open app/website
     APP->>SDK: Initialize CAAS client
     SDK->>GW: Connect with API key
     GW->>AUTH: Validate API key
-    AUTH-->>GW: ✅ Valid SAAS client
+    AUTH-->>GW: Valid SAAS client
     
-    Note over USER,ROOM: Step 2: SAAS Creates User Session
-    APP->>GW: POST /api/sessions/create<br/>(user details from SAAS)
+    Note over USER,ROOM: Step 2 - SAAS Creates User Session
+    APP->>GW: POST /api/sessions/create
     GW->>AUTH: Generate user JWT
-    AUTH->>AUTH: Encode user + tenant info
+    AUTH->>AUTH: Encode user and tenant info
     AUTH-->>GW: JWT Token
     GW-->>APP: Session token
     
-    Note over USER,ROOM: Step 3: SDK Connects User
+    Note over USER,ROOM: Step 3 - SDK Connects User
     APP->>SDK: Connect user with token
     SDK->>GW: WebSocket upgrade request
     GW->>AUTH: Validate JWT
-    AUTH-->>GW: ✅ Valid user
+    AUTH-->>GW: Valid user
     GW->>SOCKET: Create socket connection
-    SOCKET-->>SDK: 🔌 Connected!
+    SOCKET-->>SDK: Connected!
     
-    Note over USER,ROOM: Step 4: User Joins Chats
+    Note over USER,ROOM: Step 4 - User Joins Chats
     SDK->>SOCKET: Join conversation
     SOCKET->>ROOM: Add user to room
     ROOM-->>SOCKET: Room joined
-    SOCKET-->>SDK: ✅ Ready to chat!
-    SDK-->>USER: 💬 Chat is ready!
+    SOCKET-->>SDK: Ready to chat!
+    SDK-->>USER: Chat is ready!
     
-    Note over USER,ROOM: Step 5: Real-Time Messaging
-    USER->>APP: Send "Hello!"
-    APP->>SDK: sendMessage("Hello!")
+    Note over USER,ROOM: Step 5 - Real-Time Messaging
+    USER->>APP: Send Hello!
+    APP->>SDK: sendMessage Hello
     SDK->>SOCKET: Emit message
     SOCKET->>ROOM: Broadcast to room
     ROOM-->>SOCKET: Deliver to recipients
-    SOCKET-->>SDK: Message delivered ✓✓
+    SOCKET-->>SDK: Message delivered
 ```
 
 ## Connection States
@@ -376,7 +415,7 @@ sequenceDiagram
 stateDiagram-v2
     [*] --> Disconnected: App Opens
     
-    Disconnected --> Connecting: SDK.connect()
+    Disconnected --> Connecting: SDK.connect
     Connecting --> Connected: Auth Success
     Connecting --> AuthFailed: Invalid Token
     AuthFailed --> Disconnected: Retry
@@ -389,7 +428,7 @@ stateDiagram-v2
     Typing --> InRoom: Stop Typing
     
     InRoom --> Sending: Send Message
-    Sending --> InRoom: Delivered ✓✓
+    Sending --> InRoom: Delivered
     Sending --> Failed: Network Error
     Failed --> Sending: Retry
     
@@ -401,101 +440,148 @@ stateDiagram-v2
     Reconnecting --> Disconnected: Max Retries
     
     InRoom --> Disconnected: Logout
-    
-    style Connected fill:#4CAF50,color:#fff
-    style InRoom fill:#2196F3,color:#fff
-    style Error fill:#f44336,color:#fff
 ```
 
 ---
 
 # 6. All Chat Features
 
-## Complete Feature Map
+## Complete Feature Map - Messaging
 
 ```mermaid
-mindmap
-  root((💬 CAAS<br/>Chat Features))
+flowchart TB
+    subgraph Messaging["MESSAGING FEATURES"]
+        subgraph Text["Text Messages"]
+            T1["Rich text formatting"]
+            T2["Emoji support"]
+            T3["Link previews"]
+        end
+        
+        subgraph Actions["Message Actions"]
+            A1["Edit message"]
+            A2["Delete message"]
+            A3["Reply to message"]
+            A4["Forward message"]
+        end
+        
+        subgraph Status["Message Status"]
+            S1["Sent - Single check"]
+            S2["Delivered - Double check"]
+            S3["Read - Blue check"]
+        end
+    end
     
-    📝 Messaging
-      Text Messages
-        Rich text formatting
-        Emoji support
-        Link previews
-      Message Actions
-        Edit message
-        Delete message
-        Reply to message
-        Forward message
-      Message Status
-        Sent ✓
-        Delivered ✓✓
-        Read 👁️
+    T1 --> A1
+    T2 --> A2
+    T3 --> A3
+    A1 --> S1
+    A2 --> S2
+    A3 --> S3
+```
+
+## Complete Feature Map - Conversations
+
+```mermaid
+flowchart TB
+    subgraph Conversations["CONVERSATION TYPES"]
+        subgraph DM["Direct Messages"]
+            D1["One-on-one chat"]
+            D2["Block/Unblock users"]
+            D3["Private conversations"]
+        end
+        
+        subgraph Groups["Group Chats"]
+            G1["Create groups"]
+            G2["Add/Remove members"]
+            G3["Admin roles"]
+            G4["Group settings"]
+        end
+        
+        subgraph Channels["Channels"]
+            C1["Public channels"]
+            C2["Private channels"]
+            C3["Broadcast only"]
+        end
+    end
     
-    👥 Conversations
-      Direct Messages
-        One-on-one chat
-        Block/Unblock
-      Group Chats
-        Create groups
-        Add/Remove members
-        Admin roles
-        Group settings
-      Channels
-        Public channels
-        Private channels
-        Broadcast only
+    D1 --> G1
+    D2 --> G2
+    D3 --> G3
+    G1 --> C1
+    G2 --> C2
+    G3 --> C3
+```
+
+## Complete Feature Map - Media
+
+```mermaid
+flowchart TB
+    subgraph Media["MEDIA AND FILES"]
+        subgraph Images["Images"]
+            I1["Photo sharing"]
+            I2["Gallery view"]
+            I3["Lightbox preview"]
+        end
+        
+        subgraph Videos["Videos"]
+            V1["Video sharing"]
+            V2["Inline player"]
+            V3["Thumbnail preview"]
+        end
+        
+        subgraph Docs["Documents"]
+            DOC1["PDF, DOC, XLS support"]
+            DOC2["Download option"]
+            DOC3["Preview support"]
+        end
+        
+        subgraph Voice["Voice Notes"]
+            VO1["Record and send"]
+            VO2["Playback controls"]
+        end
+    end
+```
+
+## Complete Feature Map - Real-Time
+
+```mermaid
+flowchart TB
+    subgraph RealTime["REAL-TIME FEATURES"]
+        subgraph Typing["Typing Indicators"]
+            TY1["Shows who is typing"]
+            TY2["Multiple typers support"]
+            TY3["Auto-timeout"]
+        end
+        
+        subgraph Presence["Presence System"]
+            P1["Online/Offline status"]
+            P2["Away/DND status"]
+            P3["Last seen time"]
+        end
+        
+        subgraph Receipts["Read Receipts"]
+            R1["Who read message"]
+            R2["When they read"]
+            R3["Delivery confirmation"]
+        end
+    end
     
-    📁 Media & Files
-      Images
-        Photo sharing
-        Gallery view
-        Lightbox preview
-      Videos
-        Video sharing
-        Inline player
-        Thumbnail preview
-      Documents
-        PDF, DOC, XLS
-        Download option
-        Preview support
-      Voice Notes
-        Record & send
-        Playback controls
-    
-    📞 Real-Time Features
-      Typing Indicators
-        Shows who is typing
-        Multiple typers
-      Presence
-        Online/Offline
-        Away/DND
-        Last seen
-      Read Receipts
-        Who read message
-        When they read
-    
-    🔔 Notifications
-      Push Notifications
-        Mobile alerts
-        Desktop alerts
-      In-App Notifications
-        Badge counts
-        Toast messages
-      Email Digests
-        Daily summary
-        Weekly summary
-    
-    🎥 Media Calls
-      Voice Calls
-        1-on-1 calls
-        Group calls
-      Video Calls
-        HD video
-        Screen sharing
-      Whiteboard
-        Draw together
-        Real-time sync
+    subgraph Calls["MEDIA CALLS"]
+        subgraph VoiceCalls["Voice Calls"]
+            VC1["1-on-1 calls"]
+            VC2["Group calls"]
+        end
+        
+        subgraph VideoCalls["Video Calls"]
+            VID1["HD video"]
+            VID2["Screen sharing"]
+        end
+        
+        subgraph Collab["Collaboration"]
+            COL1["Whiteboard"]
+            COL2["Real-time sync"]
+        end
+    end
 ```
 
 ## How Messages Flow
@@ -503,26 +589,26 @@ mindmap
 ```mermaid
 sequenceDiagram
     autonumber
-    participant A as 👤 Alice
-    participant SDK_A as 📦 Alice's SDK
-    participant SOCKET as ⚡ Socket Server
-    participant KAFKA as 📨 Kafka
-    participant DB as 💾 Database
-    participant SDK_B as 📦 Bob's SDK
-    participant B as 👤 Bob
+    participant A as Alice
+    participant SDK_A as Alice SDK
+    participant SOCKET as Socket Server
+    participant KAFKA as Kafka
+    participant DB as Database
+    participant SDK_B as Bob SDK
+    participant B as Bob
     
     Note over A,B: Alice sends a message to Bob
     
-    A->>SDK_A: Type "Hello Bob!" + Send
+    A->>SDK_A: Type Hello Bob and Send
     
-    Note over SDK_A: Client-side
-    SDK_A->>SDK_A: Encrypt message (E2E)
+    Note over SDK_A: Client-side processing
+    SDK_A->>SDK_A: Encrypt message E2E
     SDK_A->>SDK_A: Add message to local state
     SDK_A->>SDK_A: Show sending indicator
     
     Note over SOCKET: Server Processing
-    SDK_A->>SOCKET: Emit 'message:send'
-    SOCKET->>SOCKET: Validate user & permissions
+    SDK_A->>SOCKET: Emit message send
+    SOCKET->>SOCKET: Validate user and permissions
     SOCKET->>KAFKA: Publish to message topic
     
     Note over KAFKA,DB: Persistence
@@ -531,92 +617,90 @@ sequenceDiagram
     KAFKA-->>SOCKET: Acknowledge stored
     
     Note over SOCKET: Delivery
-    SOCKET-->>SDK_A: ✓ Message sent
-    SOCKET->>SDK_B: Emit 'message:new'
+    SOCKET-->>SDK_A: Message sent confirmation
+    SOCKET->>SDK_B: Emit message new
     
     Note over SDK_B,B: Bob receives
     SDK_B->>SDK_B: Decrypt message
     SDK_B->>SDK_B: Update conversation
-    SDK_B->>B: Show notification 🔔
+    SDK_B->>B: Show notification
     
     B->>SDK_B: Open conversation
-    SDK_B->>SOCKET: Emit 'message:read'
+    SDK_B->>SOCKET: Emit message read
     SOCKET->>DB: Update read status
-    SOCKET-->>SDK_A: ✓✓ Message read
+    SOCKET-->>SDK_A: Message read confirmation
 ```
 
 ## Typing Indicators Flow
 
 ```mermaid
 sequenceDiagram
-    participant A as 👤 Alice
-    participant SERVER as ⚡ Server
-    participant B as 👤 Bob
+    participant A as Alice
+    participant SERVER as Server
+    participant B as Bob
     
     Note over A,B: Alice starts typing
     A->>A: Key pressed
-    A->>SERVER: typing:start
-    SERVER->>B: Alice is typing...
-    B->>B: Show "Alice is typing..."
+    A->>SERVER: typing start
+    SERVER->>B: Alice is typing
+    B->>B: Show Alice is typing indicator
     
     Note over A,B: Alice keeps typing
     A->>A: More keys pressed
-    Note right of A: Throttled (1/sec)
+    Note right of A: Throttled 1 per second
     
-    Note over A,B: Alice stops typing for 3 seconds
+    Note over A,B: Alice stops for 3 seconds
     A->>A: No activity
-    A->>SERVER: typing:stop
-    SERVER->>B: typing:stopped
+    A->>SERVER: typing stop
+    SERVER->>B: typing stopped
     B->>B: Hide typing indicator
     
     Note over A,B: Alice sends message
-    A->>SERVER: message:send
-    SERVER->>B: message:new
-    B->>B: Auto-hide typing
+    A->>SERVER: message send
+    SERVER->>B: message new
+    B->>B: Auto-hide typing indicator
 ```
 
 ## Group Chat Features
 
 ```mermaid
 flowchart TB
-    subgraph "👥 Group Chat Capabilities"
-        direction TB
-        
-        subgraph "Creation"
-            C1[📝 Create Group]
-            C2[👥 Add Members]
-            C3[📷 Set Group Photo]
-            C4[✏️ Set Group Name]
+    subgraph GroupChat["GROUP CHAT CAPABILITIES"]
+        subgraph Creation["Creation"]
+            C1["Create Group"]
+            C2["Add Members"]
+            C3["Set Group Photo"]
+            C4["Set Group Name"]
         end
         
-        subgraph "Roles & Permissions"
-            R1[👑 Owner<br/>Full Control]
-            R2[🛡️ Admin<br/>Manage Members]
-            R3[👤 Member<br/>Chat Only]
+        subgraph Roles["Roles and Permissions"]
+            R1["Owner - Full Control"]
+            R2["Admin - Manage Members"]
+            R3["Member - Chat Only"]
         end
         
-        subgraph "Actions"
-            A1[💬 Send Messages]
-            A2[📁 Share Files]
-            A3[📌 Pin Messages]
-            A4[🔔 Mute Notifications]
-            A5[🚪 Leave Group]
+        subgraph MemberActions["Member Actions"]
+            A1["Send Messages"]
+            A2["Share Files"]
+            A3["Pin Messages"]
+            A4["Mute Notifications"]
+            A5["Leave Group"]
         end
         
-        subgraph "Admin Actions"
-            AD1[➕ Add Members]
-            AD2[➖ Remove Members]
-            AD3[🔧 Change Settings]
-            AD4[🗑️ Delete Messages]
+        subgraph AdminActions["Admin Actions"]
+            AD1["Add Members"]
+            AD2["Remove Members"]
+            AD3["Change Settings"]
+            AD4["Delete Messages"]
         end
     end
     
     C1 --> C2 --> C3 --> C4
     R1 --> R2 --> R3
-    A1 --> A2 --> A3 --> A4 --> A5
     
     R1 --> AD1 & AD2 & AD3 & AD4
     R2 --> AD1 & AD2
+    R3 --> A1 & A2 & A3 & A4 & A5
     
     style R1 fill:#7B1FA2,color:#fff
     style R2 fill:#1976D2,color:#fff
@@ -625,42 +709,38 @@ flowchart TB
 
 ---
 
-# 7. Security & Protection
+# 7. Security and Protection
 
 ## Security Layers
 
 ```mermaid
 flowchart TB
-    subgraph "🔐 SECURITY LAYERS"
-        direction TB
-        
-        subgraph "Layer 1: Network Security"
-            L1A[🔒 TLS/SSL Encryption]
-            L1B[🌐 HTTPS Only]
-            L1C[🔥 Firewall Protection]
-            L1D[🛡️ DDoS Protection]
-        end
-        
-        subgraph "Layer 2: Authentication"
-            L2A[🔑 API Key Validation]
-            L2B[🎫 JWT Token Verification]
-            L2C[📱 Multi-Factor Auth]
-            L2D[🏠 Session Management]
-        end
-        
-        subgraph "Layer 3: Authorization"
-            L3A[👤 Role-Based Access]
-            L3B[🏢 Tenant Isolation]
-            L3C[📋 Permission Checks]
-            L3D[🚫 IP Whitelisting]
-        end
-        
-        subgraph "Layer 4: Data Protection"
-            L4A[🔐 End-to-End Encryption]
-            L4B[🗄️ Encrypted Storage]
-            L4C[🔄 Key Rotation]
-            L4D[📝 Audit Logging]
-        end
+    subgraph Layer1["LAYER 1 - Network Security"]
+        L1A["TLS/SSL Encryption"]
+        L1B["HTTPS Only"]
+        L1C["Firewall Protection"]
+        L1D["DDoS Protection"]
+    end
+    
+    subgraph Layer2["LAYER 2 - Authentication"]
+        L2A["API Key Validation"]
+        L2B["JWT Token Verification"]
+        L2C["Multi-Factor Auth"]
+        L2D["Session Management"]
+    end
+    
+    subgraph Layer3["LAYER 3 - Authorization"]
+        L3A["Role-Based Access"]
+        L3B["Tenant Isolation"]
+        L3C["Permission Checks"]
+        L3D["IP Whitelisting"]
+    end
+    
+    subgraph Layer4["LAYER 4 - Data Protection"]
+        L4A["End-to-End Encryption"]
+        L4B["Encrypted Storage"]
+        L4C["Key Rotation"]
+        L4D["Audit Logging"]
     end
     
     L1A & L1B & L1C & L1D --> L2A & L2B & L2C & L2D
@@ -678,70 +758,70 @@ flowchart TB
 ```mermaid
 sequenceDiagram
     autonumber
-    participant USER as 👤 User
-    participant APP as 📱 SAAS App
-    participant GW as 🚪 Gateway
-    participant AUTH as 🔐 Auth Service
-    participant MFA as 📱 MFA Service
-    participant SESSION as 🏠 Session Store
+    participant USER as User
+    participant APP as SAAS App
+    participant GW as Gateway
+    participant AUTH as Auth Service
+    participant MFA as MFA Service
+    participant SESSION as Session Store
     
-    Note over USER,SESSION: Step 1: Initial Login
-    USER->>APP: Enter email + password
+    Note over USER,SESSION: Step 1 - Initial Login
+    USER->>APP: Enter email and password
     APP->>GW: POST /auth/login
     GW->>AUTH: Validate credentials
-    AUTH->>AUTH: Hash & compare password
+    AUTH->>AUTH: Hash and compare password
     
     alt Invalid Credentials
-        AUTH-->>GW: ❌ Invalid
+        AUTH-->>GW: Invalid
         GW-->>APP: 401 Unauthorized
         APP-->>USER: Wrong email/password
     end
     
-    Note over USER,SESSION: Step 2: MFA Challenge (if enabled)
+    Note over USER,SESSION: Step 2 - MFA Challenge if enabled
     AUTH->>MFA: Check MFA status
     MFA-->>AUTH: MFA required
     AUTH-->>GW: MFA challenge
     GW-->>APP: Need 2FA code
     APP-->>USER: Enter 2FA code
     
-    USER->>APP: Enter code from app
+    USER->>APP: Enter code from authenticator app
     APP->>GW: POST /auth/mfa/verify
     GW->>MFA: Validate TOTP code
-    MFA-->>GW: ✅ Valid
+    MFA-->>GW: Valid
     
-    Note over USER,SESSION: Step 3: Create Session
+    Note over USER,SESSION: Step 3 - Create Session
     GW->>AUTH: Generate tokens
-    AUTH->>AUTH: Create JWT (15 min)
-    AUTH->>AUTH: Create Refresh (7 days)
+    AUTH->>AUTH: Create JWT 15 min expiry
+    AUTH->>AUTH: Create Refresh 7 days expiry
     AUTH->>SESSION: Store session
     SESSION-->>AUTH: Session ID
-    AUTH-->>GW: Tokens + Session
+    AUTH-->>GW: Tokens and Session
     GW-->>APP: Login successful!
-    APP-->>USER: Welcome! 🎉
+    APP-->>USER: Welcome!
 ```
 
 ## End-to-End Encryption Explained
 
 ```mermaid
 flowchart LR
-    subgraph "👤 Alice's Device"
-        A1[📝 Type Message<br/>"Hello Bob!"]
-        A2[🔑 Her Private Key]
-        A3[🔐 Encrypt with<br/>Bob's Public Key]
-        A4[📤 Send Encrypted<br/>aX7#mK9$...]
+    subgraph Alice["ALICE DEVICE"]
+        A1["Type Message - Hello Bob!"]
+        A2["Her Private Key"]
+        A3["Encrypt with Bob Public Key"]
+        A4["Send Encrypted - aX7mK9..."]
     end
     
-    subgraph "☁️ CAAS Servers"
-        S1[📨 Receive<br/>aX7#mK9$...]
-        S2[💾 Store Encrypted<br/>Cannot Read!]
-        S3[📤 Deliver to Bob]
+    subgraph Server["CAAS SERVERS"]
+        S1["Receive aX7mK9..."]
+        S2["Store Encrypted - Cannot Read!"]
+        S3["Deliver to Bob"]
     end
     
-    subgraph "👤 Bob's Device"
-        B1[📥 Receive<br/>aX7#mK9$...]
-        B2[🔑 His Private Key]
-        B3[🔓 Decrypt Message]
-        B4[📖 Read<br/>"Hello Bob!"]
+    subgraph Bob["BOB DEVICE"]
+        B1["Receive aX7mK9..."]
+        B2["His Private Key"]
+        B3["Decrypt Message"]
+        B4["Read - Hello Bob!"]
     end
     
     A1 --> A3
@@ -764,29 +844,24 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-    subgraph "🏢 CAAS Multi-Tenancy"
-        direction TB
-        
-        subgraph "Company A - Pet Social App"
-            A_USERS[👥 Company A Users]
-            A_DATA[(💾 Company A Data)]
-            A_KEYS[🔑 Company A Keys]
+    subgraph Multitenancy["CAAS MULTI-TENANCY"]
+        subgraph CompanyA["Company A - Pet Social App"]
+            A_USERS["Company A Users"]
+            A_DATA["Company A Data"]
+            A_KEYS["Company A Keys"]
         end
         
-        subgraph "Company B - Education Platform"
-            B_USERS[👥 Company B Users]
-            B_DATA[(💾 Company B Data)]
-            B_KEYS[🔑 Company B Keys]
+        subgraph CompanyB["Company B - Education Platform"]
+            B_USERS["Company B Users"]
+            B_DATA["Company B Data"]
+            B_KEYS["Company B Keys"]
         end
         
-        subgraph "Company C - Healthcare Portal"
-            C_USERS[👥 Company C Users]
-            C_DATA[(💾 Company C Data)]
-            C_KEYS[🔑 Company C Keys]
+        subgraph CompanyC["Company C - Healthcare Portal"]
+            C_USERS["Company C Users"]
+            C_DATA["Company C Data"]
+            C_KEYS["Company C Keys"]
         end
-        
-        WALL1[🧱 ISOLATION WALL]
-        WALL2[🧱 ISOLATION WALL]
     end
     
     A_USERS --> A_DATA
@@ -798,12 +873,13 @@ flowchart TB
     C_USERS --> C_DATA
     C_DATA --> C_KEYS
     
-    A_DATA -.❌ Cannot access.-> B_DATA
-    B_DATA -.❌ Cannot access.-> C_DATA
-    A_DATA -.❌ Cannot access.-> C_DATA
+    A_DATA -.-x B_DATA
+    B_DATA -.-x C_DATA
+    A_DATA -.-x C_DATA
     
-    style WALL1 fill:#f44336,color:#fff
-    style WALL2 fill:#f44336,color:#fff
+    style A_DATA fill:#e3f2fd
+    style B_DATA fill:#e8f5e9
+    style C_DATA fill:#fff3e0
 ```
 
 ---
@@ -814,58 +890,56 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-    subgraph "🌍 External World"
-        WEB[🖥️ Web Browsers]
-        MOBILE[📱 Mobile Apps]
-        API_CLIENT[🔌 API Clients]
+    subgraph External["EXTERNAL WORLD"]
+        WEB["Web Browsers"]
+        MOBILE["Mobile Apps"]
+        API_CLIENT["API Clients"]
     end
     
-    subgraph "🚪 Entry Layer"
-        LB[⚖️ Load Balancer]
-        GW[🚪 API Gateway<br/>Port 3000]
+    subgraph EntryLayer["ENTRY LAYER"]
+        LB["Load Balancer"]
+        GW["API Gateway Port 3000"]
     end
     
-    subgraph "🔐 Security Layer"
-        AUTH[🔐 Auth Service<br/>JWT, Sessions, MFA]
-        CRYPTO[🔒 Crypto Service<br/>E2E Encryption]
-        AUTHZ[🛡️ Authorization<br/>RBAC, ABAC]
+    subgraph SecurityLayer["SECURITY LAYER"]
+        AUTH["Auth Service - JWT Sessions MFA"]
+        CRYPTO["Crypto Service - E2E Encryption"]
+        AUTHZ["Authorization - RBAC ABAC"]
     end
     
-    subgraph "⚡ Real-Time Layer"
-        SOCKET1[⚡ Socket Server 1]
-        SOCKET2[⚡ Socket Server 2]
-        SOCKET3[⚡ Socket Server 3]
-        PRESENCE[👁️ Presence Service]
+    subgraph RealtimeLayer["REAL-TIME LAYER"]
+        SOCKET1["Socket Server 1"]
+        SOCKET2["Socket Server 2"]
+        SOCKET3["Socket Server 3"]
+        PRESENCE["Presence Service"]
     end
     
-    subgraph "💬 Business Layer"
-        MSG[💬 Messaging Service]
-        CONV[📋 Conversation Service]
-        MEDIA[📁 Media Service]
-        SEARCH[🔍 Search Service]
+    subgraph BusinessLayer["BUSINESS LAYER"]
+        MSG["Messaging Service"]
+        CONV["Conversation Service"]
+        MEDIA["Media Service"]
+        SEARCH["Search Service"]
     end
     
-    subgraph "📨 Message Queue"
-        direction LR
-        K1[📨 Kafka Broker 1]
-        K2[📨 Kafka Broker 2]
-        K3[📨 Kafka Broker 3]
-        SR[📜 Schema Registry]
+    subgraph MessageQueue["MESSAGE QUEUE"]
+        K1["Kafka Broker 1"]
+        K2["Kafka Broker 2"]
+        K3["Kafka Broker 3"]
+        SR["Schema Registry"]
     end
     
-    subgraph "💾 Data Layer"
-        direction LR
-        M1[(MongoDB Primary)]
-        M2[(MongoDB Secondary)]
-        M3[(MongoDB Secondary)]
-        REDIS[(⚡ Redis Cache)]
-        ES[(🔍 Elasticsearch)]
+    subgraph DataLayer["DATA LAYER"]
+        M1["MongoDB Primary"]
+        M2["MongoDB Secondary"]
+        M3["MongoDB Secondary"]
+        REDIS["Redis Cache"]
+        ES["Elasticsearch"]
     end
     
-    subgraph "📊 Observability"
-        LOGS[📝 Logging<br/>Loki]
-        METRICS[📊 Metrics<br/>Prometheus]
-        ALERTS[🔔 Alerts<br/>Alertmanager]
+    subgraph Observability["OBSERVABILITY"]
+        LOGS["Logging - Loki"]
+        METRICS["Metrics - Prometheus"]
+        ALERTS["Alerts - Alertmanager"]
     end
     
     WEB & MOBILE & API_CLIENT --> LB
@@ -899,37 +973,33 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-    subgraph "🐳 Docker Environment"
-        direction TB
+    subgraph Docker["DOCKER ENVIRONMENT"]
+        subgraph DatabaseTier["Database Tier"]
+            MP["MongoDB Primary - 172.28.1.1:27017"]
+            MS1["MongoDB Secondary 1 - 172.28.1.2"]
+            MS2["MongoDB Secondary 2 - 172.28.1.3"]
+        end
         
-        subgraph "📦 Container Groups"
-            subgraph "Database Tier"
-                MP[MongoDB Primary<br/>172.28.1.1:27017]
-                MS1[MongoDB Secondary 1<br/>172.28.1.2]
-                MS2[MongoDB Secondary 2<br/>172.28.1.3]
-            end
-            
-            subgraph "Cache Tier"
-                REDIS[Redis<br/>172.28.2.1:6379]
-            end
-            
-            subgraph "Message Queue Tier"
-                ZK[Zookeeper<br/>172.28.3.1:2181]
-                K1[Kafka 1<br/>172.28.3.2:29092]
-                K2[Kafka 2<br/>172.28.3.3]
-                K3[Kafka 3<br/>172.28.3.4]
-                SR[Schema Registry<br/>172.28.3.5:8081]
-            end
-            
-            subgraph "Application Tier"
-                GW[Gateway<br/>172.28.6.1:3000]
-            end
-            
-            subgraph "Monitoring UIs"
-                KUI[Kafka UI<br/>:8080]
-                MEX[Mongo Express<br/>:8082]
-                RCMD[Redis Commander<br/>:8083]
-            end
+        subgraph CacheTier["Cache Tier"]
+            REDIS["Redis - 172.28.2.1:6379"]
+        end
+        
+        subgraph MQTier["Message Queue Tier"]
+            ZK["Zookeeper - 172.28.3.1:2181"]
+            K1["Kafka 1 - 172.28.3.2:29092"]
+            K2["Kafka 2 - 172.28.3.3"]
+            K3["Kafka 3 - 172.28.3.4"]
+            SR["Schema Registry - 172.28.3.5:8081"]
+        end
+        
+        subgraph AppTier["Application Tier"]
+            GW["Gateway - 172.28.6.1:3000"]
+        end
+        
+        subgraph MonitoringUIs["Monitoring UIs"]
+            KUI["Kafka UI - Port 8080"]
+            MEX["Mongo Express - Port 8082"]
+            RCMD["Redis Commander - Port 8083"]
         end
     end
     
@@ -953,7 +1023,7 @@ flowchart TB
 ```mermaid
 sequenceDiagram
     autonumber
-    participant DC as 🐳 Docker Compose
+    participant DC as Docker Compose
     participant ZK as Zookeeper
     participant KAFKA as Kafka Cluster
     participant SR as Schema Registry
@@ -961,45 +1031,45 @@ sequenceDiagram
     participant REDIS as Redis
     participant GW as Gateway
     
-    Note over DC,GW: Phase 1: Foundation Services
+    Note over DC,GW: Phase 1 - Foundation Services
     DC->>ZK: Start Zookeeper
     activate ZK
-    ZK-->>DC: ✅ Ready (port 2181)
+    ZK-->>DC: Ready port 2181
     
     DC->>REDIS: Start Redis
     activate REDIS
-    REDIS-->>DC: ✅ Ready (port 6379)
+    REDIS-->>DC: Ready port 6379
     
-    Note over DC,GW: Phase 2: Message Queue
-    DC->>KAFKA: Start Kafka 1, 2, 3
+    Note over DC,GW: Phase 2 - Message Queue
+    DC->>KAFKA: Start Kafka 1 2 3
     activate KAFKA
     KAFKA->>ZK: Register brokers
-    KAFKA-->>DC: ✅ Ready (ports 9092, 9093, 9094)
+    KAFKA-->>DC: Ready ports 9092 9093 9094
     
     DC->>SR: Start Schema Registry
     activate SR
     SR->>KAFKA: Connect to brokers
-    SR-->>DC: ✅ Ready (port 8081)
+    SR-->>DC: Ready port 8081
     
-    Note over DC,GW: Phase 3: Database
+    Note over DC,GW: Phase 3 - Database
     DC->>MONGO: Start MongoDB Primary
     activate MONGO
-    MONGO-->>DC: ✅ Primary ready
-    DC->>MONGO: Start Secondary 1 & 2
+    MONGO-->>DC: Primary ready
+    DC->>MONGO: Start Secondary 1 and 2
     MONGO->>MONGO: Form replica set
-    MONGO-->>DC: ✅ Replica set ready
+    MONGO-->>DC: Replica set ready
     
-    Note over DC,GW: Phase 4: Initialization
+    Note over DC,GW: Phase 4 - Initialization
     DC->>KAFKA: Create topics
-    DC->>MONGO: Create databases & users
+    DC->>MONGO: Create databases and users
     
-    Note over DC,GW: Phase 5: Application
+    Note over DC,GW: Phase 5 - Application
     DC->>GW: Start Gateway
     activate GW
     GW->>MONGO: Connect to database
     GW->>KAFKA: Connect to brokers
     GW->>REDIS: Connect to cache
-    GW-->>DC: ✅ Ready to serve (port 3000)
+    GW-->>DC: Ready to serve port 3000
 ```
 
 ## How Data is Stored
@@ -1076,38 +1146,34 @@ erDiagram
 
 ```mermaid
 flowchart TB
-    subgraph "🛠️ Developer Integration Journey"
-        direction TB
-        
-        subgraph "Step 1: Installation"
-            I1[npm install @caas/sdk]
-            I2[npm install @caas/react]
-        end
-        
-        subgraph "Step 2: Configuration"
-            C1[Add API Key to .env]
-            C2[Initialize CAAS Client]
-            C3[Wrap app in Provider]
-        end
-        
-        subgraph "Step 3: Add Components"
-            A1[&lt;ChatList /&gt;]
-            A2[&lt;ChatWindow /&gt;]
-            A3[&lt;MessageInput /&gt;]
-            A4[&lt;UserPresence /&gt;]
-        end
-        
-        subgraph "Step 4: Custom Logic"
-            L1[Listen to events]
-            L2[Send messages]
-            L3[Manage conversations]
-        end
-        
-        subgraph "Step 5: Deploy"
-            D1[Test in development]
-            D2[Switch to production keys]
-            D3[Deploy application]
-        end
+    subgraph Step1["STEP 1 - Installation"]
+        I1["npm install @caas/sdk"]
+        I2["npm install @caas/react"]
+    end
+    
+    subgraph Step2["STEP 2 - Configuration"]
+        C1["Add API Key to .env"]
+        C2["Initialize CAAS Client"]
+        C3["Wrap app in Provider"]
+    end
+    
+    subgraph Step3["STEP 3 - Add Components"]
+        A1["ChatList Component"]
+        A2["ChatWindow Component"]
+        A3["MessageInput Component"]
+        A4["UserPresence Component"]
+    end
+    
+    subgraph Step4["STEP 4 - Custom Logic"]
+        L1["Listen to events"]
+        L2["Send messages"]
+        L3["Manage conversations"]
+    end
+    
+    subgraph Step5["STEP 5 - Deploy"]
+        D1["Test in development"]
+        D2["Switch to production keys"]
+        D3["Deploy application"]
     end
     
     I1 --> I2 --> C1 --> C2 --> C3
@@ -1127,196 +1193,162 @@ flowchart TB
 ```mermaid
 sequenceDiagram
     autonumber
-    participant DEV as 👨‍💻 Developer
-    participant CODE as 📝 Code
-    participant SDK as 📦 SDK
-    participant CAAS as ☁️ CAAS
+    participant DEV as Developer
+    participant CODE as Code
+    participant SDK as SDK
+    participant CAAS as CAAS Cloud
     
-    Note over DEV,CAAS: Step 1: Initialize
+    Note over DEV,CAAS: Step 1 - Initialize
     DEV->>CODE: Write initialization code
-    CODE->>SDK: new CAASClient({ apiKey })
+    CODE->>SDK: new CAASClient with apiKey
     SDK->>CAAS: Validate API key
-    CAAS-->>SDK: ✅ Authenticated
+    CAAS-->>SDK: Authenticated
     
-    Note over DEV,CAAS: Step 2: Connect User
-    DEV->>CODE: client.connect(userToken)
+    Note over DEV,CAAS: Step 2 - Connect User
+    DEV->>CODE: client.connect with userToken
     CODE->>SDK: Establish connection
     SDK->>CAAS: WebSocket connect
-    CAAS-->>SDK: ✅ Connected
+    CAAS-->>SDK: Connected
     
-    Note over DEV,CAAS: Step 3: Listen to Events
-    DEV->>CODE: client.on('message', handler)
+    Note over DEV,CAAS: Step 3 - Listen to Events
+    DEV->>CODE: client.on message handler
     CODE->>SDK: Register event handler
     SDK->>SDK: Store handler
     
-    Note over DEV,CAAS: Step 4: Send Message
-    DEV->>CODE: client.messages.send({...})
+    Note over DEV,CAAS: Step 4 - Send Message
+    DEV->>CODE: client.messages.send
     CODE->>SDK: Prepare message
     SDK->>CAAS: Send via socket
-    CAAS->>CAAS: Process & deliver
-    CAAS-->>SDK: ✅ Delivered
+    CAAS->>CAAS: Process and deliver
+    CAAS-->>SDK: Delivered
     SDK-->>CODE: Success callback
     
-    Note over DEV,CAAS: Step 5: Receive Message
+    Note over DEV,CAAS: Step 5 - Receive Message
     CAAS->>SDK: Push new message
-    SDK->>CODE: Trigger 'message' event
+    SDK->>CODE: Trigger message event
     CODE->>DEV: Handler executed
 ```
 
 ## UI Components Available
 
 ```mermaid
-mindmap
-  root((📦 CAAS UI<br/>Components))
+flowchart TB
+    subgraph CoreProviders["CORE PROVIDERS"]
+        CP1["CaasProvider - Context setup"]
+        CP2["ThemeProvider - Light/Dark mode"]
+        CP3["LocalizationProvider - Multi-language"]
+    end
     
-    🏗️ Core Providers
-      CaasProvider
-        Context setup
-        Configuration
-      ThemeProvider
-        Light/Dark mode
-        Custom themes
-      LocalizationProvider
-        Multi-language
-        RTL support
+    subgraph ChatComponents["CHAT COMPONENTS"]
+        CC1["ChatList - Conversation list"]
+        CC2["ChatWindow - Message history"]
+        CC3["MessageInput - Text input"]
+        CC4["MessageBubble - Message display"]
+    end
     
-    💬 Chat Components
-      ChatList
-        Conversation list
-        Search & filter
-        Unread badges
-      ChatWindow
-        Message history
-        Infinite scroll
-        Real-time updates
-      MessageInput
-        Text input
-        File upload
-        Emoji picker
-      MessageBubble
-        Text message
-        Image message
-        File message
-        System message
+    subgraph UserComponents["USER COMPONENTS"]
+        UC1["Avatar - User photo"]
+        UC2["UserProfile - Profile card"]
+        UC3["PresenceIndicator - Online status"]
+    end
     
-    👤 User Components
-      Avatar
-        User photo
-        Presence dot
-        Initials fallback
-      UserProfile
-        Profile card
-        Status display
-      PresenceIndicator
-        Online/Offline
-        Away/DND
+    subgraph NotificationComponents["NOTIFICATION COMPONENTS"]
+        NC1["NotificationBell - Badge count"]
+        NC2["NotificationList - All notifications"]
+        NC3["Toast - Success/Error alerts"]
+    end
     
-    🔔 Notification Components
-      NotificationBell
-        Badge count
-        Dropdown
-      NotificationList
-        All notifications
-        Mark as read
-      Toast
-        Success/Error
-        Action buttons
+    subgraph BaseComponents["BASE COMPONENTS"]
+        BC1["Button"]
+        BC2["Input"]
+        BC3["Modal"]
+        BC4["Loader"]
+        BC5["Badge"]
+    end
     
-    🎨 Base Components
-      Button
-      Input
-      Modal
-      Loader
-      Badge
+    CoreProviders --> ChatComponents
+    ChatComponents --> UserComponents
+    UserComponents --> NotificationComponents
+    NotificationComponents --> BaseComponents
 ```
 
 ---
 
-# 10. Billing & Pricing
+# 10. Billing and Pricing
 
 ## Pricing Tiers
 
 ```mermaid
 flowchart LR
-    subgraph "💳 CAAS PRICING PLANS"
-        direction TB
-        
-        subgraph "🆓 FREE"
-            F1[1,000 monthly users]
-            F2[10,000 messages]
-            F3[1 GB storage]
-            F4[Community support]
-            F5[$0/month]
-        end
-        
-        subgraph "⭐ STARTER"
-            S1[10,000 monthly users]
-            S2[100,000 messages]
-            S3[10 GB storage]
-            S4[Email support]
-            S5[$49/month]
-        end
-        
-        subgraph "🚀 PRO"
-            P1[100,000 monthly users]
-            P2[1M messages]
-            P3[100 GB storage]
-            P4[Priority support]
-            P5[Custom domain]
-            P6[$299/month]
-        end
-        
-        subgraph "🏢 ENTERPRISE"
-            E1[Unlimited users]
-            E2[Unlimited messages]
-            E3[Unlimited storage]
-            E4[24/7 support]
-            E5[SLA guarantee]
-            E6[Custom contract]
-        end
+    subgraph Free["FREE PLAN"]
+        F1["1000 monthly users"]
+        F2["10000 messages"]
+        F3["1 GB storage"]
+        F4["Community support"]
+        F5["$0/month"]
     end
     
-    F5 --> S5 --> P5 --> E6
+    subgraph Starter["STARTER PLAN"]
+        S1["10000 monthly users"]
+        S2["100000 messages"]
+        S3["10 GB storage"]
+        S4["Email support"]
+        S5["$49/month"]
+    end
     
-    style F1 fill:#e3f2fd
-    style S1 fill:#e8f5e9
-    style P1 fill:#fff3e0
-    style E1 fill:#f3e5f5
+    subgraph Pro["PRO PLAN"]
+        P1["100000 monthly users"]
+        P2["1M messages"]
+        P3["100 GB storage"]
+        P4["Priority support"]
+        P5["$299/month"]
+    end
+    
+    subgraph Enterprise["ENTERPRISE PLAN"]
+        E1["Unlimited users"]
+        E2["Unlimited messages"]
+        E3["Unlimited storage"]
+        E4["24/7 support"]
+        E5["Custom pricing"]
+    end
+    
+    Free --> Starter --> Pro --> Enterprise
+    
+    style F5 fill:#e3f2fd
+    style S5 fill:#e8f5e9
+    style P5 fill:#fff3e0
+    style E5 fill:#f3e5f5
 ```
 
 ## Usage Metering Flow
 
 ```mermaid
 flowchart TB
-    subgraph "📊 How We Track Usage"
-        direction TB
-        
-        subgraph "Usage Events"
-            E1[👤 New User Connected]
-            E2[💬 Message Sent]
-            E3[📁 File Uploaded]
-            E4[📞 Call Started]
-        end
-        
-        subgraph "Metering Service"
-            M1[📥 Receive Event]
-            M2[🔢 Increment Counter]
-            M3[💾 Store Usage Record]
-            M4[⏰ Aggregate Hourly]
-        end
-        
-        subgraph "Billing Calculation"
-            B1[📊 Sum Monthly Usage]
-            B2[📋 Compare to Plan Limits]
-            B3[💰 Calculate Overage]
-            B4[📄 Generate Invoice]
-        end
-        
-        subgraph "Notifications"
-            N1[📧 80% Usage Warning]
-            N2[📧 100% Limit Reached]
-            N3[📧 Invoice Ready]
-        end
+    subgraph UsageEvents["USAGE EVENTS"]
+        E1["New User Connected"]
+        E2["Message Sent"]
+        E3["File Uploaded"]
+        E4["Call Started"]
+    end
+    
+    subgraph MeteringService["METERING SERVICE"]
+        M1["Receive Event"]
+        M2["Increment Counter"]
+        M3["Store Usage Record"]
+        M4["Aggregate Hourly"]
+    end
+    
+    subgraph BillingCalc["BILLING CALCULATION"]
+        B1["Sum Monthly Usage"]
+        B2["Compare to Plan Limits"]
+        B3["Calculate Overage"]
+        B4["Generate Invoice"]
+    end
+    
+    subgraph Notifications["NOTIFICATIONS"]
+        N1["80% Usage Warning"]
+        N2["100% Limit Reached"]
+        N3["Invoice Ready"]
     end
     
     E1 & E2 & E3 & E4 --> M1
@@ -1335,17 +1367,17 @@ flowchart TB
 ```mermaid
 sequenceDiagram
     autonumber
-    participant METER as 📊 Metering
-    participant BILLING as 💳 Billing Service
-    participant STRIPE as 💰 Stripe
-    participant CLIENT as 🏢 SAAS Client
+    participant METER as Metering
+    participant BILLING as Billing Service
+    participant STRIPE as Stripe
+    participant CLIENT as SAAS Client
     
     Note over METER,CLIENT: End of Billing Period
     
     METER->>BILLING: Monthly usage summary
     BILLING->>BILLING: Calculate charges
     
-    Note over BILLING: Base Plan: $299<br/>Extra Users: 50,000 × $0.001 = $50<br/>Extra Messages: 200,000 × $0.0001 = $20<br/>Extra Storage: 20 GB × $0.50 = $10<br/>Total: $379
+    Note over BILLING: Base Plan $299 - Extra Users $50 - Extra Messages $20 - Extra Storage $10 - Total $379
     
     BILLING->>BILLING: Apply discounts/credits
     BILLING->>BILLING: Add taxes
@@ -1356,105 +1388,76 @@ sequenceDiagram
     STRIPE-->>BILLING: Payment successful
     
     BILLING->>BILLING: Mark invoice paid
-    BILLING->>CLIENT: 📧 Invoice + Receipt
+    BILLING->>CLIENT: Invoice and Receipt email
     
     CLIENT->>CLIENT: Download PDF invoice
 ```
 
 ---
 
-# 11. Monitoring & Analytics
+# 11. Monitoring and Analytics
 
 ## What We Monitor
 
 ```mermaid
-mindmap
-  root((📊 Monitoring<br/>Dashboard))
+flowchart TB
+    subgraph Performance["PERFORMANCE"]
+        PERF1["Response Times - API latency"]
+        PERF2["Throughput - Requests/second"]
+        PERF3["Errors - Error rate and types"]
+    end
     
-    📈 Performance
-      Response Times
-        API latency
-        Socket latency
-        Database queries
-      Throughput
-        Requests/second
-        Messages/second
-        Connections/second
-      Errors
-        Error rate
-        Error types
-        Stack traces
+    subgraph Resources["RESOURCES"]
+        RES1["CPU Usage - Per service"]
+        RES2["Memory - Heap usage"]
+        RES3["Disk - Storage used"]
+        RES4["Network - Bandwidth"]
+    end
     
-    💾 Resources
-      CPU Usage
-        Per service
-        Trends
-      Memory
-        Heap usage
-        Cache size
-      Disk
-        Storage used
-        Write speed
-      Network
-        Bandwidth
-        Connections
+    subgraph Business["BUSINESS METRICS"]
+        BUS1["Active Users - Real-time count"]
+        BUS2["Messages - Sent today"]
+        BUS3["Conversations - Active chats"]
+        BUS4["Media - Files uploaded"]
+    end
     
-    👥 Business Metrics
-      Active Users
-        Real-time count
-        Daily/Monthly
-      Messages
-        Sent today
-        Delivery rate
-      Conversations
-        Active chats
-        New today
-      Media
-        Files uploaded
-        Storage used
+    subgraph Alerts["ALERTS"]
+        ALT1["Critical - Service down"]
+        ALT2["Warning - High latency"]
+        ALT3["Info - New deployments"]
+    end
     
-    🔔 Alerts
-      Critical
-        Service down
-        High error rate
-      Warning
-        High latency
-        Disk 80%
-      Info
-        New deployments
-        Config changes
+    Performance --> Resources --> Business --> Alerts
 ```
 
 ## Analytics Dashboard
 
 ```mermaid
 flowchart TB
-    subgraph "📊 SAAS Client Analytics Dashboard"
-        direction TB
-        
-        subgraph "Overview Cards"
-            C1[👥 Active Users<br/>1,234]
-            C2[💬 Messages Today<br/>45,678]
-            C3[📁 Files Shared<br/>890]
-            C4[📈 Engagement<br/>78%]
+    subgraph Dashboard["SAAS CLIENT ANALYTICS DASHBOARD"]
+        subgraph OverviewCards["Overview Cards"]
+            C1["Active Users - 1234"]
+            C2["Messages Today - 45678"]
+            C3["Files Shared - 890"]
+            C4["Engagement - 78%"]
         end
         
-        subgraph "Charts"
-            CH1[📈 User Growth<br/>Line Chart]
-            CH2[📊 Message Volume<br/>Bar Chart]
-            CH3[🥧 User Devices<br/>Pie Chart]
-            CH4[🌍 User Locations<br/>Map]
+        subgraph Charts["Charts"]
+            CH1["User Growth - Line Chart"]
+            CH2["Message Volume - Bar Chart"]
+            CH3["User Devices - Pie Chart"]
+            CH4["User Locations - Map"]
         end
         
-        subgraph "Tables"
-            T1[📋 Top Conversations]
-            T2[👥 Most Active Users]
-            T3[🔥 Peak Hours]
+        subgraph Tables["Tables"]
+            T1["Top Conversations"]
+            T2["Most Active Users"]
+            T3["Peak Hours"]
         end
         
-        subgraph "Real-Time Feed"
-            F1[⚡ Live Activity]
-            F2[🔔 Recent Events]
+        subgraph RealTimeFeed["Real-Time Feed"]
+            F1["Live Activity"]
+            F2["Recent Events"]
         end
     end
     
@@ -1468,16 +1471,16 @@ flowchart TB
 ```mermaid
 sequenceDiagram
     autonumber
-    participant SVC as ⚡ Service
-    participant METRICS as 📊 Prometheus
-    participant ALERT as 🔔 Alertmanager
-    participant SLACK as 💬 Slack
-    participant EMAIL as 📧 Email
-    participant ONCALL as 📱 On-Call
+    participant SVC as Service
+    participant METRICS as Prometheus
+    participant ALERT as Alertmanager
+    participant SLACK as Slack
+    participant EMAIL as Email
+    participant ONCALL as On-Call
     
     Note over SVC,ONCALL: Normal Operation
     SVC->>METRICS: Send metrics
-    METRICS->>METRICS: Store & evaluate rules
+    METRICS->>METRICS: Store and evaluate rules
     
     Note over SVC,ONCALL: Issue Detected!
     SVC->>METRICS: Error rate spike!
@@ -1487,21 +1490,21 @@ sequenceDiagram
     ALERT->>ALERT: Group similar alerts
     ALERT->>ALERT: Check severity
     
-    alt Critical (P1)
-        ALERT->>ONCALL: 📱 Page on-call engineer
-        ALERT->>SLACK: #incidents channel
+    alt Critical P1
+        ALERT->>ONCALL: Page on-call engineer
+        ALERT->>SLACK: Post to incidents channel
         ALERT->>EMAIL: Incident report
-    else Warning (P2)
-        ALERT->>SLACK: #alerts channel
+    else Warning P2
+        ALERT->>SLACK: Post to alerts channel
         ALERT->>EMAIL: Alert notification
-    else Info (P3)
-        ALERT->>SLACK: #monitoring channel
+    else Info P3
+        ALERT->>SLACK: Post to monitoring channel
     end
     
     Note over SVC,ONCALL: Issue Resolved
     SVC->>METRICS: Metrics normal
     METRICS->>ALERT: Alert resolved
-    ALERT->>SLACK: ✅ Resolved notification
+    ALERT->>SLACK: Resolved notification
 ```
 
 ---
@@ -1512,54 +1515,54 @@ sequenceDiagram
 
 ```mermaid
 flowchart TB
-    subgraph "👤 SENDER (Alice)"
-        A1[📝 Type Message]
-        A2[🔐 Encrypt Message]
-        A3[📤 Send via SDK]
+    subgraph Sender["SENDER - Alice"]
+        A1["Type Message"]
+        A2["Encrypt Message"]
+        A3["Send via SDK"]
     end
     
-    subgraph "🌐 NETWORK"
-        N1[🔒 TLS Encrypted]
-        N2[⚖️ Load Balancer]
+    subgraph Network["NETWORK"]
+        N1["TLS Encrypted"]
+        N2["Load Balancer"]
     end
     
-    subgraph "🚪 GATEWAY"
-        G1[📥 Receive Request]
-        G2[🔐 Validate JWT]
-        G3[🛡️ Check Permissions]
-        G4[📊 Rate Limit Check]
+    subgraph Gateway["GATEWAY"]
+        G1["Receive Request"]
+        G2["Validate JWT"]
+        G3["Check Permissions"]
+        G4["Rate Limit Check"]
     end
     
-    subgraph "⚡ SOCKET SERVER"
-        S1[📩 Process Message]
-        S2[🏷️ Add Metadata]
-        S3[📋 Validate Content]
+    subgraph SocketServer["SOCKET SERVER"]
+        S1["Process Message"]
+        S2["Add Metadata"]
+        S3["Validate Content"]
     end
     
-    subgraph "📨 KAFKA"
-        K1[📥 Receive Event]
-        K2[📋 Partition by Conversation]
-        K3[💾 Persist Message]
-        K4[📤 Notify Consumers]
+    subgraph KafkaLayer["KAFKA"]
+        K1["Receive Event"]
+        K2["Partition by Conversation"]
+        K3["Persist Message"]
+        K4["Notify Consumers"]
     end
     
-    subgraph "💾 DATABASE"
-        D1[💾 Store in MongoDB]
-        D2[🔍 Index for Search]
-        D3[📊 Update Analytics]
+    subgraph Database["DATABASE"]
+        D1["Store in MongoDB"]
+        D2["Index for Search"]
+        D3["Update Analytics"]
     end
     
-    subgraph "⚡ DELIVERY"
-        R1[🔍 Find Recipients]
-        R2[📍 Locate Socket Connections]
-        R3[📤 Push to Recipients]
+    subgraph Delivery["DELIVERY"]
+        R1["Find Recipients"]
+        R2["Locate Socket Connections"]
+        R3["Push to Recipients"]
     end
     
-    subgraph "👤 RECEIVER (Bob)"
-        B1[📥 Receive via Socket]
-        B2[🔓 Decrypt Message]
-        B3[🔔 Show Notification]
-        B4[📖 Display Message]
+    subgraph Receiver["RECEIVER - Bob"]
+        B1["Receive via Socket"]
+        B2["Decrypt Message"]
+        B3["Show Notification"]
+        B4["Display Message"]
     end
     
     A1 --> A2 --> A3 --> N1 --> N2 --> G1
@@ -1581,56 +1584,52 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-    subgraph "🌍 CAAS ECOSYSTEM"
-        direction TB
+    subgraph Customers["CUSTOMERS"]
+        C1["SAAS Company 1"]
+        C2["SAAS Company 2"]
+        C3["SAAS Company N"]
+    end
+    
+    subgraph EndUsers["THEIR END USERS"]
+        U1["Thousands of Users"]
+        U2["Thousands of Users"]
+        U3["Thousands of Users"]
+    end
+    
+    subgraph Integration["INTEGRATION LAYER"]
+        SDK["JavaScript SDK"]
+        UI["React Components"]
+        API["REST API"]
+        WS["WebSocket"]
+    end
+    
+    subgraph CorePlatform["CAAS CORE PLATFORM"]
+        GW["API Gateway"]
         
-        subgraph "Customers"
-            C1[🏢 SAAS Company 1]
-            C2[🏢 SAAS Company 2]
-            C3[🏢 SAAS Company N]
+        subgraph Services["Services"]
+            AUTH["Authentication"]
+            SOCKET["Real-Time"]
+            MSG["Messaging"]
+            MEDIA["Media"]
+            CRYPTO["Encryption"]
         end
         
-        subgraph "Their End Users"
-            U1[👥 Thousands of Users]
-            U2[👥 Thousands of Users]
-            U3[👥 Thousands of Users]
+        subgraph Data["Data"]
+            MONGO["MongoDB"]
+            REDIS["Redis"]
+            KAFKA["Kafka"]
+            ES["Search"]
         end
         
-        subgraph "Integration Layer"
-            SDK[📦 JavaScript SDK]
-            UI[🎨 React Components]
-            API[🔌 REST API]
-            WS[⚡ WebSocket]
+        subgraph Operations["Operations"]
+            BILLING["Billing"]
+            ANALYTICS["Analytics"]
+            MONITOR["Monitoring"]
         end
-        
-        subgraph "CAAS Core Platform"
-            GW[🚪 API Gateway]
-            
-            subgraph "Services"
-                AUTH[🔐 Authentication]
-                SOCKET[⚡ Real-Time]
-                MSG[💬 Messaging]
-                MEDIA[📁 Media]
-                CRYPTO[🔒 Encryption]
-            end
-            
-            subgraph "Data"
-                MONGO[(💾 MongoDB)]
-                REDIS[(⚡ Redis)]
-                KAFKA[📨 Kafka]
-                ES[(🔍 Search)]
-            end
-            
-            subgraph "Operations"
-                BILLING[💳 Billing]
-                ANALYTICS[📊 Analytics]
-                MONITOR[🔔 Monitoring]
-            end
-        end
-        
-        subgraph "Admin Portal"
-            ADMIN[🖥️ Admin Dashboard]
-        end
+    end
+    
+    subgraph AdminPortal["ADMIN PORTAL"]
+        ADMIN["Admin Dashboard"]
     end
     
     C1 --> U1
@@ -1657,12 +1656,12 @@ flowchart TB
 
 ---
 
-# 📚 Summary
+# Summary
 
 ## What CAAS Provides
 
 ```mermaid
-pie title "CAAS Value Distribution"
+pie title CAAS Value Distribution
     "Time Saved" : 25
     "Cost Reduction" : 20
     "Security" : 20
@@ -1675,12 +1674,10 @@ pie title "CAAS Value Distribution"
 
 ```mermaid
 flowchart LR
-    subgraph "🎯 CAAS in a Nutshell"
-        A[🏢 Your Company] --> B[📦 Install SDK]
-        B --> C[🔑 Add API Key]
-        C --> D[🎨 Add Components]
-        D --> E[🚀 Launch Chat!]
-    end
+    A["Your Company"] --> B["Install SDK"]
+    B --> C["Add API Key"]
+    C --> D["Add Components"]
+    D --> E["Launch Chat!"]
     
     style A fill:#e3f2fd
     style B fill:#e8f5e9
@@ -1691,6 +1688,7 @@ flowchart LR
 
 ---
 
-> **Document Version:** 1.0.0  
+> **Document Version:** 1.0.1  
 > **Last Updated:** 2026-02-05  
+> **Mermaid Version:** Compatible with 10.2.3+  
 > **Generated for:** Non-Technical Stakeholders, Business Users, and Everyone Curious About CAAS!
