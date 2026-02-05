@@ -1377,9 +1377,9 @@ sequenceDiagram
     METER->>BILLING: Monthly usage summary
     BILLING->>BILLING: Calculate charges
     
-    Note over BILLING: Base Plan $299 - Extra Users $50 - Extra Messages $20 - Extra Storage $10 - Total $379
+    Note over BILLING: Calculate base plan plus overages
     
-    BILLING->>BILLING: Apply discounts/credits
+    BILLING->>BILLING: Apply discounts and credits
     BILLING->>BILLING: Add taxes
     BILLING->>BILLING: Create invoice
     
