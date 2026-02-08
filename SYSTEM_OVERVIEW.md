@@ -507,13 +507,14 @@ Overall Status: FULLY OPERATIONAL
 
 **Gateway won't start:**
 ```powershell
-.\init-system.ps1
-docker compose restart gateway
+.\stop.ps1
+.\start.ps1
 ```
 
 **MongoDB replica set issues:**
 ```powershell
-.\init-system.ps1
+.\stop.ps1
+.\start.ps1
 ```
 
 **Clean restart:**
@@ -526,7 +527,7 @@ docker compose restart gateway
 
 - Check logs: `docker logs <container-name>`
 - Run tests: `.\test-system.ps1`
-- Reinitialize: `.\init-system.ps1`
+- Restart system: `.\stop.ps1` then `.\start.ps1`
 
 ---
 

@@ -2,6 +2,7 @@
   "task_group": "mfa",
   "description": "Multi-factor authentication with TOTP, backup codes, and device trust",
   "priority": "high",
+  "status": "completed",
   "estimated_hours": 14,
   "phase": 2,
   "feature_area": "authentication",

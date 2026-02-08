@@ -360,7 +360,7 @@
         "indexes": [],
         "migrations": []
       },
-      "status": "in_progress",
+      "status": "completed",
       "estimated_hours": 3,
       "tags": [
         "authorization",

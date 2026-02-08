@@ -64,7 +64,7 @@
         "indexes": [],
         "migrations": []
       },
-      "status": "not_started",
+      "status": "completed",
       "estimated_hours": 8,
       "tags": ["kafka", "producer", "exactly-once", "batching"]
     },
@@ -131,7 +131,7 @@
         "indexes": [],
         "migrations": []
       },
-      "status": "not_started",
+      "status": "completed",
       "estimated_hours": 8,
       "tags": ["kafka", "consumer", "consumer-groups", "offset-management"]
     },
@@ -198,7 +198,7 @@
         "indexes": [],
         "migrations": []
       },
-      "status": "not_started",
+      "status": "completed",
       "estimated_hours": 6,
       "tags": ["kafka", "error-handling", "dlq", "circuit-breaker", "retry"]
     },
@@ -263,7 +263,7 @@
         "indexes": [],
         "migrations": []
       },
-      "status": "not_started",
+      "status": "completed",
       "estimated_hours": 7,
       "tags": ["kafka", "pipeline", "orchestration", "middleware"]
     }

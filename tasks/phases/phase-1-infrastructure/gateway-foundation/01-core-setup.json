@@ -65,7 +65,7 @@
         "indexes": [],
         "migrations": []
       },
-      "status": "not_started",
+      "status": "completed",
       "estimated_hours": 4,
       "tags": ["docker", "gateway", "infrastructure"]
     },

@@ -68,7 +68,7 @@
         "indexes": [],
         "migrations": []
       },
-      "status": "not_started",
+      "status": "completed",
       "estimated_hours": 8,
       "tags": ["mongodb", "multi-tenancy", "isolation", "connection-pooling"]
     },
@@ -123,7 +123,7 @@
         "indexes": [],
         "migrations": []
       },
-      "status": "not_started",
+      "status": "completed",
       "estimated_hours": 8,
       "tags": ["mongodb", "repository", "multi-tenancy", "data-access"]
     },
@@ -180,7 +180,7 @@
         "indexes": ["All indexes created per tenant"],
         "migrations": []
       },
-      "status": "not_started",
+      "status": "completed",
       "estimated_hours": 6,
       "tags": ["mongodb", "multi-tenancy", "provisioning", "lifecycle"]
     },
@@ -238,9 +238,9 @@
         "indexes": ["tenant_id_resource_period"],
         "migrations": []
       },
-      "status": "not_started",
-      "estimated_hours": 3,
-      "tags": ["mongodb", "quotas", "usage-tracking", "rate-limiting"]
+      "status": "completed",
+      "estimated_hours": 8,
+      "tags": ["mongodb", "quotas", "usage-tracking", "limits"]"rate-limiting"]
     }
   ]
 }

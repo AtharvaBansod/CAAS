@@ -55,7 +55,7 @@ services:
         ipv4_address: 172.28.1.1
     healthcheck:
       test: |
-        mongosh --eval "
+        mongosh -u ${MONGO_ROOT_USER:-caas_admin} -p ${MONGO_ROOT_PASSWORD:-caas_secret_2026} --authenticationDatabase admin --eval "
         try {
           db.adminCommand('ping');
           print('MongoDB is healthy');
@@ -125,7 +125,7 @@ services:
     restart: unless-stopped
 
   # MongoDB Initialization Service
-  # Note: Initialization is now handled by init-system.ps1 script
+  # Note: Initialization is now handled by start.ps1 script (no init container needed)
   # mongodb-init:
   #   image: mongo:7.0
   #   container_name: caas-mongodb-init
@@ -300,32 +300,6 @@ services:
       start_period: 40s
     restart: unless-stopped
 
-  # Kafka Topics Initialization
-  kafka-init:
-    image: confluentinc/cp-kafka:7.5.0
-    container_name: caas-kafka-init
-    depends_on:
-      kafka-1:
-        condition: service_healthy
-      schema-registry:
-        condition: service_healthy
-    networks:
-      - caas-network
-    command: >
-      bash -c "
-      echo 'Waiting for Kafka to be ready...';
-      sleep 10;
-      echo 'Creating Phase 1 topics...';
-      kafka-topics --bootstrap-server kafka-1:29092 --create --if-not-exists --topic platform.events --partitions 3 --replication-factor 3 --config retention.ms=604800000 --config compression.type=snappy;
-      kafka-topics --bootstrap-server kafka-1:29092 --create --if-not-exists --topic platform.audit --partitions 3 --replication-factor 3 --config retention.ms=2592000000 --config compression.type=snappy;
-      kafka-topics --bootstrap-server kafka-1:29092 --create --if-not-exists --topic platform.notifications --partitions 3 --replication-factor 3 --config retention.ms=604800000;
-      kafka-topics --bootstrap-server kafka-1:29092 --create --if-not-exists --topic internal.dlq --partitions 3 --replication-factor 3 --config retention.ms=2592000000;
-      kafka-topics --bootstrap-server kafka-1:29092 --create --if-not-exists --topic auth.revocation.events --partitions 3 --replication-factor 3 --config retention.ms=2592000000;
-      echo 'Kafka topics created successfully!';
-      kafka-topics --bootstrap-server kafka-1:29092 --list;
-      "
-    restart: "no"
-
   # ============================================
   # API GATEWAY SERVICE
   # ============================================
@@ -363,8 +337,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      kafka-init:
-        condition: service_completed_successfully
+      kafka-1:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "node", "-e", "const http = require('http'); http.get('http://127.0.0.1:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"]
       interval: 30s

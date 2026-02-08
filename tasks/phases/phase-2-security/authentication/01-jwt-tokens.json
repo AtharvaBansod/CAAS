@@ -64,7 +64,7 @@
         "migrations": []
       },
       "status": "completed",
-      "estimated_hours": 4,
+      "estimated_hours": 6,
       "tags": [
         "authentication",
         "jwt",

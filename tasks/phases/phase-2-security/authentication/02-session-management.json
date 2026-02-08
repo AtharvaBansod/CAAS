@@ -293,7 +293,7 @@
         "migrations": []
       },
       "status": "completed",
-      "estimated_hours": 4,
+      "estimated_hours": 5,
       "tags": [
         "authentication",
         "sessions",

@@ -57,7 +57,7 @@
         "indexes": [],
         "migrations": []
       },
-      "status": "not_started",
+      "status": "completed",
       "estimated_hours": 5,
       "tags": ["mongodb", "schema", "platform", "mongoose"]
     },
@@ -113,7 +113,7 @@
         ],
         "migrations": []
       },
-      "status": "not_started",
+      "status": "completed",
       "estimated_hours": 4,
       "tags": ["mongodb", "schema", "users", "tenant"]
     },

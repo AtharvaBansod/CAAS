@@ -58,7 +58,7 @@
         "indexes": [],
         "migrations": []
       },
-      "status": "not_started",
+      "status": "completed",
       "estimated_hours": 6,
       "tags": ["kafka", "topics", "partitioning", "architecture"]
     },
@@ -120,7 +120,7 @@
         "indexes": [],
         "migrations": []
       },
-      "status": "not_started",
+      "status": "completed",
       "estimated_hours": 7,
       "tags": ["kafka", "schema-registry", "avro", "serialization"]
     },
@@ -178,7 +178,7 @@
         "indexes": [],
         "migrations": []
       },
-      "status": "not_started",
+      "status": "completed",
       "estimated_hours": 7,
       "tags": ["kafka", "events", "types", "typescript"]
     }

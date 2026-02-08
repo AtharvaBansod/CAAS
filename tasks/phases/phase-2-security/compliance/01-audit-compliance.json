@@ -117,8 +117,10 @@
         "logging",
         "security"
       ],
+      "completed0.2": [
+        "Create hash-chain.ts for tamper-evident logging"
+      ],
       "remaining_implementations": [
-        "Create hash-chain.ts for tamper-evident logging (currently missing)",
         "gateway/middleware/audit/audit-middleware.ts exists - verify it calls AuditLogger correctly",
         "CRITICAL: Register audit-middleware in services/gateway/src/app.ts",
         "Connect audit-logger to Kafka for real-time streaming",

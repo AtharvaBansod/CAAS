@@ -54,7 +54,7 @@
         "indexes": ["All production indexes"],
         "migrations": []
       },
-      "status": "not_started",
+      "status": "completed",
       "estimated_hours": 4,
       "tags": ["mongodb", "indexes", "performance", "optimization"]
     },
@@ -110,9 +110,9 @@
         "indexes": [],
         "migrations": []
       },
-      "status": "not_started",
-      "estimated_hours": 5,
-      "tags": ["mongodb", "profiling", "optimization", "caching"]
+      "status": "completed",
+      "estimated_hours": 6,
+      "tags": ["mongodb", "profiling", "optimization", "queries"]"caching"]
     },
     {
       "id": "MONGO-016",
