@@ -1,0 +1,74 @@
+/**
+ * Auth Services Plugin
+ * Integrates auth-service with gateway via dependency injection
+ */
+
+import fp from 'fastify-plugin';
+import { FastifyPluginAsync } from 'fastify';
+import { AuthServiceFactory, AuthServiceConfig } from '../../../auth-service/src/auth-service-factory';
+
+declare module 'fastify' {
+  interface FastifyInstance {
+    authServices: AuthServiceFactory;
+  }
+}
+
+const authServicesPlugin: FastifyPluginAsync = async (fastify) => {
+  // Build auth service configuration from environment
+  const config: AuthServiceConfig = {
+    redis: {
+      host: process.env.REDIS_HOST || 'redis',
+      port: parseInt(process.env.REDIS_PORT || '6379'),
+      password: process.env.REDIS_PASSWORD,
+      db: parseInt(process.env.REDIS_DB || '0'),
+    },
+    mongodb: {
+      url: process.env.MONGODB_URI || 'mongodb://mongodb-primary:27017',
+      database: process.env.MONGODB_DATABASE || 'caas_platform',
+    },
+    kafka: {
+      brokers: (process.env.KAFKA_BROKERS || 'kafka-1:29092').split(','),
+      clientId: process.env.KAFKA_CLIENT_ID || 'gateway-service',
+    },
+    jwt: {
+      algorithm: (process.env.JWT_ALGORITHM as 'RS256' | 'ES256') || 'RS256',
+      accessTokenExpiry: process.env.JWT_ACCESS_TOKEN_EXPIRY || '15m',
+      refreshTokenExpiry: process.env.JWT_REFRESH_TOKEN_EXPIRY || '7d',
+      issuer: process.env.JWT_ISSUER || 'caas.io',
+      privateKeyPath: process.env.JWT_PRIVATE_KEY_PATH || '/app/keys/private.pem',
+      publicKeyPath: process.env.JWT_PUBLIC_KEY_PATH || '/app/keys/public.pem',
+    },
+    session: {
+      ttl: parseInt(process.env.SESSION_TTL_SECONDS || '3600'),
+      maxSessionsPerUser: parseInt(process.env.MAX_SESSIONS_PER_USER || '5'),
+      renewalCooldown: parseInt(process.env.SESSION_RENEWAL_COOLDOWN_MS || '60000'),
+      maxLifetime: parseInt(process.env.SESSION_MAX_LIFETIME_SECONDS || '86400'),
+    },
+    mfa: {
+      totpIssuer: process.env.TOTP_ISSUER || 'CAAS',
+      backupCodeCount: parseInt(process.env.BACKUP_CODE_COUNT || '10'),
+      trustTokenExpiry: parseInt(process.env.TRUST_TOKEN_EXPIRY_DAYS || '30') * 86400,
+      challengeTTL: parseInt(process.env.MFA_CHALLENGE_TTL_SECONDS || '300'),
+      maxAttempts: parseInt(process.env.MFA_MAX_ATTEMPTS || '5'),
+    },
+  };
+
+  // Create and initialize auth service factory
+  const authServices = new AuthServiceFactory(config);
+  await authServices.initialize();
+
+  // Decorate fastify instance
+  fastify.decorate('authServices', authServices);
+
+  // Cleanup on close
+  fastify.addHook('onClose', async () => {
+    await authServices.shutdown();
+  });
+
+  fastify.log.info('Auth services plugin registered successfully');
+};
+
+export default fp(authServicesPlugin, {
+  name: 'auth-services',
+  dependencies: [],
+});

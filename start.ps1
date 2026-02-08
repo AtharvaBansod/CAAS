@@ -1,109 +1,89 @@
-# CAAS Platform Startup Script
-# ============================================
-# Single command to boot entire CAAS Phase 1 infrastructure
+# CAAS Platform - Start Script
+# Starts all services with proper initialization
 
 param(
-    [switch]$Build,      # Force rebuild images
-    [switch]$Verbose,    # Show detailed logs
-    [switch]$Wait        # Wait for all services to be healthy
+    [switch]$Clean,
+    [switch]$Build
 )
 
-$ErrorActionPreference = "Continue"
-
-Write-Host ""
-Write-Host "==============================================================" -ForegroundColor Cyan
-Write-Host "                   CAAS Platform Startup                       " -ForegroundColor Cyan
-Write-Host "                   Phase 1 Infrastructure                      " -ForegroundColor Cyan
-Write-Host "==============================================================" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "CAAS Platform - Starting Services" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
 # Check if Docker is running
-Write-Host "[?] Checking Docker..." -ForegroundColor Yellow
 try {
-    docker info 2>&1 | Out-Null
-    Write-Host "   [OK] Docker is running" -ForegroundColor Green
-} catch {
-    Write-Host "   [X] Docker is not running. Please start Docker Desktop." -ForegroundColor Red
-    exit 1
-}
-
-# Check if .env exists
-if (-not (Test-Path ".env")) {
-    Write-Host "   [!] .env file not found. Using default values." -ForegroundColor Yellow
-}
-
-Write-Host ""
-Write-Host "[>] Starting services..." -ForegroundColor Yellow
-Write-Host ""
-
-# Build command
-$composeCmd = "docker compose up -d"
-if ($Build) {
-    $composeCmd += " --build"
-    Write-Host "   [*] Building images..." -ForegroundColor Cyan
-}
-
-# Execute docker compose
-Invoke-Expression $composeCmd
-
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "   [X] Failed to start services" -ForegroundColor Red
-    exit 1
-}
-
-Write-Host ""
-Write-Host "[...] Waiting for services to initialize..." -ForegroundColor Yellow
-
-if ($Wait) {
-    # Wait for critical services
-    $maxAttempts = 30
-    $attempt = 0
-    
-    while ($attempt -lt $maxAttempts) {
-        $attempt++
-        Start-Sleep -Seconds 5
-        
-        # Check gateway health
-        try {
-            $response = docker exec caas-gateway sh -c "wget -qO- http://127.0.0.1:3000/health 2>/dev/null" 2>$null
-            if ($response -match "ok") {
-                Write-Host "   [OK] Gateway is healthy" -ForegroundColor Green
-                break
-            }
-        } catch {}
-        
-        Write-Host "   [...] Waiting... (attempt $attempt/$maxAttempts)" -ForegroundColor Gray
+    docker info > $null 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Error: Docker is not running!" -ForegroundColor Red
+        Write-Host "Please start Docker Desktop and try again." -ForegroundColor Yellow
+        exit 1
     }
-} else {
-    Start-Sleep -Seconds 10
+} catch {
+    Write-Host "Error: Docker is not installed or not accessible!" -ForegroundColor Red
+    exit 1
 }
 
-Write-Host ""
-Write-Host "[i] Service Status:" -ForegroundColor Cyan
-docker compose ps --format "table {{.Name}}\t{{.Status}}"
+# Clean volumes if requested
+if ($Clean) {
+    Write-Host "Cleaning up existing volumes..." -ForegroundColor Yellow
+    docker compose down -v
+    Write-Host "Volumes cleaned!" -ForegroundColor Green
+    Write-Host ""
+}
 
-Write-Host ""
-Write-Host "==============================================================" -ForegroundColor Green
-Write-Host "                   [OK] CAAS Platform Started!                 " -ForegroundColor Green
-Write-Host "==============================================================" -ForegroundColor Green
-Write-Host ""
-Write-Host "[*] Access Points:" -ForegroundColor Cyan
-Write-Host "   +---------------------------------------------------------+" -ForegroundColor DarkGray
-Write-Host "   | Gateway API:        http://localhost:3000               |" -ForegroundColor White
-Write-Host "   | API Documentation:  http://localhost:3000/documentation |" -ForegroundColor White
-Write-Host "   | Kafka UI:           http://localhost:8080               |" -ForegroundColor White
-Write-Host "   | MongoDB Express:    http://localhost:8082               |" -ForegroundColor White
-Write-Host "   |                     (admin / admin123)                  |" -ForegroundColor DarkGray
-Write-Host "   | Redis Commander:    http://localhost:8083               |" -ForegroundColor White
-Write-Host "   +---------------------------------------------------------+" -ForegroundColor DarkGray
-Write-Host ""
-Write-Host "[*] Commands:" -ForegroundColor Cyan
-Write-Host "   Stop:     .\stop.ps1" -ForegroundColor White
-Write-Host "   Test:     .\tests\system\test-system.ps1" -ForegroundColor White
-Write-Host "   Logs:     docker compose logs -f gateway" -ForegroundColor White
+# Build if requested
+if ($Build) {
+    Write-Host "Building services..." -ForegroundColor Yellow
+    docker compose build
+    Write-Host "Build complete!" -ForegroundColor Green
+    Write-Host ""
+}
+
+# Start services
+Write-Host "Starting services..." -ForegroundColor Yellow
 Write-Host ""
 
-if ($Verbose) {
-    Write-Host "[*] Following logs (Ctrl+C to exit)..." -ForegroundColor Yellow
-    docker compose logs -f
+try {
+    docker compose up -d
+    
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Error: Failed to start services!" -ForegroundColor Red
+        Write-Host "Check docker compose logs for details." -ForegroundColor Yellow
+        exit 1
+    }
+    
+    Write-Host ""
+    Write-Host "Services started successfully!" -ForegroundColor Green
+    Write-Host ""
+    
+    # Initialize system (replica set, collections, topics)
+    Write-Host "Initializing system..." -ForegroundColor Yellow
+    & .\init-system.ps1
+    
+    # Check service status
+    Write-Host ""
+    Write-Host "Service Status:" -ForegroundColor Cyan
+    Write-Host "---------------" -ForegroundColor Cyan
+    docker compose ps
+    
+    Write-Host ""
+    Write-Host "========================================" -ForegroundColor Cyan
+    Write-Host "CAAS Platform Started!" -ForegroundColor Green
+    Write-Host "========================================" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "Access Points:" -ForegroundColor Yellow
+    Write-Host "  Gateway API:        http://localhost:3000" -ForegroundColor White
+    Write-Host "  Gateway Health:     http://localhost:3000/health" -ForegroundColor White
+    Write-Host "  Gateway Docs:       http://localhost:3000/documentation" -ForegroundColor White
+    Write-Host "  Kafka UI:           http://localhost:8080" -ForegroundColor White
+    Write-Host "  Mongo Express:      http://localhost:8082" -ForegroundColor White
+    Write-Host "  Redis Commander:    http://localhost:8083" -ForegroundColor White
+    Write-Host ""
+    Write-Host "Run './test-system.ps1' to verify all services" -ForegroundColor Yellow
+    Write-Host ""
+    
+} catch {
+    Write-Host "Error starting services: $($_.Exception.Message)" -ForegroundColor Red
+    exit 1
 }

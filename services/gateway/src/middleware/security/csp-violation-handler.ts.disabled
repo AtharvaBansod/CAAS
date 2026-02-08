@@ -1,0 +1,191 @@
+/**
+ * CSP Violation Handler
+ * 
+ * Handles and logs Content Security Policy violation reports
+ */
+
+import { Db } from 'mongodb';
+
+export interface CSPViolationReport {
+  'csp-report': {
+    'document-uri': string;
+    'referrer': string;
+    'violated-directive': string;
+    'effective-directive': string;
+    'original-policy': string;
+    'blocked-uri': string;
+    'status-code': number;
+    'source-file'?: string;
+    'line-number'?: number;
+    'column-number'?: number;
+  };
+}
+
+export interface StoredCSPViolation {
+  _id?: string;
+  timestamp: Date;
+  document_uri: string;
+  violated_directive: string;
+  blocked_uri: string;
+  source_file?: string;
+  line_number?: number;
+  user_agent: string;
+  ip_address: string;
+  tenant_id?: string;
+  count: number; // Aggregated count for same violation
+}
+
+export class CSPViolationHandler {
+  private db: Db;
+  private alertThreshold: number;
+
+  constructor(db: Db, alertThreshold: number = 10) {
+    this.db = db;
+    this.alertThreshold = alertThreshold;
+  }
+
+  /**
+   * Handle CSP violation report
+   */
+  async handleViolation(
+    report: CSPViolationReport,
+    metadata: {
+      userAgent: string;
+      ipAddress: string;
+      tenantId?: string;
+    }
+  ): Promise<void> {
+    const cspReport = report['csp-report'];
+    
+    // Normalize the violation
+    const violation: Omit<StoredCSPViolation, '_id'> = {
+      timestamp: new Date(),
+      document_uri: cspReport['document-uri'],
+      violated_directive: cspReport['violated-directive'],
+      blocked_uri: cspReport['blocked-uri'],
+      source_file: cspReport['source-file'],
+      line_number: cspReport['line-number'],
+      user_agent: metadata.userAgent,
+      ip_address: metadata.ipAddress,
+      tenant_id: metadata.tenantId,
+      count: 1,
+    };
+
+    // Check if this violation already exists (aggregate)
+    const existing = await this.db.collection('csp_violations').findOne({
+      document_uri: violation.document_uri,
+      violated_directive: violation.violated_directive,
+      blocked_uri: violation.blocked_uri,
+      source_file: violation.source_file,
+      line_number: violation.line_number,
+    });
+
+    if (existing) {
+      // Increment count
+      await this.db.collection('csp_violations').updateOne(
+        { _id: existing._id },
+        {
+          $inc: { count: 1 },
+          $set: { timestamp: new Date() }, // Update to latest occurrence
+        }
+      );
+
+      // Check if we should alert
+      if (existing.count + 1 >= this.alertThreshold) {
+        await this.alertOnViolation(violation, existing.count + 1);
+      }
+    } else {
+      // Store new violation
+      await this.db.collection('csp_violations').insertOne(violation);
+    }
+
+    // Log to console in development
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('CSP Violation:', {
+        directive: cspReport['violated-directive'],
+        blocked: cspReport['blocked-uri'],
+        source: cspReport['source-file'],
+      });
+    }
+  }
+
+  /**
+   * Get violation statistics
+   */
+  async getStatistics(tenantId?: string): Promise<{
+    total: number;
+    byDirective: Record<string, number>;
+    recent: StoredCSPViolation[];
+  }> {
+    const query = tenantId ? { tenant_id: tenantId } : {};
+
+    const [total, byDirective, recent] = await Promise.all([
+      this.db.collection('csp_violations').countDocuments(query),
+      this.aggregateByDirective(query),
+      this.db
+        .collection('csp_violations')
+        .find(query)
+        .sort({ timestamp: -1 })
+        .limit(10)
+        .toArray(),
+    ]);
+
+    return {
+      total,
+      byDirective,
+      recent,
+    };
+  }
+
+  /**
+   * Aggregate violations by directive
+   */
+  private async aggregateByDirective(query: any): Promise<Record<string, number>> {
+    const results = await this.db
+      .collection('csp_violations')
+      .aggregate([
+        { $match: query },
+        {
+          $group: {
+            _id: '$violated_directive',
+            count: { $sum: '$count' },
+          },
+        },
+      ])
+      .toArray();
+
+    const byDirective: Record<string, number> = {};
+    for (const result of results) {
+      byDirective[result._id] = result.count;
+    }
+
+    return byDirective;
+  }
+
+  /**
+   * Alert on repeated violations
+   */
+  private async alertOnViolation(violation: Omit<StoredCSPViolation, '_id'>, count: number): Promise<void> {
+    // In production: send to alerting system (PagerDuty, Slack, etc.)
+    console.error(`CSP Violation Alert: ${violation.violated_directive} occurred ${count} times`, {
+      blocked_uri: violation.blocked_uri,
+      source_file: violation.source_file,
+    });
+
+    // TODO: Integrate with alerting service
+  }
+
+  /**
+   * Clean up old violations
+   */
+  async cleanup(daysToKeep: number = 90): Promise<number> {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
+
+    const result = await this.db.collection('csp_violations').deleteMany({
+      timestamp: { $lt: cutoffDate },
+    });
+
+    return result.deletedCount || 0;
+  }
+}

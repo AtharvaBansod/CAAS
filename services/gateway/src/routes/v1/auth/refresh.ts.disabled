@@ -1,0 +1,69 @@
+/**
+ * Token Refresh Route
+ * POST /v1/auth/refresh - Refresh access token using refresh token
+ * 
+ * Implements token rotation and reuse detection for security
+ */
+
+import { FastifyPluginAsync } from 'fastify';
+import z from 'zod';
+import { UnauthorizedError } from '../../../errors';
+
+const refreshSchema = z.object({
+  refresh_token: z.string(),
+});
+
+const refreshResponseSchema = z.object({
+  access_token: z.string(),
+  refresh_token: z.string(),
+  expires_in: z.number(),
+  token_type: z.literal('Bearer'),
+});
+
+const refreshRoutes: FastifyPluginAsync = async (fastify) => {
+  fastify.post('/refresh', {
+    schema: {
+      body: refreshSchema,
+      tags: ['Auth'],
+      description: 'Refresh access token with automatic rotation',
+      response: {
+        200: refreshResponseSchema,
+      },
+    },
+  }, async (request, reply) => {
+    const { refresh_token } = request.body as z.infer<typeof refreshSchema>;
+
+    try {
+      // Use RefreshService from auth-service for proper rotation and reuse detection
+      const refreshService = fastify.authServices.getRefreshService();
+      
+      // Refresh token (includes rotation and reuse detection)
+      const tokens = await refreshService.refresh(refresh_token);
+
+      fastify.log.info({ user_id: tokens.user_id }, 'Token refreshed successfully');
+
+      return {
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token,
+        expires_in: tokens.expires_in || 900,
+        token_type: 'Bearer' as const,
+      };
+    } catch (error: any) {
+      // Handle specific refresh errors
+      if (error.message?.includes('reuse detected')) {
+        fastify.log.error({ error }, 'Refresh token reuse detected - security breach');
+        throw new UnauthorizedError('Token reuse detected. All tokens have been revoked for security.');
+      }
+      
+      if (error.message?.includes('expired') || error.message?.includes('invalid')) {
+        throw new UnauthorizedError('Invalid or expired refresh token');
+      }
+
+      // Generic error
+      fastify.log.error({ error }, 'Token refresh failed');
+      throw new UnauthorizedError('Token refresh failed');
+    }
+  });
+};
+
+export default refreshRoutes;

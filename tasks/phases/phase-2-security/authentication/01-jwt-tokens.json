@@ -10,7 +10,9 @@
       "id": "AUTH-001",
       "task_name": "JWT Token Generation Service",
       "feature_details": "Implement a robust JWT token generation service supporting RS256 and ES256 algorithms with configurable claims and tenant-specific signing keys.",
-      "feature_dependency": ["GATEWAY-012"],
+      "feature_dependency": [
+        "GATEWAY-012"
+      ],
       "ai_prompt": "Create the JWT token generation service:\n\n1. Create services/auth-service/src/tokens/jwt-generator.ts:\n   ```typescript\n   export class JWTGenerator {\n     constructor(\n       private keyProvider: KeyProvider,\n       private config: JWTConfig\n     );\n\n     async generateAccessToken(params: {\n       user: User;\n       tenant: Tenant;\n       scopes: string[];\n       deviceId?: string;\n     }): Promise<TokenPair>;\n\n     async generateRefreshToken(userId: string, tokenId: string): Promise<string>;\n\n     async generateServiceToken(service: string): Promise<string>;\n   }\n   ```\n\n2. Token structure:\n   ```typescript\n   // Access Token Claims\n   {\n     iss: 'caas.io',\n     sub: user_id,\n     aud: tenant_id,\n     exp: timestamp,\n     iat: timestamp,\n     jti: token_id,\n     tenant_id: string,\n     user_id: string,\n     scopes: string[],\n     permissions: string[],\n     device_id?: string,\n     session_id: string\n   }\n   ```\n\n3. Create services/auth-service/src/tokens/key-provider.ts:\n   - Load signing keys from secure storage\n   - Support key rotation (multiple active keys)\n   - Tenant-specific keys (optional)\n   - Fallback to platform keys\n\n4. Create services/auth-service/src/tokens/jwt-config.ts:\n   - Configuration:\n     * algorithm: 'RS256' | 'ES256'\n     * accessTokenExpiry: 15 minutes\n     * refreshTokenExpiry: 7 days\n     * issuer: 'caas.io'\n     * clockTolerance: 30 seconds\n\n5. Create services/auth-service/src/tokens/token-id-generator.ts:\n   - Generate unique token IDs (UUID v7)\n   - Encode metadata in token ID\n\n6. Implement key rotation support:\n   - kid (Key ID) in header\n   - Multiple valid keys during rotation\n   - Automatic key selection",
       "testing_instructions": {
         "unit_tests": [
@@ -61,15 +63,25 @@
         "indexes": [],
         "migrations": []
       },
-      "status": "not_started",
+      "status": "completed",
       "estimated_hours": 4,
-      "tags": ["authentication", "jwt", "tokens", "security"]
+      "tags": [
+        "authentication",
+        "jwt",
+        "tokens",
+        "security"
+      ],
+      "remaining-implementations": [
+        "Add unit tests for jwt-generator.ts, key-provider.ts, token-id-generator.ts"
+      ]
     },
     {
       "id": "AUTH-002",
       "task_name": "JWT Token Validation Service",
       "feature_details": "Implement comprehensive JWT validation with signature verification, claim validation, revocation checking, and security hardening.",
-      "feature_dependency": ["AUTH-001"],
+      "feature_dependency": [
+        "AUTH-001"
+      ],
       "ai_prompt": "Create JWT token validation service:\n\n1. Create services/auth-service/src/tokens/jwt-validator.ts:\n   ```typescript\n   export class JWTValidator {\n     async validate(token: string, options?: ValidateOptions): Promise<TokenPayload>;\n     async validateAndDecode(token: string): Promise<{ header: JWTHeader; payload: TokenPayload }>;\n     isExpired(payload: TokenPayload): boolean;\n     isRevoked(tokenId: string): Promise<boolean>;\n   }\n   ```\n\n2. Validation steps:\n   - Parse token structure (3 parts)\n   - Decode header and extract algorithm + kid\n   - Verify algorithm matches expected\n   - Load public key by kid\n   - Verify signature\n   - Validate standard claims (exp, iat, iss, aud)\n   - Check token not revoked\n   - Validate custom claims\n\n3. Create services/auth-service/src/tokens/claim-validators.ts:\n   - Validate issuer matches config\n   - Validate audience (tenant_id)\n   - Validate expiration with clock tolerance\n   - Validate issued-at (reject future tokens)\n   - Validate required claims present\n\n4. Create services/auth-service/src/tokens/revocation-checker.ts:\n   - Check token ID in revocation list (Redis)\n   - Support JTI-based revocation\n   - Support user-wide revocation\n   - Support session-wide revocation\n   - TTL-based cleanup\n\n5. Security hardening:\n   - Reject 'none' algorithm\n   - Reject unexpected algorithms\n   - Maximum token size (8KB)\n   - Rate limit validation failures\n\n6. Create services/auth-service/src/tokens/validation-errors.ts:\n   - TokenExpiredError\n   - TokenMalformedError\n   - TokenSignatureError\n   - TokenRevokedError\n   - TokenClaimError",
       "testing_instructions": {
         "unit_tests": [
@@ -102,7 +114,9 @@
       ],
       "files_to_modify": [],
       "docker_requirements": {
-        "services": ["redis"],
+        "services": [
+          "redis"
+        ],
         "environment_variables": [
           "JWT_CLOCK_TOLERANCE_SECONDS",
           "TOKEN_MAX_SIZE_BYTES"
@@ -116,15 +130,26 @@
         "indexes": [],
         "migrations": []
       },
-      "status": "not_started",
+      "status": "completed",
       "estimated_hours": 4,
-      "tags": ["authentication", "jwt", "validation", "security"]
+      "tags": [
+        "authentication",
+        "jwt",
+        "validation",
+        "security"
+      ],
+      "remaining-implementations": [
+        "Add unit tests for jwt-validator.ts, claim-validators.ts, security-checks.ts"
+      ]
     },
     {
       "id": "AUTH-003",
       "task_name": "Token Refresh Flow",
       "feature_details": "Implement secure token refresh with rotation, family tracking, and refresh token reuse detection.",
-      "feature_dependency": ["AUTH-001", "AUTH-002"],
+      "feature_dependency": [
+        "AUTH-001",
+        "AUTH-002"
+      ],
       "ai_prompt": "Implement token refresh flow:\n\n1. Create services/auth-service/src/refresh/refresh-service.ts:\n   ```typescript\n   export class RefreshService {\n     async refresh(refreshToken: string): Promise<TokenPair>;\n     async revokeRefreshToken(tokenId: string): Promise<void>;\n     async revokeAllUserTokens(userId: string): Promise<void>;\n     async revokeAllSessionTokens(sessionId: string): Promise<void>;\n   }\n   ```\n\n2. Refresh token storage (Redis):\n   ```typescript\n   // Key: rt:{token_hash}\n   // Value:\n   {\n     user_id: string,\n     session_id: string,\n     device_id: string,\n     family_id: string,  // For rotation tracking\n     parent_id: string,  // Previous token in chain\n     issued_at: number,\n     expires_at: number,\n     used: boolean\n   }\n   ```\n\n3. Create services/auth-service/src/refresh/rotation-policy.ts:\n   - Rotate refresh token on each use\n   - Invalidate previous token\n   - Track token family\n   - Detect reuse attacks\n\n4. Create services/auth-service/src/refresh/reuse-detection.ts:\n   - If used refresh token is reused:\n     * Revoke entire token family\n     * Alert user of potential breach\n     * Log security event\n   - Implement with token version/counter\n\n5. Create services/auth-service/src/refresh/refresh-token-store.ts:\n   - Store refresh tokens in Redis\n   - Hash token for storage (never store plain)\n   - TTL matching refresh token expiry\n   - Efficient lookup by user_id\n\n6. Sliding expiration:\n   - Option to extend refresh token on activity\n   - Maximum absolute expiration\n   - Configurable per tenant\n\n7. Create services/auth-service/src/refresh/family-tracker.ts:\n   - Track token lineage\n   - Detect anomalies\n   - Cleanup on logout",
       "testing_instructions": {
         "unit_tests": [
@@ -159,7 +184,9 @@
       ],
       "files_to_modify": [],
       "docker_requirements": {
-        "services": ["redis"],
+        "services": [
+          "redis"
+        ],
         "environment_variables": [
           "REFRESH_TOKEN_ROTATION",
           "REFRESH_TOKEN_REUSE_DETECTION",
@@ -174,15 +201,26 @@
         "indexes": [],
         "migrations": []
       },
-      "status": "not_started",
+      "status": "completed",
       "estimated_hours": 3,
-      "tags": ["authentication", "refresh-token", "rotation", "security"]
+      "tags": [
+        "authentication",
+        "refresh-token",
+        "rotation",
+        "security"
+      ],
+      "remaining-implementations": [
+        "Add unit tests for refresh-service.ts, family-tracker.ts, reuse-detection.ts"
+      ]
     },
     {
       "id": "AUTH-004",
       "task_name": "Token Revocation System",
       "feature_details": "Implement comprehensive token revocation supporting individual tokens, user-wide, session-wide, and tenant-wide revocation.",
-      "feature_dependency": ["AUTH-002", "AUTH-003"],
+      "feature_dependency": [
+        "AUTH-002",
+        "AUTH-003"
+      ],
       "ai_prompt": "Implement token revocation system:\n\n1. Create services/auth-service/src/revocation/revocation-service.ts:\n   ```typescript\n   export class RevocationService {\n     async revokeToken(tokenId: string, reason: RevocationReason): Promise<void>;\n     async revokeUserTokens(userId: string, reason: RevocationReason): Promise<number>;\n     async revokeSessionTokens(sessionId: string): Promise<number>;\n     async revokeTenantTokens(tenantId: string): Promise<number>;\n     async isRevoked(tokenId: string): Promise<boolean>;\n   }\n   ```\n\n2. Revocation storage strategies:\n\n   a. Individual token revocation (Redis SET):\n      - Key: revoked:{jti}\n      - TTL: remaining token lifetime\n\n   b. User-wide revocation (Redis):\n      - Key: user_tokens_invalid_before:{user_id}\n      - Value: timestamp\n      - Check: token.iat < invalidation_timestamp\n\n   c. Session-wide revocation:\n      - Same pattern as user\n      - Key: session_invalid:{session_id}\n\n3. Create services/auth-service/src/revocation/revocation-store.ts:\n   - Multiple revocation list management\n   - Efficient lookup\n   - Automatic cleanup via TTL\n\n4. Create services/auth-service/src/revocation/revocation-events.ts:\n   - Publish revocation events to Kafka\n   - Event types:\n     * token.revoked\n     * user.tokens.revoked\n     * session.terminated\n   - For distributed cache invalidation\n\n5. Create services/auth-service/src/revocation/revocation-reasons.ts:\n   - Enum of reasons:\n     * LOGOUT\n     * PASSWORD_CHANGE\n     * SECURITY_BREACH\n     * ADMIN_ACTION\n     * TOKEN_REUSE\n     * DEVICE_REMOVED\n\n6. Create API endpoints:\n   - POST /v1/auth/revoke - Revoke current token\n   - POST /v1/auth/revoke-all - Revoke all user tokens\n   - DELETE /v1/auth/sessions/:id - Terminate session\n\n7. Propagation to other services:\n   - Kafka events for distributed invalidation\n   - Gateway cache invalidation\n   - Socket connection termination",
       "testing_instructions": {
         "unit_tests": [
@@ -219,7 +257,10 @@
         "services/gateway/src/routes/v1/auth/logout.ts"
       ],
       "docker_requirements": {
-        "services": ["redis", "kafka"],
+        "services": [
+          "redis",
+          "kafka"
+        ],
         "environment_variables": [],
         "volumes": [],
         "networks": []
@@ -246,9 +287,17 @@
         "indexes": [],
         "migrations": []
       },
-      "status": "not_started",
+      "status": "completed",
       "estimated_hours": 3,
-      "tags": ["authentication", "revocation", "logout", "security"]
+      "tags": [
+        "authentication",
+        "revocation",
+        "logout",
+        "security"
+      ],
+      "remaining-implementations": [
+        "Add unit tests for revocation-service.ts, revocation-store.ts"
+      ]
     }
   ]
 }

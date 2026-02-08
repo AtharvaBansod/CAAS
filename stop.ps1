@@ -1,47 +1,50 @@
-# CAAS Platform Stop Script
-# ============================================
-# Single command to stop entire CAAS Platform
+# CAAS Platform - Stop Script
+# Stops all services gracefully
 
 param(
-    [switch]$Volumes,    # Also remove volumes (data)
-    [switch]$Force       # Force remove containers
+    [switch]$Clean
 )
 
-$ErrorActionPreference = "Continue"
-
-Write-Host ""
-Write-Host "==============================================================" -ForegroundColor Cyan
-Write-Host "                   CAAS Platform Shutdown                      " -ForegroundColor Cyan
-Write-Host "==============================================================" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "CAAS Platform - Stopping Services" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
-Write-Host "[STOP] Stopping services..." -ForegroundColor Yellow
-Write-Host ""
-
-# Build command
-$composeCmd = "docker compose down"
-if ($Volumes) {
-    $composeCmd += " -v"
-    Write-Host "   [!] Removing volumes (all data will be deleted)" -ForegroundColor Red
-}
-if ($Force) {
-    $composeCmd += " --remove-orphans"
+# Check if Docker is running
+try {
+    docker info > $null 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Warning: Docker is not running!" -ForegroundColor Yellow
+        exit 0
+    }
+} catch {
+    Write-Host "Warning: Docker is not accessible!" -ForegroundColor Yellow
+    exit 0
 }
 
-# Execute
-Invoke-Expression $composeCmd
+# Stop services
+Write-Host "Stopping services..." -ForegroundColor Yellow
 
-Write-Host ""
-Write-Host "==============================================================" -ForegroundColor Green
-Write-Host "                   [OK] All Services Stopped!                  " -ForegroundColor Green
-Write-Host "==============================================================" -ForegroundColor Green
-Write-Host ""
-
-if (-not $Volumes) {
-    Write-Host "[i] Data is preserved in Docker volumes." -ForegroundColor Yellow
-    Write-Host "    To remove all data: .\stop.ps1 -Volumes" -ForegroundColor Gray
+try {
+    if ($Clean) {
+        Write-Host "Stopping and removing volumes..." -ForegroundColor Yellow
+        docker compose down -v
+        Write-Host ""
+        Write-Host "All services stopped and volumes removed!" -ForegroundColor Green
+    } else {
+        docker compose down
+        Write-Host ""
+        Write-Host "All services stopped!" -ForegroundColor Green
+        Write-Host "Data volumes preserved. Use -Clean to remove volumes." -ForegroundColor Yellow
+    }
+    
+    Write-Host ""
+    Write-Host "========================================" -ForegroundColor Cyan
+    Write-Host "CAAS Platform Stopped!" -ForegroundColor Green
+    Write-Host "========================================" -ForegroundColor Cyan
+    Write-Host ""
+    
+} catch {
+    Write-Host "Error stopping services: $($_.Exception.Message)" -ForegroundColor Red
+    exit 1
 }
-
-Write-Host ""
-Write-Host "[>] To start again: .\start.ps1" -ForegroundColor Cyan
-Write-Host ""

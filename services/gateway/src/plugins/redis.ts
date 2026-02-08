@@ -14,6 +14,14 @@ const redisPlugin: FastifyPluginAsync = async (fastify) => {
     url: config.REDIS_URL,
     closeClient: true, // Close Redis client when Fastify closes
   });
+  
+  // Verify Redis connection
+  try {
+    await fastify.redis.ping();
+    fastify.log.info('Redis connected successfully');
+  } catch (error) {
+    fastify.log.error({ error }, 'Redis connection failed');
+  }
 };
 
 export default fp(redisPlugin);

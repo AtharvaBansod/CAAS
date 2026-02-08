@@ -2,10 +2,20 @@ import { FastifyInstance } from 'fastify';
 import authRoutes from './auth';
 import webhookRoutes from './webhooks';
 import tenantRoutes from './tenants';
+// import { sessionsRoutes } from './sessions'; // TODO: Fix after service architecture
+// import { mfaRoutes } from './mfa'; // TODO: Fix after service architecture
 
 export const registerV1Routes = async (app: FastifyInstance) => {
   // Auth Routes
   await app.register(authRoutes, { prefix: '/auth' });
+
+  // Session Management Routes
+  // TODO: Re-enable after fixing service architecture
+  // await app.register(sessionsRoutes, { prefix: '/' });
+
+  // MFA Routes
+  // TODO: Re-enable after fixing service architecture
+  // await app.register(mfaRoutes, { prefix: '/mfa' });
 
   // Webhook Routes
   await app.register(webhookRoutes, { prefix: '/webhooks' });

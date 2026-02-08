@@ -1,0 +1,206 @@
+/**
+ * IP Whitelist
+ * 
+ * Per-tenant IP whitelisting with CIDR support
+ */
+
+import { Netmask } from 'netmask';
+
+export interface IPWhitelistEntry {
+  _id?: string;
+  tenant_id: string;
+  ip_address: string; // Can be single IP or CIDR range
+  description?: string;
+  created_by: string;
+  created_at: Date;
+  expires_at?: Date;
+}
+
+export class IPWhitelist {
+  private entries: Map<string, IPWhitelistEntry[]>; // tenant_id -> entries
+  private cache: Map<string, boolean>; // Cache for quick lookups
+
+  constructor() {
+    this.entries = new Map();
+    this.cache = new Map();
+  }
+
+  /**
+   * Add IP to whitelist
+   */
+  addEntry(entry: IPWhitelistEntry): void {
+    const tenantEntries = this.entries.get(entry.tenant_id) || [];
+    tenantEntries.push(entry);
+    this.entries.set(entry.tenant_id, tenantEntries);
+    
+    // Clear cache for this tenant
+    this.clearCacheForTenant(entry.tenant_id);
+  }
+
+  /**
+   * Remove IP from whitelist
+   */
+  removeEntry(tenantId: string, ipAddress: string): boolean {
+    const tenantEntries = this.entries.get(tenantId);
+    if (!tenantEntries) {
+      return false;
+    }
+
+    const index = tenantEntries.findIndex(e => e.ip_address === ipAddress);
+    if (index === -1) {
+      return false;
+    }
+
+    tenantEntries.splice(index, 1);
+    this.clearCacheForTenant(tenantId);
+    return true;
+  }
+
+  /**
+   * Check if IP is whitelisted for tenant
+   */
+  isWhitelisted(tenantId: string, ipAddress: string): boolean {
+    // Check cache first
+    const cacheKey = `${tenantId}:${ipAddress}`;
+    const cached = this.cache.get(cacheKey);
+    if (cached !== undefined) {
+      return cached;
+    }
+
+    // Check whitelist
+    const tenantEntries = this.entries.get(tenantId);
+    if (!tenantEntries || tenantEntries.length === 0) {
+      // No whitelist = allow all
+      this.cache.set(cacheKey, true);
+      return true;
+    }
+
+    // Check each entry
+    for (const entry of tenantEntries) {
+      // Check if expired
+      if (entry.expires_at && entry.expires_at < new Date()) {
+        continue;
+      }
+
+      if (this.matchesEntry(ipAddress, entry.ip_address)) {
+        this.cache.set(cacheKey, true);
+        return true;
+      }
+    }
+
+    this.cache.set(cacheKey, false);
+    return false;
+  }
+
+  /**
+   * Check if IP matches entry (supports CIDR)
+   */
+  private matchesEntry(ipAddress: string, entryPattern: string): boolean {
+    // Exact match
+    if (ipAddress === entryPattern) {
+      return true;
+    }
+
+    // CIDR range match
+    if (entryPattern.includes('/')) {
+      try {
+        const block = new Netmask(entryPattern);
+        return block.contains(ipAddress);
+      } catch (error) {
+        console.error(`Invalid CIDR range: ${entryPattern}`, error);
+        return false;
+      }
+    }
+
+    // Wildcard match (e.g., 192.168.*.*)
+    if (entryPattern.includes('*')) {
+      const regex = new RegExp(
+        '^' + entryPattern.replace(/\./g, '\\.').replace(/\*/g, '\\d+') + '$'
+      );
+      return regex.test(ipAddress);
+    }
+
+    return false;
+  }
+
+  /**
+   * Get all entries for tenant
+   */
+  getEntries(tenantId: string): IPWhitelistEntry[] {
+    return this.entries.get(tenantId) || [];
+  }
+
+  /**
+   * Load entries from database
+   */
+  async loadFromDatabase(db: any): Promise<void> {
+    const entries = await db.collection('ip_whitelist').find({}).toArray();
+    
+    for (const entry of entries) {
+      this.addEntry(entry);
+    }
+  }
+
+  /**
+   * Clear cache for tenant
+   */
+  private clearCacheForTenant(tenantId: string): void {
+    const keysToDelete: string[] = [];
+    
+    for (const key of this.cache.keys()) {
+      if (key.startsWith(`${tenantId}:`)) {
+        keysToDelete.push(key);
+      }
+    }
+    
+    for (const key of keysToDelete) {
+      this.cache.delete(key);
+    }
+  }
+
+  /**
+   * Clear all cache
+   */
+  clearCache(): void {
+    this.cache.clear();
+  }
+
+  /**
+   * Validate IP address or CIDR range
+   */
+  static validate(ipPattern: string): { valid: boolean; error?: string } {
+    // Check if it's a CIDR range
+    if (ipPattern.includes('/')) {
+      try {
+        new Netmask(ipPattern);
+        return { valid: true };
+      } catch (error) {
+        return { valid: false, error: 'Invalid CIDR range' };
+      }
+    }
+
+    // Check if it's a wildcard pattern
+    if (ipPattern.includes('*')) {
+      const parts = ipPattern.split('.');
+      if (parts.length !== 4) {
+        return { valid: false, error: 'Invalid IP pattern' };
+      }
+      return { valid: true };
+    }
+
+    // Check if it's a valid IP address
+    const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
+    if (!ipRegex.test(ipPattern)) {
+      return { valid: false, error: 'Invalid IP address' };
+    }
+
+    const parts = ipPattern.split('.').map(Number);
+    for (const part of parts) {
+      if (part < 0 || part > 255) {
+        return { valid: false, error: 'IP address octets must be 0-255' };
+      }
+    }
+
+    return { valid: true };
+  }
+}

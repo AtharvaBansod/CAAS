@@ -8,8 +8,8 @@ export const configSchema = z.object({
   MONGODB_URI: z.string().url(),
   REDIS_URL: z.string().url(),
   KAFKA_BROKERS: z.string(),
-  JWT_PRIVATE_KEY: z.string().min(1),
-  JWT_PUBLIC_KEY: z.string().min(1),
+  JWT_PRIVATE_KEY: z.string().min(1).default(''),
+  JWT_PUBLIC_KEY: z.string().min(1).default(''),
   CORS_ORIGINS: z.string().default('*'),
 });
 

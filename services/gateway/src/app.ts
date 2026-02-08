@@ -42,7 +42,12 @@ export async function buildApp() {
   // Tenant Resolution (runs after Auth)
   app.addHook('preHandler', resolveTenant);
 
-  // Rate Limiting (runs after Tenant Resolution)
+  // Authorization Middleware (runs after Tenant Resolution)
+  // Note: Currently in permissive mode for development
+  const { authzMiddleware } = await import('./middleware/authorization');
+  app.addHook('preHandler', authzMiddleware);
+
+  // Rate Limiting (runs after Authorization)
   app.addHook('preHandler', rateLimitMiddleware);
 
   await registerRoutes(app);

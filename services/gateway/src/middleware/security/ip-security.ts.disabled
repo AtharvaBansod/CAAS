@@ -1,0 +1,169 @@
+/**
+ * IP Security Middleware
+ * 
+ * Combines whitelist, blacklist, and geo-blocking
+ */
+
+import { FastifyRequest, FastifyReply } from 'fastify';
+import { IPWhitelist } from './ip-whitelist';
+import { IPBlacklist } from './ip-blacklist';
+import { GeoBlockingManager, GeoIPService } from './geo-blocking';
+
+export interface IPCheckResult {
+  allowed: boolean;
+  reason?: string;
+  details?: {
+    whitelisted?: boolean;
+    blacklisted?: boolean;
+    geo_blocked?: boolean;
+    country?: string;
+  };
+}
+
+export class IPSecurityMiddleware {
+  private whitelist: IPWhitelist;
+  private blacklist: IPBlacklist;
+  private geoBlocking: GeoBlockingManager;
+  private enabled: boolean;
+
+  constructor(
+    whitelist: IPWhitelist,
+    blacklist: IPBlacklist,
+    geoBlocking: GeoBlockingManager,
+    enabled: boolean = true
+  ) {
+    this.whitelist = whitelist;
+    this.blacklist = blacklist;
+    this.geoBlocking = geoBlocking;
+    this.enabled = enabled;
+  }
+
+  /**
+   * Check if IP is allowed
+   */
+  async check(ipAddress: string, tenantId: string): Promise<IPCheckResult> {
+    if (!this.enabled) {
+      return { allowed: true };
+    }
+
+    // 1. Check blacklist first (highest priority)
+    if (this.blacklist.isBlacklisted(ipAddress)) {
+      const entry = this.blacklist.getEntry(ipAddress);
+      return {
+        allowed: false,
+        reason: `IP address is blacklisted: ${entry?.reason || 'unknown'}`,
+        details: {
+          blacklisted: true,
+        },
+      };
+    }
+
+    // 2. Check whitelist
+    const whitelisted = this.whitelist.isWhitelisted(tenantId, ipAddress);
+    if (!whitelisted) {
+      return {
+        allowed: false,
+        reason: 'IP address is not whitelisted',
+        details: {
+          whitelisted: false,
+        },
+      };
+    }
+
+    // 3. Check geo-blocking
+    const geoCheck = await this.geoBlocking.isBlocked(tenantId, ipAddress);
+    if (geoCheck.blocked) {
+      return {
+        allowed: false,
+        reason: geoCheck.reason,
+        details: {
+          geo_blocked: true,
+          country: geoCheck.country,
+        },
+      };
+    }
+
+    return {
+      allowed: true,
+      details: {
+        whitelisted: true,
+        blacklisted: false,
+        geo_blocked: false,
+      },
+    };
+  }
+
+  /**
+   * Fastify middleware
+   */
+  middleware() {
+    return async (request: FastifyRequest, reply: FastifyReply) => {
+      const ipAddress = request.ip;
+      const tenantId = (request as any).tenantId || 'default';
+
+      const result = await this.check(ipAddress, tenantId);
+
+      if (!result.allowed) {
+        // Log blocked attempt
+        console.warn('IP Security: Blocked request', {
+          ip: ipAddress,
+          tenant: tenantId,
+          reason: result.reason,
+          details: result.details,
+        });
+
+        // Return 403 Forbidden
+        reply.code(403).send({
+          error: 'Forbidden',
+          message: result.reason || 'Access denied',
+        });
+      }
+    };
+  }
+
+  /**
+   * Check if IP is whitelisted
+   */
+  isWhitelisted(ipAddress: string, tenantId: string): boolean {
+    return this.whitelist.isWhitelisted(tenantId, ipAddress);
+  }
+
+  /**
+   * Check if IP is blacklisted
+   */
+  isBlacklisted(ipAddress: string): boolean {
+    return this.blacklist.isBlacklisted(ipAddress);
+  }
+
+  /**
+   * Check if IP is geo-blocked
+   */
+  async isGeoBlocked(ipAddress: string, tenantId: string): Promise<boolean> {
+    const result = await this.geoBlocking.isBlocked(tenantId, ipAddress);
+    return result.blocked;
+  }
+}
+
+/**
+ * Create IP security middleware instance
+ */
+export async function createIPSecurityMiddleware(db: any): Promise<IPSecurityMiddleware> {
+  const whitelist = new IPWhitelist();
+  const blacklist = new IPBlacklist();
+  const geoipService = new GeoIPService();
+  const geoBlocking = new GeoBlockingManager(geoipService);
+
+  // Initialize GeoIP
+  await geoipService.initialize();
+
+  // Load from database
+  await Promise.all([
+    whitelist.loadFromDatabase(db),
+    blacklist.loadFromDatabase(db),
+    geoBlocking.loadFromDatabase(db),
+  ]);
+
+  const enabled = process.env.IP_SECURITY_ENABLED !== 'false';
+
+  return new IPSecurityMiddleware(whitelist, blacklist, geoBlocking, enabled);
+}

@@ -1,0 +1,305 @@
+/**
+ * Authorization Policies API Routes
+ * 
+ * Admin endpoints for managing authorization policies
+ */
+
+import { FastifyPluginAsync } from 'fastify';
+import { Type } from '@sinclair/typebox';
+
+const policiesRoutes: FastifyPluginAsync = async (fastify) => {
+  // Create policy
+  fastify.post(
+    '/',
+    {
+      schema: {
+        tags: ['Admin', 'Authorization'],
+        summary: 'Create authorization policy',
+        body: Type.Object({
+          name: Type.String(),
+          description: Type.String(),
+          effect: Type.Union([Type.Literal('allow'), Type.Literal('deny')]),
+          priority: Type.Number(),
+          target: Type.Object({
+            subjects: Type.Optional(Type.Any()),
+            resources: Type.Optional(Type.Any()),
+            actions: Type.Optional(Type.Array(Type.String())),
+            environment: Type.Optional(Type.Any()),
+          }),
+          conditions: Type.Optional(Type.Array(Type.Any())),
+          tenant_id: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+          is_active: Type.Optional(Type.Boolean()),
+        }),
+        response: {
+          201: Type.Object({
+            success: Type.Boolean(),
+            data: Type.Any(),
+          }),
+        },
+      },
+    },
+    async (request, reply) => {
+      // TODO: Integrate with PolicyRepository
+      const policy = request.body;
+      
+      reply.code(201).send({
+        success: true,
+        data: {
+          _id: 'policy_123',
+          ...policy,
+          version: 1,
+          metadata: {
+            created_by: request.user?.user_id,
+            created_at: new Date(),
+            updated_at: new Date(),
+          },
+        },
+      });
+    }
+  );
+
+  // List policies
+  fastify.get(
+    '/',
+    {
+      schema: {
+        tags: ['Admin', 'Authorization'],
+        summary: 'List authorization policies',
+        querystring: Type.Object({
+          tenant_id: Type.Optional(Type.String()),
+          is_active: Type.Optional(Type.Boolean()),
+          limit: Type.Optional(Type.Number({ default: 50 })),
+          offset: Type.Optional(Type.Number({ default: 0 })),
+        }),
+        response: {
+          200: Type.Object({
+            success: Type.Boolean(),
+            data: Type.Object({
+              policies: Type.Array(Type.Any()),
+              total: Type.Number(),
+              limit: Type.Number(),
+              offset: Type.Number(),
+            }),
+          }),
+        },
+      },
+    },
+    async (request, reply) => {
+      // TODO: Integrate with PolicyRepository
+      reply.send({
+        success: true,
+        data: {
+          policies: [],
+          total: 0,
+          limit: 50,
+          offset: 0,
+        },
+      });
+    }
+  );
+
+  // Get policy by ID
+  fastify.get(
+    '/:id',
+    {
+      schema: {
+        tags: ['Admin', 'Authorization'],
+        summary: 'Get policy by ID',
+        params: Type.Object({
+          id: Type.String(),
+        }),
+        response: {
+          200: Type.Object({
+            success: Type.Boolean(),
+            data: Type.Any(),
+          }),
+        },
+      },
+    },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      // TODO: Integrate with PolicyRepository
+      reply.send({
+        success: true,
+        data: null,
+      });
+    }
+  );
+
+  // Update policy
+  fastify.put(
+    '/:id',
+    {
+      schema: {
+        tags: ['Admin', 'Authorization'],
+        summary: 'Update policy',
+        params: Type.Object({
+          id: Type.String(),
+        }),
+        body: Type.Object({
+          name: Type.Optional(Type.String()),
+          description: Type.Optional(Type.String()),
+          effect: Type.Optional(Type.Union([Type.Literal('allow'), Type.Literal('deny')])),
+          priority: Type.Optional(Type.Number()),
+          target: Type.Optional(Type.Any()),
+          conditions: Type.Optional(Type.Array(Type.Any())),
+          change_reason: Type.Optional(Type.String()),
+        }),
+        response: {
+          200: Type.Object({
+            success: Type.Boolean(),
+            data: Type.Any(),
+          }),
+        },
+      },
+    },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      // TODO: Integrate with PolicyRepository
+      reply.send({
+        success: true,
+        data: null,
+      });
+    }
+  );
+
+  // Delete policy
+  fastify.delete(
+    '/:id',
+    {
+      schema: {
+        tags: ['Admin', 'Authorization'],
+        summary: 'Delete policy',
+        params: Type.Object({
+          id: Type.String(),
+        }),
+        response: {
+          200: Type.Object({
+            success: Type.Boolean(),
+          }),
+        },
+      },
+    },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      // TODO: Integrate with PolicyRepository
+      reply.send({
+        success: true,
+      });
+    }
+  );
+
+  // Activate policy
+  fastify.post(
+    '/:id/activate',
+    {
+      schema: {
+        tags: ['Admin', 'Authorization'],
+        summary: 'Activate policy',
+        params: Type.Object({
+          id: Type.String(),
+        }),
+        response: {
+          200: Type.Object({
+            success: Type.Boolean(),
+          }),
+        },
+      },
+    },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      // TODO: Integrate with PolicyRepository
+      reply.send({
+        success: true,
+      });
+    }
+  );
+
+  // Deactivate policy
+  fastify.post(
+    '/:id/deactivate',
+    {
+      schema: {
+        tags: ['Admin', 'Authorization'],
+        summary: 'Deactivate policy',
+        params: Type.Object({
+          id: Type.String(),
+        }),
+        response: {
+          200: Type.Object({
+            success: Type.Boolean(),
+          }),
+        },
+      },
+    },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      // TODO: Integrate with PolicyRepository
+      reply.send({
+        success: true,
+      });
+    }
+  );
+
+  // Get version history
+  fastify.get(
+    '/:id/versions',
+    {
+      schema: {
+        tags: ['Admin', 'Authorization'],
+        summary: 'Get policy version history',
+        params: Type.Object({
+          id: Type.String(),
+        }),
+        response: {
+          200: Type.Object({
+            success: Type.Boolean(),
+            data: Type.Array(Type.Any()),
+          }),
+        },
+      },
+    },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      // TODO: Integrate with PolicyRepository
+      reply.send({
+        success: true,
+        data: [],
+      });
+    }
+  );
+
+  // Rollback to version
+  fastify.post(
+    '/:id/rollback',
+    {
+      schema: {
+        tags: ['Admin', 'Authorization'],
+        summary: 'Rollback policy to version',
+        params: Type.Object({
+          id: Type.String(),
+        }),
+        body: Type.Object({
+          version: Type.Number(),
+        }),
+        response: {
+          200: Type.Object({
+            success: Type.Boolean(),
+            data: Type.Any(),
+          }),
+        },
+      },
+    },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const { version } = request.body as { version: number };
+      // TODO: Integrate with PolicyRepository
+      reply.send({
+        success: true,
+        data: null,
+      });
+    }
+  );
+};
+
+export default policiesRoutes;

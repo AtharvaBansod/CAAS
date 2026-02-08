@@ -12,8 +12,19 @@
     "resolveJsonModule": true,
     "sourceMap": true,
     "declaration": true,
-    "typeRoots": ["./node_modules/@types", "./src/types"]
+    "typeRoots": [
+      "./node_modules/@types",
+      "./src/types"
+    ]
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "**/*.test.ts"]
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/*.test.ts",
+    "**/*.disabled/**",
+    "src/routes/v1/**/*.disabled/**",
+    "src/plugins/**/*.disabled"
+  ]
 }

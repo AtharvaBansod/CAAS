@@ -125,68 +125,23 @@ services:
     restart: unless-stopped
 
   # MongoDB Initialization Service
-  mongodb-init:
-    image: mongo:7.0
-    container_name: caas-mongodb-init
-    depends_on:
-      mongodb-primary:
-        condition: service_healthy
-    networks:
-      - caas-network
-    command: >
-      bash -c "
-      echo 'Waiting for MongoDB to be ready...';
-      sleep 15;
-      
-      echo 'Initializing replica set via exec into primary...';
-      docker exec caas-mongodb-primary mongosh --eval \"
-      try {
-        var status = rs.status();
-        print('Replica set already initialized');
-      } catch(e) {
-        print('Initializing replica set...');
-        rs.initiate({
-          _id: 'caas-rs',
-          members: [
-            { _id: 0, host: 'mongodb-primary:27017', priority: 2 },
-            { _id: 1, host: 'mongodb-secondary-1:27017', priority: 1 },
-            { _id: 2, host: 'mongodb-secondary-2:27017', priority: 1 }
-          ]
-        });
-        print('Waiting for replica set to stabilize...');
-        sleep(15000);
-      }
-      \" || echo 'Using authenticated connection...';
-      
-      echo 'Creating databases and users...';
-      docker exec caas-mongodb-primary mongosh -u ${MONGO_ROOT_USER:-caas_admin} -p ${MONGO_ROOT_PASSWORD:-caas_secret_2026} --authenticationDatabase admin --eval \"
-      // Platform Database
-      use caas_platform;
-      try {
-        db.createUser({
-          user: 'caas_platform_user',
-          pwd: '${MONGO_APP_PASSWORD:-caas_app_secret_2026}',
-          roles: [{ role: 'readWrite', db: 'caas_platform' }]
-        });
-        print('User created successfully');
-      } catch(e) {
-        print('User may already exist: ' + e);
-      }
-      
-      // Create initial collections
-      db.createCollection('saas_clients');
-      db.createCollection('applications');
-      db.createCollection('api_keys');
-      db.createCollection('platform_admins');
-      
-      print('Platform database initialized');
-      \" || echo 'Database setup may have failed';
-      
-      echo 'MongoDB initialization complete!';
-      "
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    restart: "no"
+  # Note: Initialization is now handled by init-system.ps1 script
+  # mongodb-init:
+  #   image: mongo:7.0
+  #   container_name: caas-mongodb-init
+  #   depends_on:
+  #     mongodb-primary:
+  #       condition: service_healthy
+  #   networks:
+  #     - caas-network
+  #   environment:
+  #     - MONGO_ROOT_USER=${MONGO_ROOT_USER:-caas_admin}
+  #     - MONGO_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD:-caas_secret_2026}
+  #     - MONGO_APP_PASSWORD=${MONGO_APP_PASSWORD:-caas_app_secret_2026}
+  #   volumes:
+  #     - ./init/mongodb/init-replica-and-collections.sh:/docker-entrypoint-initdb.d/init.sh:ro
+  #   command: bash /docker-entrypoint-initdb.d/init.sh
+  #   restart: "no"
 
   redis:
     image: redis:7-alpine
@@ -365,6 +320,7 @@ services:
       kafka-topics --bootstrap-server kafka-1:29092 --create --if-not-exists --topic platform.audit --partitions 3 --replication-factor 3 --config retention.ms=2592000000 --config compression.type=snappy;
       kafka-topics --bootstrap-server kafka-1:29092 --create --if-not-exists --topic platform.notifications --partitions 3 --replication-factor 3 --config retention.ms=604800000;
       kafka-topics --bootstrap-server kafka-1:29092 --create --if-not-exists --topic internal.dlq --partitions 3 --replication-factor 3 --config retention.ms=2592000000;
+      kafka-topics --bootstrap-server kafka-1:29092 --create --if-not-exists --topic auth.revocation.events --partitions 3 --replication-factor 3 --config retention.ms=2592000000;
       echo 'Kafka topics created successfully!';
       kafka-topics --bootstrap-server kafka-1:29092 --list;
       "
@@ -390,6 +346,10 @@ services:
       - METRICS_PORT=3001
       - MONGODB_URI=mongodb://${MONGO_ROOT_USER:-caas_admin}:${MONGO_ROOT_PASSWORD:-caas_secret_2026}@mongodb-primary:27017/caas_platform?authSource=admin&replicaSet=caas-rs
       - REDIS_URL=redis://:${REDIS_PASSWORD:-caas_redis_2026}@redis:6379/0
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-caas_redis_2026}
+      - REDIS_DB=0
       - KAFKA_BROKERS=kafka-1:29092,kafka-2:29092,kafka-3:29092
       - JWT_SECRET=${JWT_SECRET:-change_this_in_production_please}
       - JWT_PRIVATE_KEY=${JWT_PRIVATE_KEY}
@@ -399,8 +359,8 @@ services:
       caas-network:
         ipv4_address: 172.28.6.1
     depends_on:
-      mongodb-init:
-        condition: service_completed_successfully
+      mongodb-primary:
+        condition: service_healthy
       redis:
         condition: service_healthy
       kafka-init:
@@ -412,6 +372,13 @@ services:
       retries: 3
       start_period: 40s
     restart: unless-stopped
+    command: >
+      sh -c "
+      mkdir -p /app/keys;
+      if [ ! -z \"$JWT_PRIVATE_KEY\" ]; then echo \"$JWT_PRIVATE_KEY\" > /app/keys/private.pem; fi;
+      if [ ! -z \"$JWT_PUBLIC_KEY\" ]; then echo \"$JWT_PUBLIC_KEY\" > /app/keys/public.pem; fi;
+      node dist/main.js
+      "
 
   # ============================================
   # DEVELOPMENT & MONITORING TOOLS
@@ -449,7 +416,8 @@ services:
     networks:
       - caas-network
     depends_on:
-      - mongodb-init
+      mongodb-primary:
+        condition: service_healthy
     restart: unless-stopped
 
   redis-commander:

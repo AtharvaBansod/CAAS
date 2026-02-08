@@ -21,6 +21,20 @@ const swaggerPlugin: FastifyPluginAsync = async (fastify) => {
         },
       },
     },
+    transform: ({ schema, url }) => {
+      // Skip routes without schemas or with null schemas
+      if (!schema || schema === null) {
+        return { schema: {}, url };
+      }
+      
+      // Clean up null values in schema
+      const cleanSchema = JSON.parse(JSON.stringify(schema, (key, value) => {
+        if (value === null) return undefined;
+        return value;
+      }));
+      
+      return { schema: cleanSchema, url };
+    },
   });
 
   await fastify.register(swaggerUi, {
