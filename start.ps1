@@ -103,15 +103,15 @@ try {
         Write-Host "  Replica set already initialized" -ForegroundColor Green
     }
     
-    # Create Phase 2 Collections
-    Write-Host "  Creating Phase 2 collections..." -ForegroundColor Gray
-    $collections = docker exec caas-mongodb-primary mongosh -u caas_admin -p caas_secret_2026 --authenticationDatabase admin caas_platform --quiet --eval "db.getCollectionNames().length" 2>&1 | Out-String
+    # Initialize Database (User & Collections)
+    Write-Host "  Initializing database (users & collections)..." -ForegroundColor Gray
     
-    if ($collections -match "^[0-9]+$" -and [int]$collections -ge 28) {
-        Write-Host "  Collections already exist" -ForegroundColor Green
+    $initResult = Get-Content .\services\mongodb-service\init-db.js | docker exec -i caas-mongodb-primary mongosh -u caas_admin -p caas_secret_2026 --authenticationDatabase admin 2>&1 | Out-String
+    
+    if ($initResult -match "Error" -and $initResult -notmatch "already exists") {
+        Write-Host "  Warning during DB initialization: $initResult" -ForegroundColor Yellow
     } else {
-        Get-Content init-phase2-collections.js | docker exec -i caas-mongodb-primary mongosh -u caas_admin -p caas_secret_2026 --authenticationDatabase admin 2>&1 | Out-Null
-        Write-Host "  Collections created" -ForegroundColor Green
+        Write-Host "  Database initialized" -ForegroundColor Green
     }
     
     Write-Host ""
@@ -158,19 +158,21 @@ try {
         $waited += 3
     }
     
-    # Create Kafka topics directly
+    # Create Kafka topics using service script
     Write-Host "  Creating Kafka topics..." -ForegroundColor Gray
     
-    # Create topics one by one with proper config
-    docker exec caas-kafka-1 kafka-topics --bootstrap-server kafka-1:29092 --create --if-not-exists --topic platform.events --partitions 3 --replication-factor 3 --config retention.ms=604800000 --config compression.type=snappy 2>&1 | Out-Null
-    docker exec caas-kafka-1 kafka-topics --bootstrap-server kafka-1:29092 --create --if-not-exists --topic platform.audit --partitions 3 --replication-factor 3 --config retention.ms=2592000000 --config compression.type=snappy 2>&1 | Out-Null
-    docker exec caas-kafka-1 kafka-topics --bootstrap-server kafka-1:29092 --create --if-not-exists --topic platform.notifications --partitions 3 --replication-factor 3 --config retention.ms=604800000 2>&1 | Out-Null
-    docker exec caas-kafka-1 kafka-topics --bootstrap-server kafka-1:29092 --create --if-not-exists --topic internal.dlq --partitions 3 --replication-factor 3 --config retention.ms=2592000000 2>&1 | Out-Null
-    docker exec caas-kafka-1 kafka-topics --bootstrap-server kafka-1:29092 --create --if-not-exists --topic internal.retry --partitions 3 --replication-factor 3 --config retention.ms=604800000 2>&1 | Out-Null
-    docker exec caas-kafka-1 kafka-topics --bootstrap-server kafka-1:29092 --create --if-not-exists --topic auth.revocation.events --partitions 3 --replication-factor 3 --config retention.ms=2592000000 2>&1 | Out-Null
-    docker exec caas-kafka-1 kafka-topics --bootstrap-server kafka-1:29092 --create --if-not-exists --topic events --partitions 3 --replication-factor 3 --config retention.ms=604800000 2>&1 | Out-Null
+    # Execute the initialization script inside the container
+    $kafkaInit = Get-Content .\services\kafka-service\create-topics.sh -Raw
+    # Remove all carriage returns for Linux compatibility (more robust than just replacing CRLF)
+    $kafkaInit = $kafkaInit -replace "`r", ""
     
-    Write-Host "  Kafka topics created" -ForegroundColor Green
+    $kafkaResult = $kafkaInit | docker exec -i caas-kafka-1 bash 2>&1 | Out-String
+    
+    if ($kafkaResult -match "Error" -and $kafkaResult -notmatch "already exists") {
+        Write-Host "  Warning during Kafka initialization: $kafkaResult" -ForegroundColor Yellow
+    } else {
+        Write-Host "  Kafka topics initialized" -ForegroundColor Green
+    }
     
     Write-Host ""
     
@@ -214,11 +216,36 @@ try {
     }
     
     Write-Host ""
-    
-    # Check service status
     Write-Host "Service Status:" -ForegroundColor Cyan
     Write-Host "---------------" -ForegroundColor Cyan
     docker compose ps
+    
+    Write-Host ""
+    
+    # Check Socket Services
+    Write-Host "Checking Socket Services..." -ForegroundColor Yellow
+    $socket1Health = $false
+    $socket2Health = $false
+    
+    try {
+        $health1 = Invoke-WebRequest -Uri "http://localhost:3002/health" -UseBasicParsing -TimeoutSec 2 2>&1
+        if ($health1.StatusCode -eq 200) {
+            $socket1Health = $true
+            Write-Host "  Socket Service 1: Healthy" -ForegroundColor Green
+        }
+    } catch {
+        Write-Host "  Socket Service 1: Not responding" -ForegroundColor Yellow
+    }
+    
+    try {
+        $health2 = Invoke-WebRequest -Uri "http://localhost:3003/health" -UseBasicParsing -TimeoutSec 2 2>&1
+        if ($health2.StatusCode -eq 200) {
+            $socket2Health = $true
+            Write-Host "  Socket Service 2: Healthy" -ForegroundColor Green
+        }
+    } catch {
+        Write-Host "  Socket Service 2: Not responding" -ForegroundColor Yellow
+    }
     
     Write-Host ""
     Write-Host "========================================" -ForegroundColor Cyan
@@ -229,11 +256,13 @@ try {
     Write-Host "  Gateway API:        http://localhost:3000" -ForegroundColor White
     Write-Host "  Gateway Health:     http://localhost:3000/health" -ForegroundColor White
     Write-Host "  Gateway Docs:       http://localhost:3000/documentation" -ForegroundColor White
+    Write-Host "  Socket Service 1:   http://localhost:3002/health" -ForegroundColor White
+    Write-Host "  Socket Service 2:   http://localhost:3003/health" -ForegroundColor White
     Write-Host "  Kafka UI:           http://localhost:8080" -ForegroundColor White
     Write-Host "  Mongo Express:      http://localhost:8082" -ForegroundColor White
     Write-Host "  Redis Commander:    http://localhost:8083" -ForegroundColor White
     Write-Host ""
-    Write-Host "Run './test-system.ps1' to verify all services" -ForegroundColor Yellow
+    Write-Host "Run './tests/system/test-system.ps1' to verify all services" -ForegroundColor Yellow
     Write-Host ""
     
 } catch {

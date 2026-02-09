@@ -1,0 +1,12 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install socket.io-client
+RUN npm install socket.io-client@4.7.2
+
+# Copy test script
+COPY phase3-presence-test.js .
+
+# Run tests
+CMD ["node", "phase3-presence-test.js"]

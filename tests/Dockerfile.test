@@ -1,0 +1,13 @@
+FROM node:20-alpine
+
+WORKDIR /tests
+
+# Copy test files
+COPY phase3-socket-test.js .
+COPY phase3-socket-test-package.json package.json
+
+# Install dependencies
+RUN npm install
+
+# Run tests
+CMD ["node", "phase3-socket-test.js"]

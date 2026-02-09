@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify';
 import authRoutes from './auth';
 import webhookRoutes from './webhooks';
 import tenantRoutes from './tenants';
+import usageExportRoutes from './usage/export';
 // import { sessionsRoutes } from './sessions'; // TODO: Fix after service architecture
 // import { mfaRoutes } from './mfa'; // TODO: Fix after service architecture
 
@@ -22,6 +23,9 @@ export const registerV1Routes = async (app: FastifyInstance) => {
 
   // Tenant Routes
   await app.register(tenantRoutes, { prefix: '/tenant' }); // Singular /tenant as it refers to "current" tenant context mostly
+
+  // Usage Routes
+  await app.register(usageExportRoutes, { prefix: '/usage' });
 
   // Placeholder for now to test versioning
   app.get('/ping', async () => {

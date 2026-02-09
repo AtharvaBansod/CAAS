@@ -49,7 +49,7 @@ services:
     volumes:
       - mongodb_primary_data:/data/db
       - mongodb_config:/data/configdb
-      - ./init/mongodb/mongo-keyfile:/tmp/mongo-keyfile:ro
+      - ./services/mongodb-service/mongo-keyfile:/tmp/mongo-keyfile:ro
     networks:
       caas-network:
         ipv4_address: 172.28.1.1
@@ -88,7 +88,7 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-caas_secret_2026}
     volumes:
       - mongodb_secondary1_data:/data/db
-      - ./init/mongodb/mongo-keyfile:/tmp/mongo-keyfile:ro
+      - ./services/mongodb-service/mongo-keyfile:/tmp/mongo-keyfile:ro
     networks:
       caas-network:
         ipv4_address: 172.28.1.2
@@ -115,7 +115,7 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-caas_secret_2026}
     volumes:
       - mongodb_secondary2_data:/data/db
-      - ./init/mongodb/mongo-keyfile:/tmp/mongo-keyfile:ro
+      - ./services/mongodb-service/mongo-keyfile:/tmp/mongo-keyfile:ro
     networks:
       caas-network:
         ipv4_address: 172.28.1.3
@@ -406,3 +406,83 @@ services:
     depends_on:
       - redis
     restart: unless-stopped
+
+  # ============================================
+  # SOCKET SERVICES
+  # ============================================
+
+  socket-service-1:
+    build:
+      context: ./services/socket-service
+    container_name: caas-socket-1
+    ports:
+      - "3002:3001"
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - SOCKET_PORT=3001
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-caas_redis_2026}@redis:6379/0
+      - MONGODB_URI=mongodb://${MONGO_ROOT_USER:-caas_admin}:${MONGO_ROOT_PASSWORD:-caas_secret_2026}@mongodb-primary:27017/caas_platform?authSource=admin&replicaSet=caas-rs
+      - KAFKA_BROKERS=kafka-1:29092,kafka-2:29092,kafka-3:29092
+      - INSTANCE_ID=socket-1
+      - JWT_SECRET=${JWT_SECRET:-change_this_in_production_please}
+      - JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY}
+    depends_on:
+      redis:
+        condition: service_healthy
+      mongodb-primary:
+        condition: service_healthy
+    networks:
+      caas-network:
+        ipv4_address: 172.28.7.1
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  socket-service-2:
+    build:
+      context: ./services/socket-service
+    container_name: caas-socket-2
+    ports:
+      - "3003:3001"
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - SOCKET_PORT=3001
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-caas_redis_2026}@redis:6379/0
+      - MONGODB_URI=mongodb://${MONGO_ROOT_USER:-caas_admin}:${MONGO_ROOT_PASSWORD:-caas_secret_2026}@mongodb-primary:27017/caas_platform?authSource=admin&replicaSet=caas-rs
+      - KAFKA_BROKERS=kafka-1:29092,kafka-2:29092,kafka-3:29092
+      - INSTANCE_ID=socket-2
+      - JWT_SECRET=${JWT_SECRET:-change_this_in_production_please}
+      - JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY}
+    depends_on:
+      redis:
+        condition: service_healthy
+      mongodb-primary:
+        condition: service_healthy
+    networks:
+      caas-network:
+        ipv4_address: 172.28.7.2
+    restart: unless-stopped
+
+  # ============================================
+  # TEST SERVICES
+  # ============================================
+
+  phase3-test:
+    build:
+      context: ./tests
+      dockerfile: Dockerfile.phase3-test
+    container_name: caas-phase3-test
+    environment:
+      - SOCKET_SERVICE_1=http://socket-service-1:3001
+      - SOCKET_SERVICE_2=http://socket-service-2:3001
+    depends_on:
+      - socket-service-1
+      - socket-service-2
+    networks:
+      - caas-network
+    restart: "no"
+    profiles:
+      - test

@@ -1,0 +1,13 @@
+{
+  "name": "phase3-socket-tests",
+  "version": "1.0.0",
+  "description": "Phase 3 Socket Service Tests",
+  "main": "phase3-socket-test.js",
+  "scripts": {
+    "test": "node phase3-socket-test.js"
+  },
+  "dependencies": {
+    "socket.io-client": "^4.7.4",
+    "axios": "^1.6.7"
+  }
+}
