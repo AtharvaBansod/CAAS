@@ -48,7 +48,7 @@ const apiKeyRoutes: FastifyPluginAsync = async (fastify) => {
   }, async (request, reply) => {
     const { name, scopes } = request.body as z.infer<typeof createKeySchema>;
     const user = request.user;
-    const tenantId = user?.tenantId; // Assumes user is attached
+    const tenantId = user?.tenant_id; // Assumes user is attached
 
     if (!tenantId) {
       throw new ForbiddenError('No tenant context');
@@ -95,9 +95,9 @@ const apiKeyRoutes: FastifyPluginAsync = async (fastify) => {
     },
   }, async (request) => {
     const user = request.user;
-    const tenantId = user?.tenantId;
+    const tenantId = user?.tenant_id;
     if (!tenantId) return [];
-    
+
     return apiKeys
       .filter(k => k.tenant_id === tenantId)
       .map(k => ({
@@ -117,7 +117,7 @@ const apiKeyRoutes: FastifyPluginAsync = async (fastify) => {
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const user = request.user;
-    const tenantId = user?.tenantId;
+    const tenantId = user?.tenant_id;
 
     if (tenantId) {
       const index = apiKeys.findIndex(k => k.id === id && k.tenant_id === tenantId);

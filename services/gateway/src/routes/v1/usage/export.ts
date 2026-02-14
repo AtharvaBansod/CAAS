@@ -42,10 +42,10 @@ const usageExportRoutes: FastifyPluginAsync = async (fastify) => {
       return reply.status(400).send({ message: 'Only CSV format is currently supported for export.' });
     }
 
-    if (!request.tenant || !request.tenant.tenant_id) {
+    if (!request.tenant || !request.tenant!.tenant_id) {
       return reply.status(400).send({ message: 'Tenant context missing or invalid.' });
     }
-    const tenantId = request.tenant.tenant_id;
+    const tenantId = request.tenant!.tenant_id;
 
     const query: UsageQuery = {
       tenantId,

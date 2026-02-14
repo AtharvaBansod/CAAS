@@ -25,7 +25,7 @@ const webhookRoutes: FastifyPluginAsync = async (fastify) => {
     const tenantId = request.tenant!.tenant_id;
 
     const webhook = await webhookService.createWebhook(tenantId, { url, events });
-    
+
     reply.status(201).send(webhook);
   });
 
@@ -46,7 +46,7 @@ const webhookRoutes: FastifyPluginAsync = async (fastify) => {
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const tenantId = request.tenant!.tenant_id;
-    
+
     await webhookService.deleteWebhook(tenantId, id);
     reply.status(204).send();
   });

@@ -8,7 +8,7 @@ Write-Host ""
 
 try {
     Write-Host "Stopping all services..." -ForegroundColor Yellow
-    docker compose down
+    docker compose down -v
     
     if ($LASTEXITCODE -eq 0) {
         Write-Host ""

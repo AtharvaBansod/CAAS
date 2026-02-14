@@ -4,7 +4,7 @@
     "module": "CommonJS",
     "moduleResolution": "node",
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": ".",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -15,10 +15,18 @@
     "typeRoots": [
       "./node_modules/@types",
       "./src/types"
-    ]
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "@messaging-service/*": ["services/messaging-service/src/*"]
+    }
   },
+  "files": [
+    "src/types/fastify.d.ts"
+  ],
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "services/messaging-service/src/**/*"
   ],
   "exclude": [
     "node_modules",

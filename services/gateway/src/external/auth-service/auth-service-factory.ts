@@ -130,18 +130,27 @@ export class AuthServiceFactory {
   }
 
   async initialize(): Promise<void> {
+    console.log('Initializing Auth Service Factory...');
     // Initialize MongoDB
+    console.log('Connecting to MongoDB...');
     const mongoClient = new MongoClient(this.config.mongodb.url);
     await mongoClient.connect();
     this.mongodb = mongoClient.db(this.config.mongodb.database);
+    console.log('MongoDB connected.');
 
     // Initialize Kafka
+    console.log('Connecting to Kafka...');
     this.kafka = new Kafka({
       clientId: this.config.kafka.clientId,
       brokers: this.config.kafka.brokers,
+      retry: {
+        initialRetryTime: 300,
+        retries: 5
+      }
     });
     this.kafkaProducer = this.kafka.producer();
     await this.kafkaProducer.connect();
+    console.log('Kafka connected.');
 
     console.log('Auth Service Factory initialized successfully');
   }

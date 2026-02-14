@@ -22,6 +22,8 @@ volumes:
   kafka2_data:
   kafka3_data:
   zookeeper_data:
+  minio_data:
+  elasticsearch_data:
 
 services:
   # ============================================
@@ -175,6 +177,8 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
       ZOOKEEPER_SYNC_LIMIT: 2
       ZOOKEEPER_4LW_COMMANDS_WHITELIST: "srvr,mntr,ruok"
+      ZOOKEEPER_HEAP_OPTS: "-Xmx256M -Xms256M"
+
     ports:
       - "2181:2181"
     volumes:
@@ -210,6 +214,7 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_HEAP_OPTS: "-Xmx256M -Xms256M"
       KAFKA_LOG_RETENTION_HOURS: 168
       KAFKA_LOG_SEGMENT_BYTES: 1073741824
       KAFKA_NUM_PARTITIONS: 3
@@ -244,6 +249,7 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_HEAP_OPTS: "-Xmx256M -Xms256M"
     volumes:
       - kafka2_data:/var/lib/kafka/data
     networks:
@@ -269,6 +275,7 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_HEAP_OPTS: "-Xmx256M -Xms256M"
     volumes:
       - kafka3_data:/var/lib/kafka/data
     networks:
@@ -306,8 +313,8 @@ services:
 
   gateway:
     build:
-      context: ./services/gateway
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./services/gateway/Dockerfile
     container_name: caas-gateway
     hostname: gateway
     ports:
@@ -329,6 +336,8 @@ services:
       - JWT_PRIVATE_KEY=${JWT_PRIVATE_KEY}
       - JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY}
       - CORS_ORIGINS=${CORS_ORIGINS:-*}
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - ELASTICSEARCH_PASSWORD=${ELASTICSEARCH_PASSWORD:-changeme}
     networks:
       caas-network:
         ipv4_address: 172.28.6.1
@@ -351,7 +360,7 @@ services:
       mkdir -p /app/keys;
       if [ ! -z \"$JWT_PRIVATE_KEY\" ]; then echo \"$JWT_PRIVATE_KEY\" > /app/keys/private.pem; fi;
       if [ ! -z \"$JWT_PUBLIC_KEY\" ]; then echo \"$JWT_PUBLIC_KEY\" > /app/keys/public.pem; fi;
-      node dist/main.js
+      node dist/src/main.js
       "
 
   # ============================================
@@ -467,6 +476,42 @@ services:
     restart: unless-stopped
 
   # ============================================
+  # MESSAGING SERVICE
+  # ============================================
+
+  messaging-service:
+    build:
+      context: ./services/messaging-service
+    container_name: caas-messaging-service
+    ports:
+      - "3004:3004"
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - MONGODB_URI=mongodb://${MONGO_ROOT_USER:-caas_admin}:${MONGO_ROOT_PASSWORD:-caas_secret_2026}@mongodb-primary:27017/caas_platform?authSource=admin&replicaSet=caas-rs
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-caas_redis_2026}@redis:6379/0
+      - KAFKA_BROKERS=kafka-1:29092,kafka-2:29092,kafka-3:29092
+      - MESSAGE_EDIT_WINDOW_MINUTES=15
+      - MAX_FORWARD_TARGETS=5
+      - MAX_FORWARD_MESSAGES=10
+      - MAX_MESSAGE_LENGTH=4000
+    depends_on:
+      mongodb-primary:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka-1:
+        condition: service_healthy
+    networks:
+      caas-network:
+        ipv4_address: 172.28.8.1
+    healthcheck:
+      test: ["CMD", "node", "-e", "console.log('healthy')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # ============================================
   # TEST SERVICES
   # ============================================
 
@@ -486,3 +531,131 @@ services:
     restart: "no"
     profiles:
       - test
+
+  # ============================================
+  # SEARCH SERVICE
+  # ============================================
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: caas-elasticsearch
+    hostname: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=true
+      - ELASTIC_PASSWORD=${ELASTICSEARCH_PASSWORD:-changeme}
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      caas-network:
+        ipv4_address: 172.28.10.1
+    healthcheck:
+      test: curl -u elastic:${ELASTICSEARCH_PASSWORD:-changeme} -s http://localhost:9200/_cluster/health || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+
+  search-service:
+    build:
+      context: ./services/search-service
+    container_name: caas-search-service
+    ports:
+      - "3006:3006"
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=3006
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - ELASTICSEARCH_PASSWORD=${ELASTICSEARCH_PASSWORD:-changeme}
+      - MONGODB_URI=mongodb://${MONGO_ROOT_USER:-caas_admin}:${MONGO_ROOT_PASSWORD:-caas_secret_2026}@mongodb-primary:27017/caas_platform?authSource=admin&replicaSet=caas-rs
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-caas_redis_2026}@redis:6379/0
+      - KAFKA_BROKERS=kafka-1:29092,kafka-2:29092,kafka-3:29092
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      mongodb-primary:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka-1:
+        condition: service_healthy
+    networks:
+      caas-network:
+        ipv4_address: 172.28.10.2
+    healthcheck:
+      test: ["CMD", "node", "-e", "const http = require('http'); http.get('http://127.0.0.1:3006/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # ============================================
+  # OBJECT STORAGE
+  # ============================================
+
+  minio:
+    image: minio/minio:latest
+    container_name: caas-minio
+    hostname: minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      caas-network:
+        ipv4_address: 172.28.9.1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # ============================================
+  # MEDIA SERVICE
+  # ============================================
+
+  media-service:
+    build:
+      context: ./services/media-service
+    container_name: caas-media-service
+    ports:
+      - "3005:3005"
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - MONGODB_URI=mongodb://${MONGO_ROOT_USER:-caas_admin}:${MONGO_ROOT_PASSWORD:-caas_secret_2026}@mongodb-primary:27017/caas_platform?authSource=admin&replicaSet=caas-rs
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-caas_redis_2026}@redis:6379/0
+      - KAFKA_BROKERS=kafka-1:29092,kafka-2:29092,kafka-3:29092
+      - S3_ENDPOINT=http://minio:9000
+      - S3_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+      - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - S3_BUCKET=caas-media
+      - S3_REGION=us-east-1
+      - SIGNED_URL_EXPIRY=3600
+    depends_on:
+      mongodb-primary:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka-1:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      caas-network:
+        ipv4_address: 172.28.9.2
+    healthcheck:
+      test: ["CMD", "node", "-e", "console.log('healthy')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped

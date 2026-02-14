@@ -3,6 +3,10 @@ import authRoutes from './auth';
 import webhookRoutes from './webhooks';
 import tenantRoutes from './tenants';
 import usageExportRoutes from './usage/export';
+import { conversationRoutes } from './conversations';
+import { messageRoutes } from './messages';
+import { mediaRoutes } from './media';
+import { searchRoutes } from './search';
 // import { sessionsRoutes } from './sessions'; // TODO: Fix after service architecture
 // import { mfaRoutes } from './mfa'; // TODO: Fix after service architecture
 
@@ -26,6 +30,18 @@ export const registerV1Routes = async (app: FastifyInstance) => {
 
   // Usage Routes
   await app.register(usageExportRoutes, { prefix: '/usage' });
+
+  // Conversation Routes
+  await app.register(conversationRoutes, { prefix: '/conversations' });
+
+  // Message Routes
+  await app.register(messageRoutes, { prefix: '/messages' });
+
+  // Media Routes
+  await app.register(mediaRoutes, { prefix: '/media' });
+
+  // Search Routes
+  await app.register(searchRoutes, { prefix: '/search' });
 
   // Placeholder for now to test versioning
   app.get('/ping', async () => {

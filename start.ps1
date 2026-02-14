@@ -176,6 +176,79 @@ try {
     
     Write-Host ""
     
+    # Start Elasticsearch
+    Write-Host "  Starting Elasticsearch..." -ForegroundColor Gray
+    docker compose up -d elasticsearch 2>&1 | Out-Null
+    
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Error: Failed to start Elasticsearch!" -ForegroundColor Red
+        exit 1
+    }
+    
+    # Wait for Elasticsearch to be healthy
+    Write-Host "  Waiting for Elasticsearch to be healthy..." -ForegroundColor Gray
+    $maxWait = 120
+    $waited = 0
+    while ($waited -lt $maxWait) {
+        $status = docker inspect caas-elasticsearch --format='{{.State.Health.Status}}' 2>&1
+        if ($status -eq "healthy") {
+            Write-Host "  Elasticsearch is healthy" -ForegroundColor Green
+            break
+        }
+        if ($waited % 10 -eq 0 -and $waited -gt 0) {
+            Write-Host "    Still waiting... ($waited/$maxWait seconds)" -ForegroundColor Gray
+        }
+        Start-Sleep -Seconds 5
+        $waited += 5
+    }
+    
+    if ($waited -ge $maxWait) {
+        Write-Host "  Warning: Elasticsearch health check timeout" -ForegroundColor Yellow
+    }
+    
+    Write-Host ""
+    
+    # Start MinIO
+    Write-Host "  Starting MinIO..." -ForegroundColor Gray
+    docker compose up -d minio 2>&1 | Out-Null
+    
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Error: Failed to start MinIO!" -ForegroundColor Red
+        exit 1
+    }
+    
+    # Wait for MinIO to be healthy
+    Write-Host "  Waiting for MinIO to be healthy..." -ForegroundColor Gray
+    $maxWait = 60
+    $waited = 0
+    while ($waited -lt $maxWait) {
+        $status = docker inspect caas-minio --format='{{.State.Health.Status}}' 2>&1
+        if ($status -eq "healthy") {
+            Write-Host "  MinIO is healthy" -ForegroundColor Green
+            break
+        }
+        Start-Sleep -Seconds 3
+        $waited += 3
+    }
+    
+    # Initialize MinIO bucket
+    Write-Host "  Creating MinIO bucket..." -ForegroundColor Gray
+    
+    # Execute the initialization script inside the container
+    $minioInit = Get-Content .\services\media-service\init\create-bucket.sh -Raw
+    # Remove all carriage returns for Linux compatibility
+    $minioInit = $minioInit -replace "`r", ""
+    
+    $minioResult = $minioInit | docker exec -i caas-minio bash 2>&1 | Out-String
+    
+    if ($minioResult -match "Error" -and $minioResult -notmatch "already exists") {
+        Write-Host "  Warning during MinIO initialization: $minioResult" -ForegroundColor Yellow
+    } else {
+        Write-Host "  MinIO bucket initialized" -ForegroundColor Green
+    }
+    
+    Write-Host ""
+    
     # Start remaining services
     Write-Host "  Starting remaining services..." -ForegroundColor Gray
     docker compose up -d 2>&1 | Out-Null
@@ -213,6 +286,31 @@ try {
     if ($waited -ge $maxWait) {
         Write-Host "Warning: Gateway health check timeout" -ForegroundColor Yellow
         Write-Host "Gateway may still be starting up..." -ForegroundColor Yellow
+    }
+    
+    # Wait for Search Service
+    Write-Host "Waiting for Search Service to be healthy..." -ForegroundColor Yellow
+    $maxWait = 60
+    $waited = 0
+    while ($waited -lt $maxWait) {
+        try {
+            $health = Invoke-WebRequest -Uri "http://localhost:3006/health" -UseBasicParsing -TimeoutSec 2 2>&1
+            if ($health.StatusCode -eq 200) {
+                Write-Host "Search Service is healthy!" -ForegroundColor Green
+                break
+            }
+        } catch {}
+        
+        if ($waited % 10 -eq 0) {
+            Write-Host "  Still waiting... ($waited/$maxWait seconds)" -ForegroundColor Gray
+        }
+        
+        Start-Sleep -Seconds 3
+        $waited += 3
+    }
+    
+    if ($waited -ge $maxWait) {
+        Write-Host "Warning: Search Service health check timeout" -ForegroundColor Yellow
     }
     
     Write-Host ""
@@ -256,13 +354,16 @@ try {
     Write-Host "  Gateway API:        http://localhost:3000" -ForegroundColor White
     Write-Host "  Gateway Health:     http://localhost:3000/health" -ForegroundColor White
     Write-Host "  Gateway Docs:       http://localhost:3000/documentation" -ForegroundColor White
+    Write-Host "  Search Service:     http://localhost:3006/health" -ForegroundColor White
     Write-Host "  Socket Service 1:   http://localhost:3002/health" -ForegroundColor White
     Write-Host "  Socket Service 2:   http://localhost:3003/health" -ForegroundColor White
+    Write-Host "  Elasticsearch:      http://localhost:9200" -ForegroundColor White
+    Write-Host "  MinIO Console:      http://localhost:9001" -ForegroundColor White
     Write-Host "  Kafka UI:           http://localhost:8080" -ForegroundColor White
     Write-Host "  Mongo Express:      http://localhost:8082" -ForegroundColor White
     Write-Host "  Redis Commander:    http://localhost:8083" -ForegroundColor White
     Write-Host ""
-    Write-Host "Run './tests/system/test-system.ps1' to verify all services" -ForegroundColor Yellow
+    Write-Host "Run './tests/phase4-search-comprehensive-test.ps1' to test search functionality" -ForegroundColor Yellow
     Write-Host ""
     
 } catch {

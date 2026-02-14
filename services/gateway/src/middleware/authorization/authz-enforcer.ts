@@ -41,7 +41,7 @@ export class AuthzEnforcer {
       return decision;
     } catch (error) {
       console.error('Authorization error:', error);
-      
+
       // Fail closed: deny on error
       return {
         allowed: false,

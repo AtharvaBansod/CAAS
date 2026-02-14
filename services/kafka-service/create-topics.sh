@@ -61,6 +61,20 @@ create_topic "auth.revocation.events" 3 3 --config retention.ms=2592000000
 
 # Event Topics
 create_topic "events" 3 3 --config retention.ms=604800000
+create_topic "messages" 3 3 --config retention.ms=604800000
+create_topic "conversations" 3 3 --config retention.ms=604800000
+create_topic "users" 3 3 --config retention.ms=604800000
+
+# Media Topics
+create_topic "media-processing" 3 3 --config retention.ms=604800000
+
+# Messaging Events
+create_topic "message-events" 3 3 --config retention.ms=604800000
+create_topic "conversation-events" 3 3 --config retention.ms=604800000
+
+# Notification Topics
+create_topic "notifications" 3 3 --config retention.ms=604800000
+create_topic "notifications.priority" 3 3 --config retention.ms=604800000
 
 echo ""
 echo "=========================================="

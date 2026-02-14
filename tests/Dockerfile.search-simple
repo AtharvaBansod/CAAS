@@ -1,0 +1,7 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY test-search-simple.js .
+
+CMD ["node", "test-search-simple.js"]

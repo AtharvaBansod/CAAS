@@ -1,0 +1,23 @@
+{
+  "name": "@caas/search-service",
+  "version": "1.0.0",
+  "description": "CAAS Search Service with Elasticsearch",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts"
+  },
+  "dependencies": {
+    "@elastic/elasticsearch": "^8.11.0",
+    "kafkajs": "^2.2.4",
+    "mongodb": "^6.3.0",
+    "redis": "^4.6.12",
+    "fastify": "^4.25.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.6",
+    "typescript": "^5.3.3",
+    "ts-node": "^10.9.2"
+  }
+}

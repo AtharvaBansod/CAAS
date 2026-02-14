@@ -9,10 +9,26 @@
 - 8GB RAM minimum (16GB recommended)
 - 20GB free disk space
 
+### Configuration
+
+1. **Copy the environment template:**
+   ```bash
+   cp .env.example .env
+   ```
+
+2. **Update passwords in .env** (for production):
+   - Change all `CHANGE_THIS_PASSWORD` values
+   - Generate new JWT keys (see instructions in .env file)
+   - Update `JWT_SECRET` with a strong random string
+   - Restrict `CORS_ORIGINS` to your domains
+
 ### Start the Platform
 
 ```bash
-# Start all services
+# Start all services (uses .env file automatically)
+.\start.ps1
+
+# Or use docker compose directly
 docker compose up -d
 
 # Check service health
@@ -20,6 +36,16 @@ docker compose ps
 
 # View logs
 docker compose logs -f gateway
+```
+
+### Stop the Platform
+
+```bash
+# Stop all services
+.\stop.ps1
+
+# Or use docker compose directly
+docker compose down
 ```
 
 ### Access Points
@@ -97,23 +123,43 @@ caas/
 
 ### Environment Variables
 
-Copy `.env` and customize:
+All environment variables are configured in the `.env` file in the root directory. Docker Compose automatically loads this file.
+
+**Key Variables:**
 
 ```env
-# MongoDB
+# MongoDB Configuration
 MONGO_ROOT_USER=caas_admin
-MONGO_ROOT_PASSWORD=your_secure_password
+MONGO_ROOT_PASSWORD=caas_secret_2026
+MONGO_APP_PASSWORD=caas_app_secret_2026
 
-# Redis
-REDIS_PASSWORD=your_redis_password
+# Redis Configuration
+REDIS_PASSWORD=caas_redis_2026
 
-# JWT
-JWT_SECRET=your_jwt_secret
+# Elasticsearch Configuration
+ELASTICSEARCH_PASSWORD=changeme
 
-# Environment
+# MinIO (S3 Storage) Configuration
+MINIO_ROOT_USER=minioadmin
+MINIO_ROOT_PASSWORD=minioadmin
+
+# JWT Configuration
+JWT_SECRET=change_this_in_production_please
+JWT_PRIVATE_KEY="..." # RSA private key
+JWT_PUBLIC_KEY="..."  # RSA public key
+
+# Application Configuration
 NODE_ENV=production
 LOG_LEVEL=info
+CORS_ORIGINS=*
 ```
+
+**For Production:**
+1. Copy `.env.example` to `.env`
+2. Change all passwords to strong, unique values
+3. Generate new JWT keys: `openssl genrsa -out private.pem 2048 && openssl rsa -in private.pem -pubout -out public.pem`
+4. Restrict `CORS_ORIGINS` to your specific domains
+5. Never commit `.env` to version control
 
 ### Service Management
 

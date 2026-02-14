@@ -1,0 +1,32 @@
+{
+  "name": "@caas/media-service",
+  "version": "1.0.0",
+  "description": "CAAS Media Service - File upload, processing, and delivery",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.490.0",
+    "@aws-sdk/lib-storage": "^3.490.0",
+    "@aws-sdk/s3-request-presigner": "^3.490.0",
+    "@fastify/multipart": "^8.1.0",
+    "fastify": "^4.25.2",
+    "mongodb": "^6.3.0",
+    "kafkajs": "^2.2.4",
+    "ioredis": "^5.3.2",
+    "sharp": "^0.33.2",
+    "fluent-ffmpeg": "^2.1.2",
+    "file-type": "^18.7.0",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.5",
+    "@types/fluent-ffmpeg": "^2.1.24",
+    "@types/uuid": "^9.0.8",
+    "typescript": "^5.3.3",
+    "ts-node": "^10.9.2"
+  }
+}

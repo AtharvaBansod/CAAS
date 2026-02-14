@@ -32,6 +32,21 @@ const MOCK_TENANTS: Record<string, TenantContext> = {
     database_strategy: 'shared',
     is_active: true,
     created_at: new Date('2024-01-01')
+  },
+  'tenant-1': {
+    tenant_id: 'tenant-1',
+    app_id: 'app-tenant-1',
+    name: 'Test Tenant',
+    plan: 'business',
+    settings: {},
+    limits: {
+      api_rate_limit: 10000,
+      max_users: 1000,
+      storage_limit_gb: 100
+    },
+    database_strategy: 'shared',
+    is_active: true,
+    created_at: new Date('2024-01-01')
   }
 };
 
@@ -47,10 +62,10 @@ export class TenantService {
   constructor() {
     this.redis = createRedisClient();
   }
-  
+
   async getTenant(tenantId: string): Promise<TenantContext | null> {
     const cacheKey = `tenant:${tenantId}`;
-    
+
     // 1. Check Redis Cache
     try {
       const cached = await this.redis.get(cacheKey);
@@ -60,10 +75,10 @@ export class TenantService {
     } catch (err) {
       console.warn('Redis get error in TenantService:', err);
     }
-    
+
     // 2. Fallback to DB (Mock)
     const tenant = MOCK_TENANTS[tenantId];
-    
+
     if (tenant) {
       // Cache the result
       try {
@@ -73,7 +88,7 @@ export class TenantService {
       }
       return tenant;
     }
-    
+
     return null;
   }
 
@@ -92,7 +107,7 @@ export class TenantService {
 
     // 2. Resolve from "DB"
     const tenantId = MOCK_API_KEYS[apiKey];
-    
+
     if (tenantId) {
       // Cache the mapping
       try {

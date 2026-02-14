@@ -35,7 +35,7 @@ const tenantRoutes: FastifyPluginAsync = async (fastify) => {
     const { settings } = request.body as UpdateSettingsInput;
     // Mock update
     request.log.info({ tenantId: request.tenant!.tenant_id, settings }, 'Updating tenant settings');
-    
+
     reply.send({ success: true });
   });
 
