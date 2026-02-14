@@ -1,0 +1,217 @@
+{
+  "task_group": "search-service-integration-v2",
+  "description": "Connect search service to Gateway and implement real-time indexing",
+  "priority": "high",
+  "estimated_hours": 10,
+  "phase": "4-v2",
+  "feature_area": "search-service-integration",
+  "tasks": [
+    {
+      "id": "SEARCH-V2-001",
+      "task_name": "Implement Search API Endpoints",
+      "feature_details": "Create search endpoints in search service for messages, conversations, and users.",
+      "feature_dependency": [],
+      "ai_prompt": "Implement search API endpoints:\n\n1. Update services/search-service/src/index.ts to ensure all search endpoints are properly registered and working\n\n2. Create services/search-service/src/routes/search.ts with endpoints: GET /search/messages - Search messages with filters, GET /search/conversations - Search conversations, GET /search/users - Search users, GET /search/global - Global search across all types\n\n3. Implement search query parsing with support for filters: tenant_id, conversation_id, date range, author\n\n4. Add pagination with cursor-based pagination for deep results\n\n5. Implement highlighting for search results\n\n6. Add search suggestions endpoint: GET /search/suggestions?q=query\n\n7. Add recent searches endpoint: GET /search/recent\n\n8. Implement search analytics tracking\n\n9. Add rate limiting for search endpoints",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test search queries",
+          "Test filters",
+          "Test pagination"
+        ],
+        "integration_tests": [
+          "Test message search",
+          "Test conversation search",
+          "Test user search",
+          "Test global search"
+        ],
+        "e2e_tests": [
+          "Test complete search flow"
+        ]
+      },
+      "acceptance_criteria": [
+        "All search endpoints work",
+        "Filters work correctly",
+        "Pagination implemented",
+        "Highlighting works",
+        "Suggestions provided",
+        "Rate limiting active"
+      ],
+      "files_to_create": [
+        "services/search-service/src/routes/search.ts"
+      ],
+      "files_to_modify": [
+        "services/search-service/src/index.ts"
+      ],
+      "docker_requirements": {
+        "services": ["search-service", "elasticsearch"],
+        "environment_variables": [
+          "SEARCH_RATE_LIMIT_PER_MINUTE=60"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/search/messages",
+          "description": "Search messages"
+        },
+        {
+          "method": "GET",
+          "path": "/search/conversations",
+          "description": "Search conversations"
+        },
+        {
+          "method": "GET",
+          "path": "/search/users",
+          "description": "Search users"
+        },
+        {
+          "method": "GET",
+          "path": "/search/suggestions",
+          "description": "Search suggestions"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 4,
+      "tags": ["search", "api", "elasticsearch"]
+    },
+    {
+      "id": "SEARCH-V2-002",
+      "task_name": "Implement Real-Time Indexing from Kafka",
+      "feature_details": "Create Kafka consumer to index messages and conversations in real-time.",
+      "feature_dependency": [],
+      "ai_prompt": "Implement real-time indexing from Kafka:\n\n1. Create services/search-service/src/indexing/kafka-indexer.ts that consumes from Kafka topics and indexes documents in Elasticsearch\n\n2. Create consumers for: chat.messages topic for message indexing, conversation-events topic for conversation indexing, user-events topic for user indexing\n\n3. Implement bulk indexing for efficiency\n\n4. Add retry logic for failed indexing\n\n5. Create dead letter queue for persistently failing documents\n\n6. Add indexing metrics: documents indexed, indexing latency, error rates\n\n7. Implement index versioning for schema changes\n\n8. Add backfill capability for reindexing\n\n9. Create admin endpoint to trigger reindexing",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test document indexing",
+          "Test bulk indexing",
+          "Test retry logic"
+        ],
+        "integration_tests": [
+          "Test message indexing from Kafka",
+          "Test conversation indexing",
+          "Test search finds indexed documents"
+        ],
+        "e2e_tests": [
+          "Test complete indexing flow"
+        ]
+      },
+      "acceptance_criteria": [
+        "Documents indexed from Kafka",
+        "Bulk indexing works",
+        "Retry logic works",
+        "DLQ for failures",
+        "Metrics collected",
+        "Reindexing capability"
+      ],
+      "files_to_create": [
+        "services/search-service/src/indexing/kafka-indexer.ts",
+        "services/search-service/src/indexing/bulk-indexer.ts",
+        "services/search-service/src/indexing/reindexer.ts"
+      ],
+      "files_to_modify": [
+        "services/search-service/src/index.ts"
+      ],
+      "docker_requirements": {
+        "services": ["search-service", "kafka", "elasticsearch"],
+        "environment_variables": [
+          "INDEXING_BATCH_SIZE=100",
+          "INDEXING_FLUSH_INTERVAL_MS=1000"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/admin/reindex",
+          "description": "Trigger reindexing"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 4,
+      "tags": ["search", "kafka", "indexing"]
+    },
+    {
+      "id": "SEARCH-V2-003",
+      "task_name": "Update Gateway to Proxy to Search Service",
+      "feature_details": "Update Gateway to proxy search requests to search service.",
+      "feature_dependency": ["SEARCH-V2-001"],
+      "ai_prompt": "Update Gateway to proxy to search service:\n\n1. Create services/gateway/src/routes/v1/search.ts with endpoints that proxy to search-service: GET /search/messages, GET /search/conversations, GET /search/users, GET /search, GET /search/suggestions\n\n2. Create services/gateway/src/services/search-client.ts as HTTP client for search service\n\n3. Add query validation and sanitization\n\n4. Implement result caching in Redis for common queries\n\n5. Add service discovery for search-service\n\n6. Implement circuit breaker for search service calls\n\n7. Update docker-compose.yml to ensure Gateway depends on search-service\n\n8. Add search result formatting for consistent API response",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test search client",
+          "Test caching"
+        ],
+        "integration_tests": [
+          "Test search proxy",
+          "Test caching",
+          "Test circuit breaker"
+        ],
+        "e2e_tests": [
+          "Test complete Gateway to search flow"
+        ]
+      },
+      "acceptance_criteria": [
+        "Gateway proxies all search endpoints",
+        "Query validation works",
+        "Caching implemented",
+        "Circuit breaker works",
+        "Results formatted correctly"
+      ],
+      "files_to_create": [
+        "services/gateway/src/routes/v1/search.ts",
+        "services/gateway/src/services/search-client.ts"
+      ],
+      "files_to_modify": [
+        "services/gateway/src/routes/v1/index.ts",
+        "docker-compose.yml"
+      ],
+      "docker_requirements": {
+        "services": ["gateway", "search-service", "redis"],
+        "environment_variables": [
+          "SEARCH_SERVICE_URL=http://search-service:3006",
+          "SEARCH_CACHE_TTL_SECONDS=60"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/v1/search/messages",
+          "description": "Search messages"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/search",
+          "description": "Global search"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/search/suggestions",
+          "description": "Search suggestions"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 2,
+      "tags": ["gateway", "search", "proxy"]
+    }
+  ]
+}

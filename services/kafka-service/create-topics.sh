@@ -72,6 +72,10 @@ create_topic "media-processing" 3 3 --config retention.ms=604800000
 create_topic "message-events" 3 3 --config retention.ms=604800000
 create_topic "conversation-events" 3 3 --config retention.ms=604800000
 
+# Socket/Chat Topics (Phase 3)
+create_topic "chat.messages" 3 3 --config retention.ms=604800000
+create_topic "chat.events" 3 3 --config retention.ms=604800000
+
 # Notification Topics
 create_topic "notifications" 3 3 --config retention.ms=604800000
 create_topic "notifications.priority" 3 3 --config retention.ms=604800000

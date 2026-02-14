@@ -12,6 +12,7 @@ export interface TenantLimits {
 
 export interface TenantContext {
   tenant_id: string;
+  id?: string; // Alias for tenant_id or app_id, used by admin/MFA routes
   app_id: string;
   name: string;
   plan: 'free' | 'startup' | 'business' | 'enterprise';
@@ -22,8 +23,3 @@ export interface TenantContext {
   created_at: Date;
 }
 
-declare module 'fastify' {
-  interface FastifyRequest {
-    tenant?: TenantContext;
-  }
-}

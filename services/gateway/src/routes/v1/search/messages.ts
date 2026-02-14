@@ -1,5 +1,4 @@
 import { FastifyInstance } from 'fastify';
-import { authenticate } from '../../../middleware/auth/authenticate';
 import { Client } from '@elastic/elasticsearch';
 
 const ELASTICSEARCH_URL = process.env.ELASTICSEARCH_URL || 'http://elasticsearch:9200';
@@ -20,7 +19,7 @@ export async function messageSearchRoutes(app: FastifyInstance) {
   app.get(
     '/',
     {
-      preHandler: [authenticate],
+      preHandler: [(req: any, rep: any) => app.authenticate(req, rep)],
       schema: {
         querystring: {
           type: 'object',
@@ -38,7 +37,8 @@ export async function messageSearchRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const { tenant_id, user_id } = request.user;
+      const tenant_id = request.user?.tenant_id ?? '';
+      const user_id = request.user?.user_id ?? request.user?.sub ?? request.user?.id ?? '';
       const query = request.query as any;
 
       const must: object[] = [];
@@ -110,7 +110,7 @@ export async function messageSearchRoutes(app: FastifyInstance) {
           took: result.took,
         };
       } catch (error: any) {
-        app.log.error('Search failed:', error);
+        app.log.error({ err: error }, 'Search failed');
         return reply.status(500).send({ error: 'Search failed', message: error.message });
       }
     },

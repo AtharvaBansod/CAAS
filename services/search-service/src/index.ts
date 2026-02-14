@@ -2,16 +2,13 @@ import { Client } from '@elastic/elasticsearch';
 import { Kafka } from 'kafkajs';
 import { MongoClient } from 'mongodb';
 import Fastify from 'fastify';
-import { messagesIndexMapping } from './indices/messages.index';
-import { conversationsIndexMapping } from './indices/conversations.index';
-import { usersIndexMapping } from './indices/users.index';
-import { MessageIndexer } from './indexing/message-indexer';
-import { ConversationIndexer } from './indexing/conversation-indexer';
-import { UserIndexer } from './indexing/user-indexer';
-import { IndexingConsumer } from './indexing/indexing-consumer';
-import { MessageSearchService } from './search/message-search.service';
-import { GlobalSearchService } from './search/global-search.service';
-import { SuggestionsService } from './search/suggestions.service';
+import Redis from 'ioredis';
+import { messagesIndexMapping } from './indices/messages.index.js';
+import { conversationsIndexMapping } from './indices/conversations.index.js';
+import { usersIndexMapping } from './indices/users.index.js';
+import { searchRoutes } from './routes/search.js';
+import { KafkaIndexer } from './indexing/kafka-indexer.js';
+import { Reindexer } from './indexing/reindexer.js';
 
 const ELASTICSEARCH_URL = process.env.ELASTICSEARCH_URL || 'http://elasticsearch:9200';
 const ELASTICSEARCH_PASSWORD = process.env.ELASTICSEARCH_PASSWORD || 'changeme';
@@ -52,33 +49,83 @@ async function main() {
   await mongoClient.connect();
   console.log('Connected to MongoDB');
 
-  // Initialize Kafka
-  const kafka = new Kafka({
-    clientId: 'search-service',
-    brokers: KAFKA_BROKERS,
-  });
+  // Initialize Redis
+  const redis = new Redis(REDIS_URL);
+  console.log('Connected to Redis');
 
-  // Initialize indexers
-  const messageIndexer = new MessageIndexer(esClient);
-  const conversationIndexer = new ConversationIndexer(esClient, mongoClient);
-  const userIndexer = new UserIndexer(esClient);
+  // Initialize Kafka indexer (start in background with retry - don't block server startup)
+  const kafkaIndexer = new KafkaIndexer(KAFKA_BROKERS, esClient);
+  const startIndexer = async (retries = 5) => {
+    for (let i = 0; i < retries; i++) {
+      try {
+        await kafkaIndexer.start();
+        console.log('Kafka indexer started');
+        return;
+      } catch (err) {
+        console.warn(`Kafka indexer start attempt ${i + 1}/${retries} failed:`, (err as Error).message);
+        if (i < retries - 1) await new Promise((r) => setTimeout(r, 5000 * (i + 1)));
+        else console.error('Kafka indexer failed to start after retries - search indexing disabled');
+      }
+    }
+  };
+  startIndexer(); // fire and forget
 
-  // Initialize search services
-  const messageSearchService = new MessageSearchService(esClient);
-  const globalSearchService = new GlobalSearchService(esClient);
-  const suggestionsService = new SuggestionsService(esClient, mongoClient, REDIS_URL);
-
-  // Start Kafka consumer
-  const indexingConsumer = new IndexingConsumer(kafka, messageIndexer);
-  await indexingConsumer.start();
-  console.log('Kafka consumer started');
+  // Initialize reindexer
+  const reindexer = new Reindexer(esClient, mongoClient);
 
   // Initialize Fastify server
   const fastify = Fastify({ logger: true });
 
-  // Health check
+  // Health check (don't fail if indexer not yet started)
   fastify.get('/health', async () => {
-    return { status: 'healthy', service: 'search-service' };
+    let metrics: { documentsIndexed?: number; errors?: number } = {};
+    try {
+      metrics = kafkaIndexer.getMetrics();
+    } catch (_) {}
+    return {
+      status: 'healthy',
+      service: 'search-service',
+      indexing: metrics,
+    };
+  });
+
+  // Register search routes
+  await fastify.register(searchRoutes, { esClient, redis });
+
+  // Admin reindex endpoint
+  fastify.post('/admin/reindex', async (request, reply) => {
+    const { tenant_id, type } = request.body as any;
+
+    try {
+      if (type === 'messages' || !type) {
+        await reindexer.reindexMessages(tenant_id);
+      }
+      if (type === 'conversations' || !type) {
+        await reindexer.reindexConversations(tenant_id);
+      }
+      if (type === 'users' || !type) {
+        await reindexer.reindexUsers(tenant_id);
+      }
+
+      return reply.send({
+        success: true,
+        message: 'Reindexing completed',
+        metrics: reindexer.getMetrics(),
+      });
+    } catch (error: any) {
+      return reply.code(500).send({
+        error: 'ReindexFailed',
+        message: error.message,
+      });
+    }
+  });
+
+  // Metrics endpoint
+  fastify.get('/metrics', async () => {
+    return {
+      indexing: kafkaIndexer.getMetrics(),
+      reindexing: reindexer.getMetrics(),
+    };
   });
 
   // Start server
@@ -88,8 +135,9 @@ async function main() {
   // Graceful shutdown
   process.on('SIGTERM', async () => {
     console.log('SIGTERM received, shutting down gracefully...');
-    await indexingConsumer.stop();
+    await kafkaIndexer.stop();
     await mongoClient.close();
+    redis.disconnect();
     await fastify.close();
     process.exit(0);
   });

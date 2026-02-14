@@ -1,0 +1,198 @@
+{
+  "task_group": "mfa-enforcement-v2",
+  "description": "Enforce MFA for tenants and users where configured",
+  "priority": "medium",
+  "estimated_hours": 8,
+  "phase": "2-v2",
+  "feature_area": "mfa-enforcement",
+  "tasks": [
+    {
+      "id": "MFA-V2-001",
+      "task_name": "Implement MFA Enforcement Middleware",
+      "feature_details": "Create middleware to enforce MFA requirements based on tenant and user configuration.",
+      "feature_dependency": [],
+      "ai_prompt": "Implement MFA enforcement middleware:\n\n1. Create services/gateway/src/middleware/mfa/mfa-enforcement.ts that checks if MFA is required for tenant and user, verifies MFA has been completed in session, redirects to MFA challenge if needed, supports MFA bypass for trusted devices\n\n2. Create MFA requirement levels: OPTIONAL, RECOMMENDED, REQUIRED, ADMIN_ONLY\n\n3. Update services/gateway/src/middleware/auth/index.ts to check MFA status after authentication, store MFA verification in session, handle MFA challenge flow\n\n4. Create services/gateway/src/routes/v1/mfa/challenge.ts with endpoints for challenge initiation, TOTP verification, backup code usage, and MFA status check\n\n5. Implement trusted device bypass with cookie/token checking\n\n6. Add MFA enforcement to protected routes",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test MFA requirement checking",
+          "Test trusted device bypass",
+          "Test challenge flow"
+        ],
+        "integration_tests": [
+          "Test MFA required blocks access",
+          "Test MFA completion grants access",
+          "Test trusted device bypass works",
+          "Test backup code usage"
+        ],
+        "e2e_tests": [
+          "Test complete MFA enforcement flow"
+        ]
+      },
+      "acceptance_criteria": [
+        "MFA enforced based on tenant config",
+        "MFA enforced based on user preference",
+        "Challenge flow works correctly",
+        "Trusted devices bypass MFA",
+        "Backup codes work",
+        "MFA status tracked in session"
+      ],
+      "files_to_create": [
+        "services/gateway/src/middleware/mfa/mfa-enforcement.ts",
+        "services/gateway/src/routes/v1/mfa/challenge.ts",
+        "services/gateway/src/routes/v1/mfa/index.ts"
+      ],
+      "files_to_modify": [
+        "services/gateway/src/middleware/auth/index.ts",
+        "services/gateway/src/routes/v1/index.ts"
+      ],
+      "docker_requirements": {
+        "services": ["gateway", "auth-service", "mongodb"],
+        "environment_variables": [
+          "MFA_SESSION_TTL_MINUTES=30"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/v1/mfa/challenge",
+          "description": "Initiate MFA challenge"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/mfa/verify",
+          "description": "Verify TOTP code"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/mfa/backup",
+          "description": "Use backup code"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 4,
+      "tags": ["auth", "mfa", "security", "middleware"]
+    },
+    {
+      "id": "MFA-V2-002",
+      "task_name": "Implement Tenant MFA Configuration",
+      "feature_details": "Create tenant-level MFA configuration and enforcement policies.",
+      "feature_dependency": ["MFA-V2-001"],
+      "ai_prompt": "Implement tenant MFA configuration:\n\n1. Create services/gateway/src/routes/v1/admin/mfa.ts with admin endpoints for getting and updating MFA configuration, listing users with MFA status, and enforcing MFA for all users\n\n2. Create MFA configuration schema with level, methods, trusted_device_days, grace_period_days, and exempt_users\n\n3. Update services/mongodb-service/src/schemas/platform/tenant.schema.ts to include MFA config\n\n4. Create services/auth-service/src/mfa/tenant-mfa-policy.ts for evaluating MFA requirement for user, checking grace periods, handling exemptions\n\n5. Add MFA configuration to tenant onboarding\n\n6. Create migration for existing tenants with default OPTIONAL",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test MFA policy evaluation",
+          "Test grace period handling",
+          "Test exemption checking"
+        ],
+        "integration_tests": [
+          "Test tenant MFA configuration",
+          "Test MFA enforcement by tenant",
+          "Test grace period",
+          "Test exemptions"
+        ],
+        "e2e_tests": [
+          "Test complete tenant MFA flow"
+        ]
+      },
+      "acceptance_criteria": [
+        "Tenants can configure MFA level",
+        "MFA enforced per tenant policy",
+        "Grace periods work correctly",
+        "Exemptions respected",
+        "Configuration migrated for existing tenants",
+        "Admin APIs work correctly"
+      ],
+      "files_to_create": [
+        "services/gateway/src/routes/v1/admin/mfa.ts",
+        "services/auth-service/src/mfa/tenant-mfa-policy.ts"
+      ],
+      "files_to_modify": [
+        "services/mongodb-service/src/schemas/platform/tenant.schema.ts",
+        "services/gateway/src/routes/v1/admin/index.ts"
+      ],
+      "docker_requirements": {
+        "services": ["gateway", "auth-service", "mongodb"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/v1/admin/tenant/mfa",
+          "description": "Get MFA configuration"
+        },
+        {
+          "method": "PUT",
+          "path": "/v1/admin/tenant/mfa",
+          "description": "Update MFA configuration"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": [
+          "Add MFA config to existing tenants with default OPTIONAL"
+        ]
+      },
+      "status": "pending",
+      "estimated_hours": 3,
+      "tags": ["auth", "mfa", "tenant", "configuration"]
+    },
+    {
+      "id": "MFA-V2-003",
+      "task_name": "Create MFA Enforcement Tests",
+      "feature_details": "Create comprehensive tests for MFA enforcement and tenant configuration.",
+      "feature_dependency": ["MFA-V2-001", "MFA-V2-002"],
+      "ai_prompt": "Create MFA enforcement tests:\n\n1. Create services/gateway/tests/integration/mfa-enforcement.test.ts with tests for MFA required blocks unverified users, MFA verification grants access, trusted device bypass works, backup code usage works, session tracks MFA status, different MFA levels enforced correctly\n\n2. Create services/gateway/tests/integration/tenant-mfa.test.ts with tests for tenant MFA configuration, MFA enforcement by tenant level, grace period handling, exemption handling, admin configuration APIs\n\n3. Add MFA tests to CI/CD pipeline\n\n4. Create security audit tests for MFA bypass attempts",
+      "testing_instructions": {
+        "unit_tests": [],
+        "integration_tests": [
+          "Run MFA enforcement tests",
+          "Run tenant MFA tests",
+          "Run security audit tests"
+        ],
+        "e2e_tests": [
+          "Test complete MFA flow"
+        ]
+      },
+      "acceptance_criteria": [
+        "All MFA scenarios tested",
+        "All tenant config scenarios tested",
+        "Security bypass attempts tested",
+        "Tests run in Docker environment"
+      ],
+      "files_to_create": [
+        "services/gateway/tests/integration/mfa-enforcement.test.ts",
+        "services/gateway/tests/integration/tenant-mfa.test.ts"
+      ],
+      "files_to_modify": [
+        "services/gateway/package.json"
+      ],
+      "docker_requirements": {
+        "services": ["gateway", "auth-service", "mongodb", "redis"],
+        "environment_variables": [
+          "NODE_ENV=test"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 1,
+      "tags": ["auth", "mfa", "testing"]
+    }
+  ]
+}

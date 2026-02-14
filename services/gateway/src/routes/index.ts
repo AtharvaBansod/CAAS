@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import internalRoutes from './internal';
+import { internalRoutes } from './internal/index.js';
 import { registerV1Routes } from './v1';
 import { VersionManager, ApiVersion } from './version-manager';
 import { deprecationMiddleware } from '../middleware/versioning';

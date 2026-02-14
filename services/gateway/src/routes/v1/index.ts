@@ -7,26 +7,28 @@ import { conversationRoutes } from './conversations';
 import { messageRoutes } from './messages';
 import { mediaRoutes } from './media';
 import { searchRoutes } from './search';
-// import { sessionsRoutes } from './sessions'; // TODO: Fix after service architecture
-// import { mfaRoutes } from './mfa'; // TODO: Fix after service architecture
+import { sessionsRoutes } from './sessions';
+import { mfaRoutes } from './mfa';
+import { adminRoutes } from './admin';
 
 export const registerV1Routes = async (app: FastifyInstance) => {
   // Auth Routes
   await app.register(authRoutes, { prefix: '/auth' });
 
   // Session Management Routes
-  // TODO: Re-enable after fixing service architecture
-  // await app.register(sessionsRoutes, { prefix: '/' });
+  await app.register(sessionsRoutes, { prefix: '/' });
 
   // MFA Routes
-  // TODO: Re-enable after fixing service architecture
-  // await app.register(mfaRoutes, { prefix: '/mfa' });
+  await app.register(mfaRoutes, { prefix: '/mfa' });
+
+  // Admin Routes
+  await app.register(adminRoutes, { prefix: '/' });
 
   // Webhook Routes
   await app.register(webhookRoutes, { prefix: '/webhooks' });
 
   // Tenant Routes
-  await app.register(tenantRoutes, { prefix: '/tenant' }); // Singular /tenant as it refers to "current" tenant context mostly
+  await app.register(tenantRoutes, { prefix: '/tenant' });
 
   // Usage Routes
   await app.register(usageExportRoutes, { prefix: '/usage' });

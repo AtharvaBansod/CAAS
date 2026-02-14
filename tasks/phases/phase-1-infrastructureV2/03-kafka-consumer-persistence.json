@@ -1,0 +1,276 @@
+{
+  "task_group": "kafka-consumer-persistence-v2",
+  "description": "Fix Kafka consumers to properly persist messages to MongoDB with complete pipeline stages",
+  "priority": "critical",
+  "estimated_hours": 16,
+  "phase": "1-v2",
+  "feature_area": "kafka-consumer-persistence",
+  "tasks": [
+    {
+      "id": "KAFKA-V2-001",
+      "task_name": "Implement Complete Pipeline Stages",
+      "feature_details": "Create all missing pipeline stages for message processing: deserialization, validation, tenant context, authorization, transformation, processing, persistence, notification, and metrics.",
+      "feature_dependency": [],
+      "ai_prompt": "Implement complete pipeline stages for Kafka message processing:\n\n1. Update services/kafka-service/src/pipeline/stages/deserialization-stage.ts to properly deserialize messages with schema validation\n\n2. Update services/kafka-service/src/pipeline/stages/validation-stage.ts to validate message structure using Zod schemas\n\n3. Create services/kafka-service/src/pipeline/stages/tenant-context-stage.ts that:\n   - Extracts tenant_id from message\n   - Loads tenant configuration from MongoDB\n   - Validates tenant is active\n   - Adds tenant context to pipeline\n\n4. Create services/kafka-service/src/pipeline/stages/authorization-stage.ts that:\n   - Checks sender has permission to send message\n   - Validates conversation membership\n   - Verifies rate limits\n\n5. Create services/kafka-service/src/pipeline/stages/transformation-stage.ts that:\n   - Processes message content (mentions, links)\n   - Sanitizes HTML if present\n   - Extracts metadata\n\n6. Update services/kafka-service/src/pipeline/stages/processing-stage.ts to apply business logic\n\n7. Create services/kafka-service/src/pipeline/stages/persistence-stage.ts that:\n   - Saves message to MongoDB\n   - Updates conversation last_message_at\n   - Handles bulk writes for batch processing\n\n8. Create services/kafka-service/src/pipeline/stages/notification-stage.ts that:\n   - Triggers push notifications\n   - Updates unread counts in Redis\n   - Emits real-time events via Socket.IO\n\n9. Create services/kafka-service/src/pipeline/stages/metrics-stage.ts that records processing metrics\n\n10. Update services/kafka-service/src/pipeline/index.ts to export all stages",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test each pipeline stage independently",
+          "Test stage error handling",
+          "Test context propagation through stages"
+        ],
+        "integration_tests": [
+          "Test complete pipeline execution",
+          "Test pipeline with real messages",
+          "Test error handling in pipeline"
+        ],
+        "e2e_tests": [
+          "Test message flows through all stages to MongoDB"
+        ]
+      },
+      "acceptance_criteria": [
+        "All 9 pipeline stages implemented",
+        "Stages execute in correct order",
+        "Errors handled at each stage",
+        "Context propagated through pipeline",
+        "Metrics collected for each stage",
+        "Pipeline builder works correctly"
+      ],
+      "files_to_create": [
+        "services/kafka-service/src/pipeline/stages/tenant-context-stage.ts",
+        "services/kafka-service/src/pipeline/stages/authorization-stage.ts",
+        "services/kafka-service/src/pipeline/stages/transformation-stage.ts",
+        "services/kafka-service/src/pipeline/stages/persistence-stage.ts",
+        "services/kafka-service/src/pipeline/stages/notification-stage.ts",
+        "services/kafka-service/src/pipeline/stages/metrics-stage.ts"
+      ],
+      "files_to_modify": [
+        "services/kafka-service/src/pipeline/stages/deserialization-stage.ts",
+        "services/kafka-service/src/pipeline/stages/validation-stage.ts",
+        "services/kafka-service/src/pipeline/stages/processing-stage.ts",
+        "services/kafka-service/src/pipeline/index.ts"
+      ],
+      "docker_requirements": {
+        "services": ["kafka-service", "mongodb", "redis"],
+        "environment_variables": [
+          "PIPELINE_STAGE_TIMEOUT_MS=5000"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 5,
+      "tags": ["kafka", "pipeline", "message-processing"]
+    },
+    {
+      "id": "KAFKA-V2-002",
+      "task_name": "Implement Message Consumer Handler with Persistence",
+      "feature_details": "Fix the message consumer handler to actually persist messages to MongoDB instead of being a stub.",
+      "feature_dependency": ["KAFKA-V2-001"],
+      "ai_prompt": "Implement message consumer handler with full persistence:\n\n1. Rewrite services/kafka-service/src/consumers/consumer-handlers/message-handler.ts to:\n   - Use the complete message pipeline\n   - Connect to MongoDB using mongodb-service\n   - Persist messages to messages collection\n   - Update conversation last_message_at\n   - Handle batch processing for efficiency\n   - Implement proper error handling with DLQ\n\n2. Create services/kafka-service/src/consumers/message-consumer.ts that:\n   - Extends BaseConsumer\n   - Subscribes to chat.messages topic\n   - Uses MessagePipeline for processing\n   - Commits offsets after successful persistence\n   - Handles retries with exponential backoff\n\n3. Create services/kafka-service/src/persistence/message-repository.ts with methods:\n   - saveMessage(message): Save single message\n   - saveMessages(messages): Bulk save messages\n   - updateConversationLastMessage(conversationId, message): Update conversation\n\n4. Create services/kafka-service/src/persistence/conversation-repository.ts for conversation updates\n\n5. Update services/kafka-service/src/index.ts to start the message consumer\n\n6. Add proper connection management for MongoDB in kafka-service",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test message persistence",
+          "Test batch processing",
+          "Test error handling"
+        ],
+        "integration_tests": [
+          "Test consumer processes messages from Kafka",
+          "Test messages appear in MongoDB",
+          "Test conversation is updated",
+          "Test failed messages go to DLQ"
+        ],
+        "e2e_tests": [
+          "Test complete flow: Kafka -> Consumer -> MongoDB"
+        ]
+      },
+      "acceptance_criteria": [
+        "Messages from Kafka are persisted to MongoDB",
+        "Conversation last_message_at is updated",
+        "Batch processing works for efficiency",
+        "Failed messages go to DLQ",
+        "Offsets committed after persistence",
+        "Consumer handles high throughput"
+      ],
+      "files_to_create": [
+        "services/kafka-service/src/consumers/message-consumer.ts",
+        "services/kafka-service/src/persistence/message-repository.ts",
+        "services/kafka-service/src/persistence/conversation-repository.ts",
+        "services/kafka-service/src/persistence/index.ts"
+      ],
+      "files_to_modify": [
+        "services/kafka-service/src/consumers/consumer-handlers/message-handler.ts",
+        "services/kafka-service/src/index.ts"
+      ],
+      "docker_requirements": {
+        "services": ["kafka-service", "kafka", "mongodb"],
+        "environment_variables": [
+          "MESSAGE_BATCH_SIZE=100",
+          "MESSAGE_FLUSH_INTERVAL_MS=1000"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "messages",
+            "description": "Store chat messages from Kafka"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "messages",
+            "fields": ["conversation_id", "created_at"],
+            "options": { "background": true }
+          }
+        ],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 5,
+      "tags": ["kafka", "consumer", "mongodb", "persistence"]
+    },
+    {
+      "id": "KAFKA-V2-003",
+      "task_name": "Implement Dead Letter Queue Handler",
+      "feature_details": "Create proper DLQ handling for failed messages with retry logic and manual reprocessing capability.",
+      "feature_dependency": ["KAFKA-V2-002"],
+      "ai_prompt": "Implement Dead Letter Queue handling:\n\n1. Create services/kafka-service/src/dlq/dlq-processor.ts that:\n   - Consumes from internal.dlq topic\n   - Stores failed messages in MongoDB dlq_messages collection\n   - Categorizes errors (retryable vs non-retryable)\n   - Tracks retry attempts\n\n2. Create services/kafka-service/src/dlq/dlq-retry-service.ts that:\n   - Retries failed messages with exponential backoff\n   - Moves messages through retry topics (retry.1, retry.2, retry.3)\n   - After max retries, marks as permanent failure\n   - Provides manual reprocessing API\n\n3. Create services/kafka-service/src/dlq/dlq-admin.ts with methods:\n   - listFailedMessages(filters): List DLQ messages\n   - reprocessMessage(id): Manually reprocess a message\n   - deleteMessage(id): Remove from DLQ\n   - getMessageDetails(id): Get full message info\n\n4. Update services/kafka-service/src/errors/dead-letter-queue.ts to integrate with new DLQ system\n\n5. Create services/kateway/src/routes/v1/admin/dlq.ts for admin endpoints to manage DLQ\n\n6. Add DLQ monitoring metrics",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test DLQ message storage",
+          "Test retry logic",
+          "Test manual reprocessing"
+        ],
+        "integration_tests": [
+          "Test failed messages go to DLQ",
+          "Test retry mechanism works",
+          "Test admin API for DLQ management"
+        ],
+        "e2e_tests": [
+          "Test complete failure -> DLQ -> retry flow"
+        ]
+      },
+      "acceptance_criteria": [
+        "Failed messages stored in DLQ",
+        "Retry mechanism with backoff",
+        "Manual reprocessing works",
+        "Admin API for DLQ management",
+        "DLQ monitoring and alerts",
+        "Messages categorized by error type"
+      ],
+      "files_to_create": [
+        "services/kafka-service/src/dlq/dlq-processor.ts",
+        "services/kafka-service/src/dlq/dlq-retry-service.ts",
+        "services/kafka-service/src/dlq/dlq-admin.ts",
+        "services/kafka-service/src/dlq/index.ts",
+        "services/gateway/src/routes/v1/admin/dlq.ts"
+      ],
+      "files_to_modify": [
+        "services/kafka-service/src/errors/dead-letter-queue.ts"
+      ],
+      "docker_requirements": {
+        "services": ["kafka-service", "kafka", "mongodb"],
+        "environment_variables": [
+          "DLQ_MAX_RETRIES=3",
+          "DLQ_RETRY_DELAY_MS=60000"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/v1/admin/dlq",
+          "description": "List DLQ messages"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/admin/dlq/:id/reprocess",
+          "description": "Reprocess DLQ message"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "dlq_messages",
+            "description": "Store dead letter queue messages"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "dlq_messages",
+            "fields": ["topic", "failed_at"],
+            "options": { "background": true }
+          }
+        ],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 4,
+      "tags": ["kafka", "dlq", "error-handling", "reliability"]
+    },
+    {
+      "id": "KAFKA-V2-004",
+      "task_name": "Create Kafka Consumer Integration Tests",
+      "feature_details": "Create comprehensive tests for Kafka consumers including message persistence, error handling, and DLQ.",
+      "feature_dependency": ["KAFKA-V2-002", "KAFKA-V2-003"],
+      "ai_prompt": "Create Kafka consumer integration tests:\n\n1. Create services/kafka-service/tests/integration/consumer.test.ts with tests for:\n   - Consumer connects to Kafka and subscribes to topic\n   - Messages are consumed from Kafka\n   - Messages are persisted to MongoDB\n   - Conversation is updated after message persistence\n   - Batch processing works correctly\n   - Failed messages go to DLQ\n   - Offsets are committed after successful processing\n\n2. Create services/kafka-service/tests/integration/pipeline.test.ts with tests for:\n   - All pipeline stages execute in order\n   - Context is propagated through stages\n   - Stage failures trigger error handling\n   - Metrics are collected for each stage\n\n3. Create test utilities:\n   - services/kafka-service/tests/fixtures/messages.ts\n   - services/kafka-service/tests/fixtures/conversations.ts\n   - services/kafka-service/tests/utils/kafka-producer.ts for test message production\n\n4. Create docker-compose.test.yml for Kafka service tests\n\n5. Add test scripts to package.json\n\n6. Ensure tests use testcontainers for Kafka and MongoDB",
+      "testing_instructions": {
+        "unit_tests": [],
+        "integration_tests": [
+          "Run consumer integration tests",
+          "Run pipeline integration tests",
+          "Verify message persistence",
+          "Verify DLQ handling"
+        ],
+        "e2e_tests": [
+          "Test complete Kafka to MongoDB flow"
+        ]
+      },
+      "acceptance_criteria": [
+        "All consumer scenarios tested",
+        "All pipeline stages tested",
+        "DLQ scenarios covered",
+        "Tests run in Docker environment",
+        "Tests use real Kafka and MongoDB"
+      ],
+      "files_to_create": [
+        "services/kafka-service/tests/integration/consumer.test.ts",
+        "services/kafka-service/tests/integration/pipeline.test.ts",
+        "services/kafka-service/tests/fixtures/messages.ts",
+        "services/kafka-service/tests/fixtures/conversations.ts",
+        "services/kafka-service/tests/utils/kafka-producer.ts",
+        "services/kafka-service/docker-compose.test.yml"
+      ],
+      "files_to_modify": [
+        "services/kafka-service/package.json"
+      ],
+      "docker_requirements": {
+        "services": ["kafka-service", "kafka", "mongodb", "zookeeper"],
+        "environment_variables": [
+          "NODE_ENV=test",
+          "KAFKA_BROKERS=kafka:29092"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 2,
+      "tags": ["kafka", "testing", "integration"]
+    }
+  ]
+}

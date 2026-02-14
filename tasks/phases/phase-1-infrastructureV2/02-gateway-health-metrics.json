@@ -1,0 +1,253 @@
+{
+  "task_group": "gateway-health-metrics-v2",
+  "description": "Complete health check endpoints and Prometheus metrics implementation",
+  "priority": "critical",
+  "estimated_hours": 10,
+  "phase": "1-v2",
+  "feature_area": "gateway-health-metrics",
+  "tasks": [
+    {
+      "id": "GATEWAY-V2-004",
+      "task_name": "Implement Health Check Service with Dependency Validation",
+      "feature_details": "Create proper health check service that validates MongoDB, Redis, and Kafka connectivity with proper timeout handling and caching.",
+      "feature_dependency": [],
+      "ai_prompt": "Implement comprehensive health check service:\n\n1. Create services/gateway/src/services/health-check.ts with HealthCheckService class that checks MongoDB, Redis, and Kafka connectivity with configurable timeouts\n\n2. Implement check methods:\n   - checkMongoDB(): Ping MongoDB and measure latency\n   - checkRedis(): Ping Redis and measure latency\n   - checkKafka(): Verify broker connectivity\n\n3. Add caching to health checks - cache results for 1 second to prevent overload\n\n4. Create services/gateway/src/routes/internal/health.ts with endpoints:\n   - GET /health - Liveness probe (lightweight, no dependency checks)\n   - GET /ready - Readiness probe (checks all dependencies)\n   - GET /health/detailed - Full health details with individual check results\n\n5. Update services/gateway/src/routes/internal/index.ts to register health routes\n\n6. Ensure health endpoints return proper HTTP status codes (200 for healthy, 503 for unhealthy)\n\n7. Add health check configuration to services/gateway/src/config/index.ts",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test individual health check methods",
+          "Test health check caching",
+          "Test timeout handling"
+        ],
+        "integration_tests": [
+          "Test /health returns 200 when healthy",
+          "Test /ready returns 503 when MongoDB down",
+          "Test /ready returns 503 when Redis down",
+          "Test /health/detailed shows all check results"
+        ],
+        "e2e_tests": [
+          "Test health checks in Docker environment",
+          "Test degraded state when dependency fails"
+        ]
+      },
+      "acceptance_criteria": [
+        "/health responds in less than 10ms",
+        "/ready checks all dependencies",
+        "Degraded dependencies show degraded status",
+        "Proper HTTP status codes returned",
+        "Health checks cached to prevent overload",
+        "Timeout handling for slow dependencies"
+      ],
+      "files_to_create": [
+        "services/gateway/src/services/health-check.ts",
+        "services/gateway/src/routes/internal/health.ts",
+        "services/gateway/src/routes/internal/index.ts"
+      ],
+      "files_to_modify": [
+        "services/gateway/src/routes/index.ts",
+        "services/gateway/src/config/index.ts"
+      ],
+      "docker_requirements": {
+        "services": ["gateway", "mongodb", "redis", "kafka"],
+        "environment_variables": [
+          "HEALTH_CHECK_TIMEOUT_MS=5000",
+          "HEALTH_CHECK_CACHE_TTL_MS=1000"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/health",
+          "description": "Liveness probe"
+        },
+        {
+          "method": "GET",
+          "path": "/ready",
+          "description": "Readiness probe with dependency checks"
+        },
+        {
+          "method": "GET",
+          "path": "/health/detailed",
+          "description": "Detailed health information"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 3,
+      "tags": ["gateway", "health-check", "kubernetes", "monitoring"]
+    },
+    {
+      "id": "GATEWAY-V2-005",
+      "task_name": "Implement Prometheus Metrics Collection",
+      "feature_details": "Set up Prometheus metrics endpoint with custom business metrics, request timing, and error tracking.",
+      "feature_dependency": [],
+      "ai_prompt": "Implement Prometheus metrics collection:\n\n1. Install prom-client package in gateway\n\n2. Create services/gateway/src/plugins/metrics.ts with Fastify plugin that collects HTTP request metrics\n\n3. Create services/gateway/src/services/metrics.ts with MetricsService class that defines and exposes:\n   - http_requests_total (counter with method, route, status labels)\n   - http_request_duration_seconds (histogram)\n   - http_request_size_bytes (histogram)\n   - http_response_size_bytes (histogram)\n   - gateway_active_connections (gauge)\n   - gateway_conversations_total (gauge)\n   - gateway_messages_total (counter)\n\n4. Create services/gateway/src/routes/internal/metrics.ts with GET /metrics endpoint that returns Prometheus format\n\n5. Configure metrics endpoint on separate port (3001) in services/gateway/src/main.ts\n\n6. Add request timing middleware that tracks duration for each request\n\n7. Add error tracking that increments error counters\n\n8. Update docker-compose.yml to expose port 3001 for metrics",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test metrics are collected correctly",
+          "Test Prometheus format output"
+        ],
+        "integration_tests": [
+          "Test /metrics returns Prometheus format",
+          "Test request duration is tracked",
+          "Test error counters increment"
+        ],
+        "e2e_tests": [
+          "Test metrics in Docker environment",
+          "Test Grafana can scrape metrics"
+        ]
+      },
+      "acceptance_criteria": [
+        "Prometheus metrics endpoint on port 3001",
+        "HTTP request metrics collected",
+        "Custom business metrics defined",
+        "Metrics in Prometheus format",
+        "Request timing accurate",
+        "Error tracking works"
+      ],
+      "files_to_create": [
+        "services/gateway/src/plugins/metrics.ts",
+        "services/gateway/src/services/metrics.ts",
+        "services/gateway/src/routes/internal/metrics.ts"
+      ],
+      "files_to_modify": [
+        "services/gateway/src/main.ts",
+        "services/gateway/src/routes/internal/index.ts",
+        "services/gateway/package.json",
+        "docker-compose.yml"
+      ],
+      "docker_requirements": {
+        "services": ["gateway"],
+        "environment_variables": [
+          "METRICS_PORT=3001"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/metrics",
+          "port": 3001,
+          "description": "Prometheus metrics endpoint"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 3,
+      "tags": ["gateway", "metrics", "prometheus", "monitoring"]
+    },
+    {
+      "id": "GATEWAY-V2-006",
+      "task_name": "Add Graceful Shutdown Handling",
+      "feature_details": "Implement graceful shutdown to handle SIGTERM properly, closing connections and finishing requests.",
+      "feature_dependency": ["GATEWAY-V2-004"],
+      "ai_prompt": "Implement graceful shutdown handling:\n\n1. Update services/gateway/src/main.ts to add graceful shutdown:\n   - Listen for SIGTERM and SIGINT signals\n   - Stop accepting new connections\n   - Wait for existing requests to complete (with timeout)\n   - Close database connections\n   - Close Redis connections\n   - Close Kafka connections\n   - Exit process\n\n2. Create services/gateway/src/services/shutdown-manager.ts with ShutdownManager class that:\n   - Tracks active requests\n   - Manages shutdown sequence\n   - Has configurable shutdown timeout (default 30s)\n   - Logs shutdown progress\n\n3. Add request tracking middleware that increments/decrements active request counter\n\n4. Update health checks to return 503 during shutdown\n\n5. Add SHUTDOWN_TIMEOUT_MS environment variable to config\n\n6. Test graceful shutdown in Docker with docker compose stop",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test shutdown manager tracks requests",
+          "Test shutdown sequence executes correctly"
+        ],
+        "integration_tests": [
+          "Test SIGTERM triggers graceful shutdown",
+          "Test active requests complete during shutdown",
+          "Test health returns 503 during shutdown"
+        ],
+        "e2e_tests": [
+          "Test docker compose stop waits for graceful shutdown",
+          "Test no requests dropped during shutdown"
+        ]
+      },
+      "acceptance_criteria": [
+        "SIGTERM triggers graceful shutdown",
+        "New connections rejected during shutdown",
+        "Active requests complete before exit",
+        "Health check returns 503 during shutdown",
+        "All connections closed properly",
+        "Shutdown completes within timeout"
+      ],
+      "files_to_create": [
+        "services/gateway/src/services/shutdown-manager.ts"
+      ],
+      "files_to_modify": [
+        "services/gateway/src/main.ts",
+        "services/gateway/src/routes/internal/health.ts",
+        "services/gateway/src/config/index.ts"
+      ],
+      "docker_requirements": {
+        "services": ["gateway"],
+        "environment_variables": [
+          "SHUTDOWN_TIMEOUT_MS=30000"
+        ],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 2,
+      "tags": ["gateway", "shutdown", "kubernetes", "reliability"]
+    },
+    {
+      "id": "GATEWAY-V2-007",
+      "task_name": "Create Health and Metrics Integration Tests",
+      "feature_details": "Create tests to verify health checks and metrics work correctly in Docker environment.",
+      "feature_dependency": ["GATEWAY-V2-004", "GATEWAY-V2-005"],
+      "ai_prompt": "Create health and metrics integration tests:\n\n1. Create services/gateway/tests/integration/health.test.ts with tests for:\n   - /health returns 200 when healthy\n   - /health returns correct JSON structure\n   - /ready returns 200 when all dependencies healthy\n   - /ready returns 503 when MongoDB unavailable\n   - /ready returns 503 when Redis unavailable\n   - /health/detailed returns all check results\n   - Health check caching works\n\n2. Create services/gateway/tests/integration/metrics.test.ts with tests for:\n   - /metrics returns 200\n   - /metrics returns Prometheus format\n   - HTTP request metrics are collected\n   - Request duration histogram works\n   - Custom metrics are exposed\n\n3. Create test utilities for simulating dependency failures\n\n4. Add test:health and test:metrics scripts to package.json\n\n5. Ensure tests run in Docker with docker-compose.test.yml",
+      "testing_instructions": {
+        "unit_tests": [],
+        "integration_tests": [
+          "Run health check test suite",
+          "Run metrics test suite",
+          "Verify all dependency failure scenarios"
+        ],
+        "e2e_tests": [
+          "Test health checks with real infrastructure"
+        ]
+      },
+      "acceptance_criteria": [
+        "All health scenarios have tests",
+        "All metrics scenarios have tests",
+        "Tests run in Docker environment",
+        "Dependency failures are tested"
+      ],
+      "files_to_create": [
+        "services/gateway/tests/integration/health.test.ts",
+        "services/gateway/tests/integration/metrics.test.ts"
+      ],
+      "files_to_modify": [
+        "services/gateway/package.json"
+      ],
+      "docker_requirements": {
+        "services": ["gateway", "mongodb", "redis", "kafka"],
+        "environment_variables": [
+          "NODE_ENV=test"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 2,
+      "tags": ["gateway", "testing", "health", "metrics"]
+    }
+  ]
+}

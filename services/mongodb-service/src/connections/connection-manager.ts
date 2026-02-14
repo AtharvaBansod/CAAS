@@ -1,241 +1,175 @@
-import mongoose, { Connection } from 'mongoose';
-import { EventEmitter } from 'events';
-import { getDatabaseConfig, getMongooseOptions, getEnvironment } from '../config';
-import { ConnectionError } from '../errors';
-
-/**
- * Connection State
- */
-export enum ConnectionState {
-  DISCONNECTED = 'disconnected',
-  CONNECTING = 'connecting',
-  CONNECTED = 'connected',
-  DISCONNECTING = 'disconnecting',
-  ERROR = 'error',
-}
-
-/**
- * Connection Manager Events
- */
-export interface ConnectionManagerEvents {
-  connected: () => void;
-  disconnected: () => void;
-  error: (error: Error) => void;
-  reconnecting: () => void;
-  reconnected: () => void;
-}
-
 /**
  * Connection Manager
- * Singleton class to manage MongoDB connections
+ * 
+ * Manages MongoDB connections with automatic reconnection and failover
  */
-export class ConnectionManager extends EventEmitter {
-  private static instance: ConnectionManager | null = null;
-  private connection: Connection | null = null;
-  private state: ConnectionState = ConnectionState.DISCONNECTED;
-  private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
-  private reconnectDelay = 1000;
 
-  private constructor() {
-    super();
-    this.setupEventListeners();
-  }
+import { MongoClient, MongoClientOptions } from 'mongodb';
+import { RetryPolicy } from './retry-policy';
+import { CircuitBreaker } from './circuit-breaker';
 
-  /**
-   * Get singleton instance
-   */
-  public static getInstance(): ConnectionManager {
-    if (!ConnectionManager.instance) {
-      ConnectionManager.instance = new ConnectionManager();
-    }
-    return ConnectionManager.instance;
+export interface ConnectionManagerOptions {
+  uri: string;
+  options?: MongoClientOptions;
+  retryPolicy?: RetryPolicy;
+  circuitBreaker?: CircuitBreaker;
+}
+
+export class ConnectionManager {
+  private uri: string;
+  private options: MongoClientOptions;
+  private client?: MongoClient;
+  private retryPolicy: RetryPolicy;
+  private circuitBreaker: CircuitBreaker;
+  private isConnecting: boolean = false;
+  private reconnectAttempts: number = 0;
+
+  constructor(config: ConnectionManagerOptions) {
+    this.uri = config.uri;
+    this.options = config.options || {};
+    this.retryPolicy = config.retryPolicy || new RetryPolicy();
+    this.circuitBreaker = config.circuitBreaker || new CircuitBreaker();
+
+    // Setup connection event handlers
+    this.setupEventHandlers();
   }
 
   /**
    * Connect to MongoDB
    */
-  public async connect(): Promise<Connection> {
-    if (this.state === ConnectionState.CONNECTED && this.connection) {
-      return this.connection;
+  async connect(): Promise<MongoClient> {
+    if (this.client && this.client.topology?.isConnected()) {
+      return this.client;
     }
 
-    if (this.state === ConnectionState.CONNECTING) {
+    if (this.isConnecting) {
       // Wait for existing connection attempt
-      return new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new ConnectionError('Connection timeout'));
-        }, 30000);
-
-        this.once('connected', () => {
-          clearTimeout(timeout);
-          resolve(this.connection!);
-        });
-
-        this.once('error', (error) => {
-          clearTimeout(timeout);
-          reject(error);
-        });
-      });
+      return this.waitForConnection();
     }
+
+    this.isConnecting = true;
 
     try {
-      this.state = ConnectionState.CONNECTING;
-      const config = getDatabaseConfig();
-      const options = getMongooseOptions();
+      // Check circuit breaker
+      if (this.circuitBreaker.isOpen()) {
+        throw new Error('Circuit breaker is open, connection refused');
+      }
 
-      console.log(`Connecting to MongoDB at ${this.maskUri(config.uri)}...`);
+      console.log('Connecting to MongoDB...');
 
-      this.connection = await mongoose.createConnection(config.uri, options).asPromise();
+      this.client = new MongoClient(this.uri, {
+        ...this.options,
+        retryWrites: true,
+        retryReads: true,
+      });
 
-      this.state = ConnectionState.CONNECTED;
+      await this.client.connect();
+
+      console.log('Connected to MongoDB');
+
+      // Reset retry attempts on successful connection
       this.reconnectAttempts = 0;
+      this.circuitBreaker.recordSuccess();
 
-      console.log('✓ MongoDB connected successfully');
-      this.emit('connected');
-
-      return this.connection;
+      this.isConnecting = false;
+      return this.client;
     } catch (error) {
-      this.state = ConnectionState.ERROR;
-      const connectionError = new ConnectionError(
-        `Failed to connect to MongoDB: ${(error as Error).message}`,
-        error as Error
-      );
+      this.isConnecting = false;
+      this.circuitBreaker.recordFailure();
 
-      console.error('✗ MongoDB connection failed:', connectionError.message);
-      this.emit('error', connectionError);
+      console.error('Failed to connect to MongoDB:', error);
 
-      throw connectionError;
+      // Attempt reconnection with retry policy
+      if (this.retryPolicy.shouldRetry(this.reconnectAttempts)) {
+        this.reconnectAttempts++;
+        const delay = this.retryPolicy.getDelay(this.reconnectAttempts);
+
+        console.log(
+          `Retrying connection in ${delay}ms (attempt ${this.reconnectAttempts})`
+        );
+
+        await this.sleep(delay);
+        return this.connect();
+      }
+
+      throw error;
     }
   }
 
   /**
    * Disconnect from MongoDB
    */
-  public async disconnect(): Promise<void> {
-    if (!this.connection || this.state === ConnectionState.DISCONNECTED) {
-      return;
-    }
-
-    try {
-      this.state = ConnectionState.DISCONNECTING;
+  async disconnect(): Promise<void> {
+    if (this.client) {
       console.log('Disconnecting from MongoDB...');
-
-      await this.connection.close();
-
-      this.connection = null;
-      this.state = ConnectionState.DISCONNECTED;
-
-      console.log('✓ MongoDB disconnected');
-      this.emit('disconnected');
-    } catch (error) {
-      const disconnectError = new ConnectionError(
-        `Failed to disconnect from MongoDB: ${(error as Error).message}`,
-        error as Error
-      );
-
-      console.error('✗ MongoDB disconnect failed:', disconnectError.message);
-      this.emit('error', disconnectError);
-
-      throw disconnectError;
+      await this.client.close();
+      this.client = undefined;
+      console.log('Disconnected from MongoDB');
     }
   }
 
   /**
-   * Get current connection
+   * Get MongoDB client
    */
-  public getConnection(): Connection {
-    if (!this.connection || this.state !== ConnectionState.CONNECTED) {
-      throw new ConnectionError('Not connected to MongoDB');
-    }
-    return this.connection;
-  }
-
-  /**
-   * Get connection state
-   */
-  public getState(): ConnectionState {
-    return this.state;
+  getClient(): MongoClient | undefined {
+    return this.client;
   }
 
   /**
    * Check if connected
    */
-  public isConnected(): boolean {
-    return this.state === ConnectionState.CONNECTED && this.connection !== null;
+  isConnected(): boolean {
+    return !!this.client && !!this.client.topology?.isConnected();
   }
 
   /**
-   * Handle reconnection
+   * Setup event handlers for connection events
    */
-  private async handleReconnect(): Promise<void> {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('Max reconnection attempts reached');
-      return;
-    }
-
-    this.reconnectAttempts++;
-    const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
-
-    console.log(`Reconnecting to MongoDB (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
-    this.emit('reconnecting');
-
-    await new Promise(resolve => setTimeout(resolve, delay));
-
-    try {
-      await this.connect();
-      console.log('✓ Reconnected to MongoDB');
-      this.emit('reconnected');
-    } catch (error) {
-      console.error('✗ Reconnection failed:', (error as Error).message);
-      await this.handleReconnect();
-    }
+  private setupEventHandlers(): void {
+    // These will be attached when client is created
   }
 
   /**
-   * Setup event listeners
+   * Wait for existing connection attempt
    */
-  private setupEventListeners(): void {
-    mongoose.connection.on('disconnected', () => {
-      if (this.state === ConnectionState.CONNECTED) {
-        console.warn('MongoDB connection lost');
-        this.state = ConnectionState.DISCONNECTED;
-        this.handleReconnect();
+  private async waitForConnection(): Promise<MongoClient> {
+    const maxWait = 30000; // 30 seconds
+    const startTime = Date.now();
+
+    while (this.isConnecting) {
+      if (Date.now() - startTime > maxWait) {
+        throw new Error('Connection timeout');
       }
-    });
 
-    mongoose.connection.on('error', (error) => {
-      console.error('MongoDB connection error:', error);
-      this.emit('error', error);
-    });
-  }
-
-  /**
-   * Mask sensitive parts of URI
-   */
-  private maskUri(uri: string): string {
-    return uri.replace(/\/\/([^:]+):([^@]+)@/, '//$1:****@');
-  }
-
-  /**
-   * Graceful shutdown
-   */
-  public async gracefulShutdown(): Promise<void> {
-    console.log('Initiating graceful shutdown...');
-
-    try {
-      await this.disconnect();
-      console.log('✓ Graceful shutdown complete');
-    } catch (error) {
-      console.error('✗ Error during shutdown:', (error as Error).message);
-      throw error;
+      await this.sleep(100);
     }
-  }
-}
 
-/**
- * Get connection manager instance
- */
-export function getConnectionManager(): ConnectionManager {
-  return ConnectionManager.getInstance();
+    if (!this.client) {
+      throw new Error('Connection failed');
+    }
+
+    return this.client;
+  }
+
+  /**
+   * Sleep helper
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Get connection health
+   */
+  async getHealth(): Promise<{
+    connected: boolean;
+    circuitBreakerState: string;
+    reconnectAttempts: number;
+  }> {
+    return {
+      connected: this.isConnected(),
+      circuitBreakerState: this.circuitBreaker.getState(),
+      reconnectAttempts: this.reconnectAttempts,
+    };
+  }
 }

@@ -1,4 +1,5 @@
 import { Server } from 'socket.io';
+import { MongoClient } from 'mongodb';
 import { AuthenticatedSocket } from '../middleware/auth-middleware';
 import { getLogger } from '../utils/logger';
 import { TypingHandler } from '../typing/typing-handler';
@@ -9,6 +10,11 @@ import { UnreadCounter } from '../receipts/unread-counter';
 import { DeliveryReceiptHandler } from '../receipts/delivery-receipt-handler';
 import { RoomRateLimiter } from '../ratelimit/room-rate-limiter';
 import { SpamDetector } from '../abuse/spam-detector';
+import { SocketMessageProducer } from '../messaging/kafka-producer';
+import { RoomAuthorizer } from '../rooms/room-authorizer';
+import { RoomModeration } from '../rooms/room-moderation';
+import { RoomStateManager } from '../rooms/room-state-manager';
+import { config } from '../config';
 
 const logger = getLogger('ChatNamespace');
 
@@ -27,6 +33,32 @@ export function registerChatNamespace(io: Server) {
     return;
   }
 
+  // Initialize Kafka producer for message persistence
+  const kafkaProducer = new SocketMessageProducer({
+    brokers: config.kafka.brokers,
+    clientId: config.kafka.clientId,
+    topic: config.kafka.messageTopic,
+  });
+
+  kafkaProducer.connect().then(() => {
+    logger.info('Kafka producer connected for chat namespace');
+  }).catch((err) => {
+    logger.error('Failed to connect Kafka producer for chat namespace', err);
+  });
+
+  // Initialize MongoDB client for room authorization
+  const mongoClient = new MongoClient(config.mongodb.uri);
+  mongoClient.connect().then(() => {
+    logger.info('MongoDB connected for chat room authorization');
+  }).catch((err: any) => {
+    logger.error('Failed to connect MongoDB for chat namespace', err);
+  });
+
+  // Initialize room authorization and moderation (DRY: reuse existing libraries)
+  const roomAuthorizer = new RoomAuthorizer({ redis: redisClient, mongoClient });
+  const roomStateManager = new RoomStateManager(redisClient);
+  const roomModeration = new RoomModeration(roomAuthorizer, roomStateManager);
+
   // Initialize handlers with shared Redis client
   const typingStateStore = new TypingStateStore(redisClient);
   const typingHandler = new TypingHandler(io, typingStateStore, 3000);
@@ -42,6 +74,14 @@ export function registerChatNamespace(io: Server) {
   // Initialize rate limiter and spam detector
   const rateLimiter = new RoomRateLimiter(redisClient);
   const spamDetector = new SpamDetector(redisClient);
+
+  // Graceful shutdown
+  const cleanup = async () => {
+    await kafkaProducer.disconnect().catch(() => {});
+    await mongoClient.close().catch(() => {});
+  };
+  process.on('SIGTERM', cleanup);
+  process.on('SIGINT', cleanup);
 
   chat.on('connection', (socket: AuthenticatedSocket) => {
     const userId = socket.user?.user_id || socket.user?.sub;
@@ -73,12 +113,26 @@ export function registerChatNamespace(io: Server) {
         });
       }
 
+      // Authorize room join via RoomAuthorizer (checks membership + ban status in MongoDB)
+      const authResult = await roomAuthorizer.canJoinRoom(userId, conversationId, tenantId);
+      if (!authResult.authorized) {
+        logger.warn(`[Chat] User ${userId} denied joining conversation ${conversationId}: ${authResult.reason}`);
+        return callback({ status: 'error', message: authResult.reason || 'Not authorized to join this conversation' });
+      }
+
       const roomName = getConversationRoomName(tenantId, conversationId);
 
       try {
         await socket.join(roomName);
-        logger.info(`[Chat] User ${userId} (Socket: ${socket.id}) joined room: ${roomName}`);
-        callback({ status: 'ok', room: roomName });
+
+        // Track membership in room state
+        await roomStateManager.addMember(roomName, tenantId, userId, socket.id, (authResult.role as any) || 'member').catch(() => {
+          // Room may not exist in state yet — create it
+          return roomStateManager.createRoom(roomName, tenantId, conversationId, userId, socket.id);
+        });
+
+        logger.info(`[Chat] User ${userId} (Socket: ${socket.id}) joined room: ${roomName} (role: ${authResult.role})`);
+        callback({ status: 'ok', room: roomName, role: authResult.role });
       } catch (error: any) {
         logger.error(`[Chat] Failed for user ${userId} (Socket: ${socket.id}) to join room ${roomName}: ${error.message}`);
         callback({ status: 'error', message: `Failed to join room: ${error.message}` });
@@ -153,10 +207,18 @@ export function registerChatNamespace(io: Server) {
         });
       }
 
+      // Authorize sending: checks membership + mute status
+      const sendAuth = await roomAuthorizer.canSendMessage(userId, conversationId, tenantId);
+      if (!sendAuth.authorized) {
+        logger.warn(`[Chat] User ${userId} denied sending in ${conversationId}: ${sendAuth.reason}`);
+        return callback({ status: 'error', message: sendAuth.reason || 'Not authorized to send messages' });
+      }
+
       // Clear typing state when message is sent
       await typingHandler.handleTypingStop(socket, conversationId, userId, tenantId);
 
       const messageId = `msg_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+      const timestamp = new Date();
       const message = {
         id: messageId,
         senderId: userId,
@@ -164,17 +226,36 @@ export function registerChatNamespace(io: Server) {
         tenantId: tenantId,
         conversationId: conversationId,
         content: messageContent,
-        timestamp: new Date().toISOString(),
+        timestamp: timestamp.toISOString(),
       };
 
       try {
-        // Broadcast message to room
+        // 1. Broadcast message to room (real-time delivery via socket)
         chat.to(roomName).emit('message', message);
 
-        // Increment unread count for all room members except sender
-        // Note: In production, you'd get actual room members from database
-        // For now, we'll increment on client side when they receive the message
-        
+        // 2. Publish to Kafka for persistence (consumer writes to MongoDB)
+        if (kafkaProducer.isConnected()) {
+          await kafkaProducer.publishMessage({
+            message_id: messageId,
+            conversation_id: conversationId,
+            tenant_id: tenantId,
+            sender_id: userId,
+            content: {
+              type: 'text',
+              text: messageContent,
+            },
+            timestamp,
+            metadata: {
+              socket_id: socket.id,
+            },
+          });
+        } else {
+          logger.warn(`[Chat] Kafka producer not connected, message ${messageId} broadcast-only (not persisted)`);
+        }
+
+        // Update room activity
+        await roomStateManager.updateActivity(roomName, tenantId).catch(() => {});
+
         logger.info(`[Chat] User ${userId} (Socket: ${socket.id}) sent message to room ${roomName}: ${messageContent.substring(0, 50)}...`);
         callback({ status: 'ok', message: 'Message sent', messageId });
       } catch (error: any) {
@@ -464,6 +545,97 @@ export function registerChatNamespace(io: Server) {
       } catch (error: any) {
         logger.error(`[Chat] Failed to query unread counts: ${error.message}`);
         callback({ status: 'error', message: 'Failed to query unread counts' });
+      }
+    });
+
+    // --- Moderation events (wired to RoomModeration) ---
+    socket.on('moderate:kick', async (
+      { conversationId, targetUserId, reason }: { conversationId: string; targetUserId: string; reason?: string },
+      callback: (response: any) => void
+    ) => {
+      try {
+        await roomModeration.kickUser(userId, targetUserId, conversationId, tenantId, reason);
+        const roomName = getConversationRoomName(tenantId, conversationId);
+        chat.to(roomName).emit('moderation:kicked', {
+          target_user_id: targetUserId,
+          moderator_id: userId,
+          conversation_id: conversationId,
+          reason,
+        });
+        callback({ status: 'ok' });
+      } catch (error: any) {
+        callback({ status: 'error', message: error.message });
+      }
+    });
+
+    socket.on('moderate:ban', async (
+      { conversationId, targetUserId, durationSeconds, reason }: { conversationId: string; targetUserId: string; durationSeconds?: number; reason?: string },
+      callback: (response: any) => void
+    ) => {
+      try {
+        await roomModeration.banUser(userId, targetUserId, conversationId, tenantId, durationSeconds, reason);
+        const roomName = getConversationRoomName(tenantId, conversationId);
+        chat.to(roomName).emit('moderation:banned', {
+          target_user_id: targetUserId,
+          moderator_id: userId,
+          conversation_id: conversationId,
+          duration_seconds: durationSeconds,
+          reason,
+        });
+        callback({ status: 'ok' });
+      } catch (error: any) {
+        callback({ status: 'error', message: error.message });
+      }
+    });
+
+    socket.on('moderate:unban', async (
+      { conversationId, targetUserId, reason }: { conversationId: string; targetUserId: string; reason?: string },
+      callback: (response: any) => void
+    ) => {
+      try {
+        await roomModeration.unbanUser(userId, targetUserId, conversationId, tenantId, reason);
+        callback({ status: 'ok' });
+      } catch (error: any) {
+        callback({ status: 'error', message: error.message });
+      }
+    });
+
+    socket.on('moderate:mute', async (
+      { conversationId, targetUserId, durationSeconds, reason }: { conversationId: string; targetUserId: string; durationSeconds?: number; reason?: string },
+      callback: (response: any) => void
+    ) => {
+      try {
+        await roomModeration.muteUser(userId, targetUserId, conversationId, tenantId, durationSeconds, reason);
+        const roomName = getConversationRoomName(tenantId, conversationId);
+        chat.to(roomName).emit('moderation:muted', {
+          target_user_id: targetUserId,
+          moderator_id: userId,
+          conversation_id: conversationId,
+          duration_seconds: durationSeconds,
+          reason,
+        });
+        callback({ status: 'ok' });
+      } catch (error: any) {
+        callback({ status: 'error', message: error.message });
+      }
+    });
+
+    socket.on('moderate:unmute', async (
+      { conversationId, targetUserId, reason }: { conversationId: string; targetUserId: string; reason?: string },
+      callback: (response: any) => void
+    ) => {
+      try {
+        await roomModeration.unmuteUser(userId, targetUserId, conversationId, tenantId, reason);
+        const roomName = getConversationRoomName(tenantId, conversationId);
+        chat.to(roomName).emit('moderation:unmuted', {
+          target_user_id: targetUserId,
+          moderator_id: userId,
+          conversation_id: conversationId,
+          reason,
+        });
+        callback({ status: 'ok' });
+      } catch (error: any) {
+        callback({ status: 'error', message: error.message });
       }
     });
 

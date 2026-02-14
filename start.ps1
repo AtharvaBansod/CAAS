@@ -11,6 +11,28 @@ Write-Host "CAAS Platform - Starting Services" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
+# Ensure JWT keys exist (gateway and socket need RS256 keys)
+$keysDir = ".\keys"
+if (-not (Test-Path $keysDir)) {
+    New-Item -ItemType Directory -Path $keysDir -Force | Out-Null
+}
+$privPath = Join-Path $keysDir "private.pem"
+$pubPath = Join-Path $keysDir "public.pem"
+if (-not (Test-Path $privPath)) {
+    Write-Host "Generating JWT keys for development..." -ForegroundColor Yellow
+    node .\scripts\generate-jwt-keys.js 2>&1 | Out-Null
+    if (Test-Path $privPath) {
+        Write-Host "  JWT keys generated in $keysDir" -ForegroundColor Green
+    } else {
+        Write-Host "  Warning: Could not generate keys. Set JWT_PRIVATE_KEY and JWT_PUBLIC_KEY in .env manually." -ForegroundColor Yellow
+    }
+}
+# Load JWT keys into env for docker-compose (gateway/socket need these)
+if ((Test-Path $privPath) -and (Test-Path $pubPath)) {
+    $env:JWT_PRIVATE_KEY = Get-Content $privPath -Raw
+    $env:JWT_PUBLIC_KEY = Get-Content $pubPath -Raw
+}
+
 # Check if Docker is running
 try {
     docker info > $null 2>&1
@@ -99,6 +121,9 @@ try {
             Start-Sleep -Seconds 2
             $waited += 2
         }
+        # Wait for replica set to stabilize before writes
+        Write-Host "  Waiting for replica set to stabilize (15s)..." -ForegroundColor Gray
+        Start-Sleep -Seconds 15
     } else {
         Write-Host "  Replica set already initialized" -ForegroundColor Green
     }
@@ -106,7 +131,7 @@ try {
     # Initialize Database (User & Collections)
     Write-Host "  Initializing database (users & collections)..." -ForegroundColor Gray
     
-    $initResult = Get-Content .\services\mongodb-service\init-db.js | docker exec -i caas-mongodb-primary mongosh -u caas_admin -p caas_secret_2026 --authenticationDatabase admin 2>&1 | Out-String
+    $initResult = Get-Content .\services\mongodb-service\init-db.js -Raw | docker exec -i caas-mongodb-primary mongosh "mongodb://caas_admin:caas_secret_2026@mongodb-primary:27017/?authSource=admin&replicaSet=caas-rs" 2>&1 | Out-String
     
     if ($initResult -match "Error" -and $initResult -notmatch "already exists") {
         Write-Host "  Warning during DB initialization: $initResult" -ForegroundColor Yellow
@@ -161,12 +186,9 @@ try {
     # Create Kafka topics using service script
     Write-Host "  Creating Kafka topics..." -ForegroundColor Gray
     
-    # Execute the initialization script inside the container
-    $kafkaInit = Get-Content .\services\kafka-service\create-topics.sh -Raw
-    # Remove all carriage returns for Linux compatibility (more robust than just replacing CRLF)
-    $kafkaInit = $kafkaInit -replace "`r", ""
-    
-    $kafkaResult = $kafkaInit | docker exec -i caas-kafka-1 bash 2>&1 | Out-String
+    # Copy script to container and run (avoids CRLF/encoding issues)
+    docker cp .\services\kafka-service\create-topics.sh caas-kafka-1:/tmp/create-topics.sh 2>&1 | Out-Null
+    $kafkaResult = docker exec caas-kafka-1 bash -c "sed -i 's/\r$//' /tmp/create-topics.sh; chmod +x /tmp/create-topics.sh; /tmp/create-topics.sh" 2>&1 | Out-String
     
     if ($kafkaResult -match "Error" -and $kafkaResult -notmatch "already exists") {
         Write-Host "  Warning during Kafka initialization: $kafkaResult" -ForegroundColor Yellow
@@ -231,17 +253,15 @@ try {
         $waited += 3
     }
     
-    # Initialize MinIO bucket
+    # Initialize MinIO bucket (minio/minio image does not have mc - use minio/mc container)
     Write-Host "  Creating MinIO bucket..." -ForegroundColor Gray
     
-    # Execute the initialization script inside the container
-    $minioInit = Get-Content .\services\media-service\init\create-bucket.sh -Raw
-    # Remove all carriage returns for Linux compatibility
-    $minioInit = $minioInit -replace "`r", ""
+    $minioUser = if ($env:MINIO_ROOT_USER) { $env:MINIO_ROOT_USER } else { "minioadmin" }
+    $minioPass = if ($env:MINIO_ROOT_PASSWORD) { $env:MINIO_ROOT_PASSWORD } else { "minioadmin" }
+    $mcHost = "http://${minioUser}:${minioPass}@minio:9000"
+    $minioResult = docker run --rm --network caas_caas-network -e "MC_HOST_myminio=$mcHost" minio/mc mb myminio/caas-media --ignore-existing 2>&1 | Out-String
     
-    $minioResult = $minioInit | docker exec -i caas-minio bash 2>&1 | Out-String
-    
-    if ($minioResult -match "Error" -and $minioResult -notmatch "already exists") {
+    if ($minioResult -match "Error" -and $minioResult -notmatch "already exists" -and $minioResult -notmatch "BucketAlreadyExists") {
         Write-Host "  Warning during MinIO initialization: $minioResult" -ForegroundColor Yellow
     } else {
         Write-Host "  MinIO bucket initialized" -ForegroundColor Green

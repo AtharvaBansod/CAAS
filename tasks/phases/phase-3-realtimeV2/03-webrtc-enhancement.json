@@ -1,0 +1,184 @@
+{
+  "task_group": "webrtc-enhancement-v2",
+  "description": "Complete WebRTC implementation with TURN server and call recording",
+  "priority": "medium",
+  "estimated_hours": 10,
+  "phase": "3-v2",
+  "feature_area": "webrtc",
+  "tasks": [
+    {
+      "id": "WEBRTC-V2-001",
+      "task_name": "Implement TURN Server Integration",
+      "feature_details": "Add TURN server support for NAT traversal in WebRTC calls.",
+      "feature_dependency": [],
+      "ai_prompt": "Implement TURN server integration:\n\n1. Create services/socket-service/src/webrtc/turn-server-provider.ts that provides TURN server credentials, supports multiple TURN providers, handles credential rotation\n\n2. Update services/socket-service/src/webrtc/ice-server-provider.ts to include TURN servers in ICE server list\n\n3. Add TURN server configuration options: host, port, credentials, transport\n\n4. Implement TURN credential generation with time-limited tokens\n\n5. Add TURN server health checks and failover\n\n6. Update docker-compose.yml to include coturn TURN server container\n\n7. Configure TURN server with shared secret for credential generation\n\n8. Add TURN usage metrics",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test credential generation",
+          "Test ICE server list"
+        ],
+        "integration_tests": [
+          "Test TURN credentials provided to clients",
+          "Test TURN server connectivity",
+          "Test failover between TURN servers"
+        ],
+        "e2e_tests": [
+          "Test WebRTC call through TURN"
+        ]
+      },
+      "acceptance_criteria": [
+        "TURN credentials provided to clients",
+        "TURN servers included in ICE list",
+        "Time-limited credentials",
+        "Health checks implemented",
+        "Failover works",
+        "TURN container in docker-compose"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/webrtc/turn-server-provider.ts"
+      ],
+      "files_to_modify": [
+        "services/socket-service/src/webrtc/ice-server-provider.ts",
+        "docker-compose.yml"
+      ],
+      "docker_requirements": {
+        "services": ["socket-service", "coturn"],
+        "environment_variables": [
+          "TURN_SERVER_HOST=turn",
+          "TURN_SERVER_PORT=3478",
+          "TURN_SECRET=change_me_in_production"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 3,
+      "tags": ["webrtc", "turn", "nat-traversal"]
+    },
+    {
+      "id": "WEBRTC-V2-002",
+      "task_name": "Implement Call Recording Metadata",
+      "feature_details": "Add call recording metadata tracking for compliance and quality.",
+      "feature_dependency": [],
+      "ai_prompt": "Implement call recording metadata:\n\n1. Create services/socket-service/src/webrtc/call-recording-metadata.ts that tracks recording state, stores recording metadata, handles consent management\n\n2. Create recording metadata structure with call_id, conversation_id, participants, start_time, end_time, duration, quality_metrics, consent_status\n\n3. Add socket events for recording: webrtc:recording:start, webrtc:recording:stop, webrtc:recording:consent\n\n4. Update call-manager.ts to track recording state\n\n5. Implement consent requirement - all participants must consent\n\n6. Store recording metadata in MongoDB for audit\n\n7. Add recording events to Kafka for downstream processing\n\n8. Create admin API for accessing recording metadata\n\n9. Add recording compliance checks",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test metadata tracking",
+          "Test consent management"
+        ],
+        "integration_tests": [
+          "Test recording start and stop",
+          "Test consent requirement",
+          "Test metadata persistence"
+        ],
+        "e2e_tests": [
+          "Test complete recording flow"
+        ]
+      },
+      "acceptance_criteria": [
+        "Recording metadata tracked",
+        "Consent management works",
+        "Metadata stored in MongoDB",
+        "Events published to Kafka",
+        "Admin API for metadata",
+        "Compliance checks implemented"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/webrtc/call-recording-metadata.ts",
+        "services/gateway/src/routes/v1/admin/recordings.ts"
+      ],
+      "files_to_modify": [
+        "services/socket-service/src/webrtc/call-manager.ts",
+        "services/socket-service/src/namespaces/webrtc.ts"
+      ],
+      "docker_requirements": {
+        "services": ["socket-service", "mongodb", "kafka"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/v1/admin/recordings",
+          "description": "List recording metadata"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "call_recordings",
+            "description": "Store call recording metadata"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "call_recordings",
+            "fields": ["call_id", "conversation_id"],
+            "options": { "background": true }
+          }
+        ],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 4,
+      "tags": ["webrtc", "recording", "compliance"]
+    },
+    {
+      "id": "WEBRTC-V2-003",
+      "task_name": "Create WebRTC Integration Tests",
+      "feature_details": "Create comprehensive tests for WebRTC functionality.",
+      "feature_dependency": ["WEBRTC-V2-001", "WEBRTC-V2-002"],
+      "ai_prompt": "Create WebRTC integration tests:\n\n1. Create services/socket-service/tests/integration/webrtc-signaling.test.ts with tests for call initiation, call acceptance, call rejection, ICE candidate exchange, call termination\n\n2. Create services/socket-service/tests/integration/webrtc-turn.test.ts with tests for TURN credentials, TURN connectivity, NAT traversal\n\n3. Create services/socket-service/tests/integration/webrtc-recording.test.ts with tests for recording metadata, consent management, compliance checks\n\n4. Add WebRTC load tests for multiple concurrent calls\n\n5. Test with real browsers using puppeteer or playwright",
+      "testing_instructions": {
+        "unit_tests": [],
+        "integration_tests": [
+          "Run WebRTC signaling tests",
+          "Run TURN tests",
+          "Run recording tests"
+        ],
+        "e2e_tests": [
+          "Test WebRTC with real browsers"
+        ]
+      },
+      "acceptance_criteria": [
+        "All WebRTC scenarios tested",
+        "TURN functionality tested",
+        "Recording tested",
+        "Load tests pass",
+        "Tests run in Docker environment"
+      ],
+      "files_to_create": [
+        "services/socket-service/tests/integration/webrtc-signaling.test.ts",
+        "services/socket-service/tests/integration/webrtc-turn.test.ts",
+        "services/socket-service/tests/integration/webrtc-recording.test.ts"
+      ],
+      "files_to_modify": [
+        "services/socket-service/package.json"
+      ],
+      "docker_requirements": {
+        "services": ["socket-service", "coturn", "mongodb"],
+        "environment_variables": [
+          "NODE_ENV=test"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 3,
+      "tags": ["webrtc", "testing"]
+    }
+  ]
+}

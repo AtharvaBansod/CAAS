@@ -1,5 +1,4 @@
 import { FastifyInstance } from 'fastify';
-import { authenticate } from '../../../middleware/auth/authenticate';
 import { Client } from '@elastic/elasticsearch';
 import { createClient } from 'redis';
 
@@ -26,7 +25,7 @@ export async function suggestionsRoutes(app: FastifyInstance) {
   app.get(
     '/users',
     {
-      preHandler: [authenticate],
+      preHandler: [(req: any, rep: any) => app.authenticate(req, rep)],
       schema: {
         querystring: {
           type: 'object',
@@ -39,7 +38,7 @@ export async function suggestionsRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const { tenant_id } = request.user;
+      const tenant_id = request.user?.tenant_id ?? '';
       const { query, conversation_id } = request.query as any;
 
       const filter: object[] = [{ term: { tenant_id } }];
@@ -66,8 +65,8 @@ export async function suggestionsRoutes(app: FastifyInstance) {
           avatar_url: hit._source.avatar_url,
         }));
       } catch (error: any) {
-        app.log.error('User autocomplete failed:', error);
-        return reply.status(500).send({ error: 'Autocomplete failed', message: error.message });
+        app.log.error({ err: error }, 'User autocomplete failed');
+        return reply.status(500).send({ error: 'Autocomplete failed', message: (error as Error).message });
       }
     },
   );
@@ -76,17 +75,17 @@ export async function suggestionsRoutes(app: FastifyInstance) {
   app.get(
     '/recent',
     {
-      preHandler: [authenticate],
+      preHandler: [(req: any, rep: any) => app.authenticate(req, rep)],
     },
     async (request, reply) => {
-      const { user_id } = request.user;
+      const user_id = request.user?.user_id ?? request.user?.sub ?? request.user?.id ?? '';
 
       try {
         const searches = await redis.lRange(`recent_searches:${user_id}`, 0, 9);
         return { searches };
       } catch (error: any) {
-        app.log.error('Failed to get recent searches:', error);
-        return reply.status(500).send({ error: 'Failed to get recent searches', message: error.message });
+        app.log.error({ err: error }, 'Failed to get recent searches');
+        return reply.status(500).send({ error: 'Failed to get recent searches', message: (error as Error).message });
       }
     },
   );
@@ -95,7 +94,7 @@ export async function suggestionsRoutes(app: FastifyInstance) {
   app.post(
     '/recent',
     {
-      preHandler: [authenticate],
+      preHandler: [(req: any, rep: any) => app.authenticate(req, rep)],
       schema: {
         body: {
           type: 'object',
@@ -107,7 +106,7 @@ export async function suggestionsRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const { user_id } = request.user;
+      const user_id = request.user?.user_id ?? request.user?.sub ?? request.user?.id ?? '';
       const { query } = request.body as any;
 
       try {
@@ -115,8 +114,8 @@ export async function suggestionsRoutes(app: FastifyInstance) {
         await redis.lTrim(`recent_searches:${user_id}`, 0, 9);
         return { success: true };
       } catch (error: any) {
-        app.log.error('Failed to save recent search:', error);
-        return reply.status(500).send({ error: 'Failed to save search', message: error.message });
+        app.log.error({ err: error }, 'Failed to save recent search');
+        return reply.status(500).send({ error: 'Failed to save search', message: (error as Error).message });
       }
     },
   );

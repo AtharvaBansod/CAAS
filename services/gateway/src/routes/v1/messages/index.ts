@@ -1,9 +1,12 @@
-// Message routes for the gateway
+// Message routes for the gateway - Proxy to messaging service
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { sendMessageSchema, messageQuerySchema, editMessageSchema, forwardMessageSchema } from './schemas';
+import { getMessagingClient } from '../../../services/messaging-client.js';
 
 export async function messageRoutes(fastify: FastifyInstance) {
+  const messagingClient = getMessagingClient();
+
   // Send message
   fastify.post('/', {
     schema: {
@@ -14,30 +17,18 @@ export async function messageRoutes(fastify: FastifyInstance) {
     handler: async (request: FastifyRequest<{
       Body: z.infer<typeof sendMessageSchema>
     }>, reply: FastifyReply) => {
-      const { conversation_id, type, content, reply_to, forwarded_from } = request.body;
-      const userId = (request as any).user?.id;
-      const tenantId = (request as any).user?.tenant_id;
+      const token = request.headers.authorization?.replace('Bearer ', '') || '';
 
-      if (!userId || !tenantId) {
-        return reply.status(401).send({ error: 'Unauthorized' });
+      try {
+        const result = await messagingClient.sendMessage(token, request.body);
+        return reply.status(201).send(result);
+      } catch (error: any) {
+        fastify.log.error({ error }, 'Failed to send message');
+        return reply.status(error.status || 500).send({
+          error: 'Failed to send message',
+          message: error.message,
+        });
       }
-
-      // TODO: Call message service
-      // For now, return mock response
-      const message = {
-        id: 'msg_' + Date.now(),
-        conversation_id,
-        tenant_id: tenantId,
-        sender_id: userId,
-        type,
-        content,
-        reply_to,
-        forwarded_from,
-        status: 'sent',
-        created_at: new Date(),
-      };
-
-      return reply.status(201).send(message);
     },
   });
 
@@ -56,19 +47,18 @@ export async function messageRoutes(fastify: FastifyInstance) {
       Querystring: z.infer<typeof messageQuerySchema>;
     }>, reply: FastifyReply) => {
       const { conversationId } = request.params;
-      const userId = (request as any).user?.id;
-      const tenantId = (request as any).user?.tenant_id;
+      const token = request.headers.authorization?.replace('Bearer ', '') || '';
 
-      if (!userId || !tenantId) {
-        return reply.status(401).send({ error: 'Unauthorized' });
+      try {
+        const result = await messagingClient.listMessages(token, conversationId, request.query);
+        return reply.send(result);
+      } catch (error: any) {
+        fastify.log.error({ error }, 'Failed to list messages');
+        return reply.status(error.status || 500).send({
+          error: 'Failed to list messages',
+          message: error.message,
+        });
       }
-
-      // TODO: Call message service
-      return reply.send({
-        messages: [],
-        cursor: {},
-        has_more: false,
-      });
     },
   });
 
@@ -85,15 +75,18 @@ export async function messageRoutes(fastify: FastifyInstance) {
       Params: { id: string };
     }>, reply: FastifyReply) => {
       const { id } = request.params;
-      const userId = (request as any).user?.id;
-      const tenantId = (request as any).user?.tenant_id;
+      const token = request.headers.authorization?.replace('Bearer ', '') || '';
 
-      if (!userId || !tenantId) {
-        return reply.status(401).send({ error: 'Unauthorized' });
+      try {
+        const result = await messagingClient.getMessage(token, id);
+        return reply.send(result);
+      } catch (error: any) {
+        fastify.log.error({ error }, 'Failed to get message');
+        return reply.status(error.status || 500).send({
+          error: 'Failed to get message',
+          message: error.message,
+        });
       }
-
-      // TODO: Call message service
-      return reply.status(404).send({ error: 'Message not found' });
     },
   });
 
@@ -112,16 +105,18 @@ export async function messageRoutes(fastify: FastifyInstance) {
       Body: z.infer<typeof editMessageSchema>;
     }>, reply: FastifyReply) => {
       const { id } = request.params;
-      const { content } = request.body;
-      const userId = (request as any).user?.id;
-      const tenantId = (request as any).user?.tenant_id;
+      const token = request.headers.authorization?.replace('Bearer ', '') || '';
 
-      if (!userId || !tenantId) {
-        return reply.status(401).send({ error: 'Unauthorized' });
+      try {
+        const result = await messagingClient.editMessage(token, id, request.body);
+        return reply.send(result);
+      } catch (error: any) {
+        fastify.log.error({ error }, 'Failed to edit message');
+        return reply.status(error.status || 500).send({
+          error: 'Failed to edit message',
+          message: error.message,
+        });
       }
-
-      // TODO: Call message service
-      return reply.status(404).send({ error: 'Message not found' });
     },
   });
 
@@ -138,15 +133,18 @@ export async function messageRoutes(fastify: FastifyInstance) {
       Params: { id: string };
     }>, reply: FastifyReply) => {
       const { id } = request.params;
-      const userId = (request as any).user?.id;
-      const tenantId = (request as any).user?.tenant_id;
+      const token = request.headers.authorization?.replace('Bearer ', '') || '';
 
-      if (!userId || !tenantId) {
-        return reply.status(401).send({ error: 'Unauthorized' });
+      try {
+        await messagingClient.deleteMessage(token, id);
+        return reply.status(204).send();
+      } catch (error: any) {
+        fastify.log.error({ error }, 'Failed to delete message');
+        return reply.status(error.status || 500).send({
+          error: 'Failed to delete message',
+          message: error.message,
+        });
       }
-
-      // TODO: Call message service
-      return reply.status(204).send();
     },
   });
 
@@ -159,49 +157,55 @@ export async function messageRoutes(fastify: FastifyInstance) {
         id: z.string(),
       }),
       body: z.object({
-        emoji: z.string(),
+        reaction: z.string(),
       }),
     },
     handler: async (request: FastifyRequest<{
       Params: { id: string };
-      Body: { emoji: string };
+      Body: { reaction: string };
     }>, reply: FastifyReply) => {
       const { id } = request.params;
-      const { emoji } = request.body;
-      const userId = (request as any).user?.id;
-      const tenantId = (request as any).user?.tenant_id;
+      const token = request.headers.authorization?.replace('Bearer ', '') || '';
 
-      if (!userId || !tenantId) {
-        return reply.status(401).send({ error: 'Unauthorized' });
+      try {
+        const result = await messagingClient.addReaction(token, id, request.body);
+        return reply.status(201).send(result);
+      } catch (error: any) {
+        fastify.log.error({ error }, 'Failed to add reaction');
+        return reply.status(error.status || 500).send({
+          error: 'Failed to add reaction',
+          message: error.message,
+        });
       }
-
-      // TODO: Call reaction service
-      return reply.status(201).send({ success: true });
     },
   });
 
   // Remove reaction
-  fastify.delete('/:id/reactions', {
+  fastify.delete('/:id/reactions/:reaction', {
     schema: {
       description: 'Remove reaction from message',
       tags: ['messages'],
       params: z.object({
         id: z.string(),
+        reaction: z.string(),
       }),
     },
     handler: async (request: FastifyRequest<{
-      Params: { id: string };
+      Params: { id: string; reaction: string };
     }>, reply: FastifyReply) => {
-      const { id } = request.params;
-      const userId = (request as any).user?.id;
-      const tenantId = (request as any).user?.tenant_id;
+      const { id, reaction } = request.params;
+      const token = request.headers.authorization?.replace('Bearer ', '') || '';
 
-      if (!userId || !tenantId) {
-        return reply.status(401).send({ error: 'Unauthorized' });
+      try {
+        await messagingClient.removeReaction(token, id, reaction);
+        return reply.status(204).send();
+      } catch (error: any) {
+        fastify.log.error({ error }, 'Failed to remove reaction');
+        return reply.status(error.status || 500).send({
+          error: 'Failed to remove reaction',
+          message: error.message,
+        });
       }
-
-      // TODO: Call reaction service
-      return reply.status(204).send();
     },
   });
 

@@ -1,0 +1,184 @@
+{
+  "task_group": "gateway-authorization-v2",
+  "description": "Fix authorization middleware to enforce proper RBAC instead of permissive mode",
+  "priority": "critical",
+  "estimated_hours": 12,
+  "phase": "1-v2",
+  "feature_area": "gateway-authorization",
+  "tasks": [
+    {
+      "id": "GATEWAY-V2-001",
+      "task_name": "Fix Authorization Enforcer - Remove Permissive Mode",
+      "feature_details": "Update authz-enforcer.ts to deny-by-default instead of allowing all requests. Implement proper permission checks based on roles and resources.",
+      "feature_dependency": [],
+      "ai_prompt": "Fix the authorization enforcer to properly enforce RBAC:\n\n1. Update services/gateway/src/middleware/authorization/authz-enforcer.ts:\n   - Change line 107-112 from 'Default: allow for now' to 'Default: deny'\n   - Implement proper permission matrix for all actions\n   - Add role-based permission checks\n\n2. Create permission matrix in services/gateway/src/middleware/authorization/permission-matrix.ts with conversation permissions for create, read, update, delete, add_member, remove_member\n\n3. Update evaluateRequest method to check if action is in user's role permissions, verify resource ownership, check conversation membership\n\n4. Add conversation membership check with MongoDB query and Redis caching for 5 minutes\n\n5. Update authz-middleware.ts to remove 'permissive mode' comment and ensure all routes are protected\n\n6. Create integration with auth-service for permission validation with Redis caching fallback",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test permission matrix lookup",
+          "Test role-based access control",
+          "Test resource ownership checks",
+          "Test conversation membership validation"
+        ],
+        "integration_tests": [
+          "Test unauthorized user cannot access conversation",
+          "Test non-member cannot send message to conversation",
+          "Test member cannot perform admin actions",
+          "Test cross-tenant access is blocked"
+        ],
+        "e2e_tests": [
+          "Test complete authorization flow from JWT to resource access",
+          "Test permission caching works correctly"
+        ]
+      },
+      "acceptance_criteria": [
+        "Authorization enforcer denies by default",
+        "Role-based permissions are enforced",
+        "Conversation membership is verified",
+        "Cross-tenant access is blocked",
+        "Proper 403 responses with reasons",
+        "No 'permissive mode' in production"
+      ],
+      "files_to_create": [
+        "services/gateway/src/middleware/authorization/permission-matrix.ts",
+        "services/gateway/src/middleware/authorization/conversation-membership-cache.ts"
+      ],
+      "files_to_modify": [
+        "services/gateway/src/middleware/authorization/authz-enforcer.ts",
+        "services/gateway/src/middleware/authorization/authz-middleware.ts"
+      ],
+      "docker_requirements": {
+        "services": ["gateway", "mongodb", "redis"],
+        "environment_variables": [
+          "AUTHZ_CACHE_TTL_SECONDS=300",
+          "AUTHZ_DEFAULT_DENY=true"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [
+          {
+            "collection": "conversations",
+            "fields": ["tenant_id", "participants.user_id"],
+            "options": { "background": true }
+          }
+        ],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 4,
+      "tags": ["gateway", "authorization", "rbac", "security"]
+    },
+    {
+      "id": "GATEWAY-V2-002",
+      "task_name": "Implement Route-Level Permission Decorators",
+      "feature_details": "Create decorators for route handlers to specify required permissions, making authorization declarative and consistent.",
+      "feature_dependency": ["GATEWAY-V2-001"],
+      "ai_prompt": "Implement permission decorators for routes:\n\n1. Create services/gateway/src/decorators/require-permission.ts with RequirePermission decorator that checks user permissions before executing route handler\n\n2. Create services/gateway/src/decorators/require-conversation-member.ts with RequireConversationMember decorator that verifies user is conversation member with optional minimum role\n\n3. Create services/gateway/src/decorators/require-ownership.ts for resource ownership checks\n\n4. Create services/gateway/src/decorators/index.ts to export all decorators\n\n5. Apply decorators to conversation routes: POST /conversations, GET /conversations/:id, PUT /conversations/:id, POST /conversations/:id/members, DELETE /conversations/:id/members/:id\n\n6. Apply decorators to message routes: POST /messages, PUT /messages/:id, DELETE /messages/:id\n\n7. Update services/gateway/src/routes/v1/conversations/index.ts and members.ts to use decorators\n\n8. Update services/gateway/src/routes/v1/messages/index.ts to use decorators",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test decorator applies permission check",
+          "Test decorator extracts conversation ID from params",
+          "Test decorator handles missing permissions"
+        ],
+        "integration_tests": [
+          "Test decorated routes enforce permissions",
+          "Test decorator works with Fastify route handlers"
+        ],
+        "e2e_tests": [
+          "Test all conversation routes have proper authorization",
+          "Test all message routes have proper authorization"
+        ]
+      },
+      "acceptance_criteria": [
+        "All routes use permission decorators",
+        "Decorators enforce RBAC consistently",
+        "Missing permissions return 403",
+        "Conversation membership verified on relevant routes",
+        "Role checks work for admin-only actions"
+      ],
+      "files_to_create": [
+        "services/gateway/src/decorators/require-permission.ts",
+        "services/gateway/src/decorators/require-conversation-member.ts",
+        "services/gateway/src/decorators/require-ownership.ts",
+        "services/gateway/src/decorators/index.ts"
+      ],
+      "files_to_modify": [
+        "services/gateway/src/routes/v1/conversations/index.ts",
+        "services/gateway/src/routes/v1/conversations/members.ts",
+        "services/gateway/src/routes/v1/messages/index.ts"
+      ],
+      "docker_requirements": {
+        "services": ["gateway"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 4,
+      "tags": ["gateway", "decorators", "authorization", "routes"]
+    },
+    {
+      "id": "GATEWAY-V2-003",
+      "task_name": "Add Authorization Integration Tests",
+      "feature_details": "Create comprehensive integration tests to verify authorization works correctly across all routes.",
+      "feature_dependency": ["GATEWAY-V2-001", "GATEWAY-V2-002"],
+      "ai_prompt": "Create authorization integration tests:\n\n1. Create services/gateway/tests/integration/authorization.test.ts with tests for: conversation access by member, denial for non-member, cross-tenant denial, admin actions allowed for admins, admin actions denied for members, message ownership checks\n\n2. Create test utilities: services/gateway/tests/fixtures/conversations.ts, services/gateway/tests/fixtures/users.ts, services/gateway/tests/fixtures/tokens.ts\n\n3. Create test setup: services/gateway/tests/setup.ts with MongoDB and Redis test containers, services/gateway/tests/teardown.ts\n\n4. Add test script to package.json for test:auth\n\n5. Create docker-compose.test.yml for test environment\n\n6. Ensure tests run against real MongoDB and Redis in Docker",
+      "testing_instructions": {
+        "unit_tests": [],
+        "integration_tests": [
+          "Run full authorization test suite",
+          "Verify all 403 cases are covered",
+          "Verify all 200 cases are covered"
+        ],
+        "e2e_tests": [
+          "Test authorization in complete request flow"
+        ]
+      },
+      "acceptance_criteria": [
+        "All authorization scenarios have tests",
+        "Tests run in Docker environment",
+        "CI/CD runs authorization tests",
+        "100% of routes covered by auth tests"
+      ],
+      "files_to_create": [
+        "services/gateway/tests/integration/authorization.test.ts",
+        "services/gateway/tests/fixtures/conversations.ts",
+        "services/gateway/tests/fixtures/users.ts",
+        "services/gateway/tests/fixtures/tokens.ts",
+        "services/gateway/tests/setup.ts",
+        "services/gateway/tests/teardown.ts",
+        "services/gateway/docker-compose.test.yml"
+      ],
+      "files_to_modify": [
+        "services/gateway/package.json"
+      ],
+      "docker_requirements": {
+        "services": ["gateway", "mongodb", "redis"],
+        "environment_variables": [
+          "NODE_ENV=test",
+          "MONGODB_URI=mongodb://localhost:27017/caas_test"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 4,
+      "tags": ["gateway", "testing", "authorization", "integration"]
+    }
+  ]
+}

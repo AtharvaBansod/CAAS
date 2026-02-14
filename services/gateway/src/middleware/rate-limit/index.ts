@@ -15,14 +15,15 @@ export const rateLimitMiddleware = async (request: FastifyRequest, reply: Fastif
   let window: number;
   let quotaLimit = -1; // -1 means unlimited
 
-  if (tenant && tenant.limits?.api_rate_limit) {
+  const limits = tenant && (tenant as any).limits;
+  if (limits?.api_rate_limit) {
     // Use tenant specific limits if available
-    limit = tenant.limits.api_rate_limit;
+    limit = limits.api_rate_limit;
     window = 60; // Default window for tenant limits (can be configurable)
-    quotaLimit = tenant.limits.monthly_quota || -1;
+    quotaLimit = limits.monthly_quota ?? -1;
   } else {
     // Fallback to Tier based
-    const tierName = tenant?.plan || auth?.rate_limit_tier || DEFAULT_TIER;
+    const tierName = (tenant as any)?.plan || auth?.rate_limit_tier || DEFAULT_TIER;
     const tier = RATE_LIMIT_TIERS[tierName] || RATE_LIMIT_TIERS[DEFAULT_TIER];
     limit = tier.requests;
     window = tier.window;

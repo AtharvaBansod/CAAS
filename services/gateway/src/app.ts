@@ -43,7 +43,6 @@ export async function buildApp() {
   app.addHook('preHandler', resolveTenant);
 
   // Authorization Middleware (runs after Tenant Resolution)
-  // Note: Currently in permissive mode for development
   const { authzMiddleware } = await import('./middleware/authorization');
   app.addHook('preHandler', authzMiddleware);
 

@@ -196,6 +196,82 @@ export function registerWebRTCNamespace(io: Server) {
             // End all active calls for this user
             await callTerminator.handleDisconnect(userId!, tenantId!);
         });
+
+        // --- Screen Sharing ---
+        socket.on('screen:start', async (
+            data: { call_id: string },
+            callback?: (response: any) => void
+        ) => {
+            try {
+                // Notify other participants that screen sharing started
+                socket.to(`call:${data.call_id}`).emit('screen:started', {
+                    call_id: data.call_id,
+                    user_id: userId,
+                    started_at: new Date().toISOString(),
+                });
+
+                logger.info(`[WebRTC] User ${userId} started screen sharing in call ${data.call_id}`);
+                if (callback) callback({ status: 'ok' });
+            } catch (error: any) {
+                logger.error(`Failed to start screen sharing for ${userId}`, error);
+                if (callback) callback({ status: 'error', message: error.message });
+            }
+        });
+
+        socket.on('screen:stop', async (
+            data: { call_id: string },
+            callback?: (response: any) => void
+        ) => {
+            try {
+                // Notify other participants that screen sharing stopped
+                socket.to(`call:${data.call_id}`).emit('screen:stopped', {
+                    call_id: data.call_id,
+                    user_id: userId,
+                    stopped_at: new Date().toISOString(),
+                });
+
+                logger.info(`[WebRTC] User ${userId} stopped screen sharing in call ${data.call_id}`);
+                if (callback) callback({ status: 'ok' });
+            } catch (error: any) {
+                logger.error(`Failed to stop screen sharing for ${userId}`, error);
+                if (callback) callback({ status: 'error', message: error.message });
+            }
+        });
+
+        // Screen share offer (separate SDP for screen track)
+        socket.on('screen:offer', async (
+            data: { target_user_id: string; sdp: RTCSessionDescriptionInit; call_id: string },
+            callback?: (response: any) => void
+        ) => {
+            try {
+                await signalingRelay.relayToUser(data.target_user_id, 'screen:offer', {
+                    sdp: data.sdp,
+                    call_id: data.call_id,
+                    from_user_id: userId,
+                });
+                if (callback) callback({ status: 'ok' });
+            } catch (error: any) {
+                logger.error(`Failed to relay screen offer from ${userId}`, error);
+                if (callback) callback({ status: 'error', message: error.message });
+            }
+        });
+
+        socket.on('screen:answer', async (
+            data: { target_user_id: string; sdp: RTCSessionDescriptionInit; call_id: string },
+            callback?: (response: any) => void
+        ) => {
+            try {
+                await signalingRelay.relayToUser(data.target_user_id, 'screen:answer', {
+                    sdp: data.sdp,
+                    call_id: data.call_id,
+                    from_user_id: userId,
+                });
+                if (callback) callback({ status: 'ok' });
+            } catch (error: any) {
+                logger.error(`Failed to relay screen answer from ${userId}`, error);
+                if (callback) callback({ status: 'error', message: error.message });
+            }
+        });
     });
 
     logger.info('WebRTC namespace registered');

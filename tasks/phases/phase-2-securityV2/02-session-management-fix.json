@@ -1,0 +1,198 @@
+{
+  "task_group": "session-management-v2",
+  "description": "Complete multi-device session management with sync and force logout",
+  "priority": "high",
+  "estimated_hours": 10,
+  "phase": "2-v2",
+  "feature_area": "session-management",
+  "tasks": [
+    {
+      "id": "SESSION-V2-001",
+      "task_name": "Implement Multi-Device Session Sync",
+      "feature_details": "Complete multi-device session synchronization to keep sessions consistent across all user devices.",
+      "feature_dependency": [],
+      "ai_prompt": "Implement multi-device session sync:\n\n1. Create services/auth-service/src/sessions/multi-device-sync.ts that:\n   - Tracks all active sessions for a user\n   - Syncs session state across devices\n   - Handles session invalidation broadcast\n   - Manages device priority (primary vs secondary)\n\n2. Update services/auth-service/src/sessions/session-store.ts to:\n   - Store device information with sessions\n   - Track session relationships (parent/child)\n   - Support session queries by user and device\n\n3. Create services/socket-service/src/sessions/device-sync.ts for:\n   - Broadcasting session changes to all devices\n   - Receiving session sync events\n   - Updating local session state\n\n4. Add socket events for session sync:\n   - session:sync_request - Request full session state\n   - session:sync_update - Receive session update\n   - session:invalidated - Session was invalidated\n   - session:device_added - New device connected\n   - session:device_removed - Device disconnected\n\n5. Implement session conflict resolution:\n   - Last-write-wins for metadata\n   - Priority for primary device\n   - Merge strategy for partial updates\n\n6. Add session sync metrics and monitoring",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test session tracking across devices",
+          "Test sync broadcast",
+          "Test conflict resolution"
+        ],
+        "integration_tests": [
+          "Test session sync between two devices",
+          "Test session invalidation broadcast",
+          "Test device priority handling"
+        ],
+        "e2e_tests": [
+          "Test complete multi-device session flow"
+        ]
+      },
+      "acceptance_criteria": [
+        "All user devices tracked",
+        "Session changes synced across devices",
+        "Invalidation broadcast to all devices",
+        "Device priority respected",
+        "Conflicts resolved correctly",
+        "Sync events delivered reliably"
+      ],
+      "files_to_create": [
+        "services/auth-service/src/sessions/multi-device-sync.ts",
+        "services/socket-service/src/sessions/device-sync.ts"
+      ],
+      "files_to_modify": [
+        "services/auth-service/src/sessions/session-store.ts",
+        "services/socket-service/src/namespaces/chat.ts"
+      ],
+      "docker_requirements": {
+        "services": ["auth-service", "socket-service", "redis"],
+        "environment_variables": [
+          "SESSION_SYNC_TIMEOUT_MS=5000"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [
+          {
+            "collection": "sessions",
+            "fields": ["user_id", "device_id"],
+            "options": { "background": true }
+          }
+        ],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 4,
+      "tags": ["auth", "sessions", "multi-device", "sync"]
+    },
+    {
+      "id": "SESSION-V2-002",
+      "task_name": "Implement Force Logout and Session Revocation",
+      "feature_details": "Complete force logout functionality to allow users and admins to terminate sessions remotely.",
+      "feature_dependency": ["SESSION-V2-001"],
+      "ai_prompt": "Implement force logout and session revocation:\n\n1. Update services/auth-service/src/revocation/revocation-service.ts to:\n   - Revoke all sessions for a user\n   - Revoke specific session by ID\n   - Revoke all sessions except current (logout others)\n   - Broadcast revocation events\n\n2. Create services/gateway/src/routes/v1/sessions.ts with endpoints:\n   - GET /sessions - List current user sessions\n   - DELETE /sessions/:id - Revoke specific session\n   - DELETE /sessions/others - Logout all other devices\n   - DELETE /sessions/all - Logout all devices\n\n3. Create services/gateway/src/routes/v1/admin/sessions.ts with admin endpoints:\n   - GET /admin/users/:userId/sessions - List user sessions\n   - DELETE /admin/sessions/:id - Force logout session\n   - DELETE /admin/users/:userId/sessions - Force logout all user sessions\n\n4. Implement real-time session termination:\n   - Use Redis pub/sub for revocation events\n   - Socket.IO broadcast to affected devices\n   - Immediate token invalidation\n   - Client notification of logout reason\n\n5. Add audit logging for all session revocations:\n   - Who initiated the revocation\n   - Which sessions were affected\n   - Timestamp and reason\n\n6. Create session revocation UI notifications",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test session revocation",
+          "Test broadcast to affected devices",
+          "Test audit logging"
+        ],
+        "integration_tests": [
+          "Test force logout via API",
+          "Test logout others functionality",
+          "Test admin force logout",
+          "Test real-time termination"
+        ],
+        "e2e_tests": [
+          "Test complete force logout flow"
+        ]
+      },
+      "acceptance_criteria": [
+        "Users can list their sessions",
+        "Users can logout specific devices",
+        "Users can logout all other devices",
+        "Admins can force logout any user",
+        "Real-time termination works",
+        "Audit log records all revocations",
+        "Clients receive logout notifications"
+      ],
+      "files_to_create": [
+        "services/gateway/src/routes/v1/sessions.ts",
+        "services/gateway/src/routes/v1/admin/sessions.ts"
+      ],
+      "files_to_modify": [
+        "services/auth-service/src/revocation/revocation-service.ts",
+        "services/gateway/src/routes/v1/index.ts"
+      ],
+      "docker_requirements": {
+        "services": ["gateway", "auth-service", "redis"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/v1/sessions",
+          "description": "List current user sessions"
+        },
+        {
+          "method": "DELETE",
+          "path": "/v1/sessions/:id",
+          "description": "Revoke specific session"
+        },
+        {
+          "method": "DELETE",
+          "path": "/v1/sessions/others",
+          "description": "Logout all other devices"
+        },
+        {
+          "method": "DELETE",
+          "path": "/admin/sessions/:id",
+          "description": "Admin force logout session"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 3,
+      "tags": ["auth", "sessions", "revocation", "security"]
+    },
+    {
+      "id": "SESSION-V2-003",
+      "task_name": "Create Session Management Integration Tests",
+      "feature_details": "Create comprehensive tests for multi-device session management and force logout.",
+      "feature_dependency": ["SESSION-V2-001", "SESSION-V2-002"],
+      "ai_prompt": "Create session management integration tests:\n\n1. Create services/auth-service/tests/integration/multi-device.test.ts with tests for:\n   - Session created for each device\n   - Session sync across devices\n   - Session invalidation broadcast\n   - Device priority handling\n   - Conflict resolution\n\n2. Create services/gateway/tests/integration/session-revocation.test.ts with tests for:\n   - List sessions endpoint\n   - Revoke specific session\n   - Logout others functionality\n   - Admin force logout\n   - Real-time termination\n   - Audit log verification\n\n3. Create test utilities:\n   - services/auth-service/tests/fixtures/sessions.ts\n   - services/auth-service/tests/utils/device-simulator.ts\n\n4. Add session management tests to CI/CD pipeline\n\n5. Create load tests for session sync under high concurrency",
+      "testing_instructions": {
+        "unit_tests": [],
+        "integration_tests": [
+          "Run multi-device session tests",
+          "Run session revocation tests",
+          "Run load tests"
+        ],
+        "e2e_tests": [
+          "Test complete session management flow"
+        ]
+      },
+      "acceptance_criteria": [
+        "All multi-device scenarios tested",
+        "All revocation scenarios tested",
+        "Load tests pass",
+        "Tests run in Docker environment"
+      ],
+      "files_to_create": [
+        "services/auth-service/tests/integration/multi-device.test.ts",
+        "services/gateway/tests/integration/session-revocation.test.ts",
+        "services/auth-service/tests/fixtures/sessions.ts",
+        "services/auth-service/tests/utils/device-simulator.ts"
+      ],
+      "files_to_modify": [
+        "services/auth-service/package.json",
+        "services/gateway/package.json"
+      ],
+      "docker_requirements": {
+        "services": ["auth-service", "gateway", "redis", "mongodb"],
+        "environment_variables": [
+          "NODE_ENV=test"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 3,
+      "tags": ["auth", "sessions", "testing"]
+    }
+  ]
+}

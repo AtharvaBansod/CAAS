@@ -1,0 +1,223 @@
+{
+  "task_group": "e2e-encryption-integration-v2",
+  "description": "Integrate crypto service with socket service for E2E encryption key distribution",
+  "priority": "critical",
+  "estimated_hours": 14,
+  "phase": "2-v2",
+  "feature_area": "e2e-encryption",
+  "tasks": [
+    {
+      "id": "CRYPTO-V2-001",
+      "task_name": "Implement Pre-Key Bundle Distribution via Sockets",
+      "feature_details": "Create socket events for distributing pre-key bundles to enable offline messaging and initial key exchange.",
+      "feature_dependency": [],
+      "ai_prompt": "Implement pre-key bundle distribution via sockets:\n\n1. Create services/socket-service/src/e2e/prekey-bundle-manager.ts that:\n   - Fetches pre-key bundles from crypto-service\n   - Caches bundles in Redis\n   - Handles bundle requests from clients\n   - Rotates bundles when depleted\n\n2. Create services/socket-service/src/e2e/e2e-key-exchange.ts with:\n   - requestPreKeyBundle(targetUserId): Request bundle for user\n   - publishPreKeyBundle(): Publish own bundle to server\n   - handleX3DHInitiation(): Handle X3DH key agreement initiation\n\n3. Add socket events in services/socket-service/src/namespaces/chat.ts:\n   - e2e:request_prekey_bundle - Request bundle for user\n   - e2e:publish_prekey_bundle - Upload own bundle\n   - e2e:x3dh_initiate - Initiate X3DH handshake\n   - e2e:x3dh_respond - Respond to X3DH handshake\n\n4. Create services/crypto-service/src/distribution/prekey-bundle-api.ts with HTTP endpoints:\n   - GET /prekey-bundles/:userId - Get bundle for user\n   - POST /prekey-bundles - Upload own bundle\n   - DELETE /prekey-bundles/:bundleId - Remove used bundle\n\n5. Update services/crypto-service/src/index.ts to expose HTTP server\n\n6. Add rate limiting for bundle requests to prevent enumeration attacks",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test bundle request and response",
+          "Test bundle caching",
+          "Test bundle rotation"
+        ],
+        "integration_tests": [
+          "Test socket events for bundle exchange",
+          "Test X3DH initiation flow",
+          "Test bundle rate limiting"
+        ],
+        "e2e_tests": [
+          "Test complete bundle distribution flow"
+        ]
+      },
+      "acceptance_criteria": [
+        "Pre-key bundles distributed via sockets",
+        "Bundles cached in Redis",
+        "X3DH initiation works",
+        "Bundle rotation when depleted",
+        "Rate limiting prevents abuse",
+        "HTTP API for bundle management"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/e2e/prekey-bundle-manager.ts",
+        "services/socket-service/src/e2e/e2e-key-exchange.ts",
+        "services/socket-service/src/e2e/index.ts",
+        "services/crypto-service/src/distribution/prekey-bundle-api.ts"
+      ],
+      "files_to_modify": [
+        "services/socket-service/src/namespaces/chat.ts",
+        "services/crypto-service/src/index.ts"
+      ],
+      "docker_requirements": {
+        "services": ["socket-service", "crypto-service", "redis"],
+        "environment_variables": [
+          "PREKEY_BUNDLE_CACHE_TTL=3600",
+          "PREKEY_BUNDLE_RATE_LIMIT=10"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/prekey-bundles/:userId",
+          "description": "Get pre-key bundle for user"
+        },
+        {
+          "method": "POST",
+          "path": "/prekey-bundles",
+          "description": "Upload own pre-key bundle"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "prekey_bundles",
+            "description": "Store user pre-key bundles"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "prekey_bundles",
+            "fields": ["user_id", "created_at"],
+            "options": { "background": true }
+          }
+        ],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 5,
+      "tags": ["crypto", "e2e", "prekey-bundles", "sockets"]
+    },
+    {
+      "id": "CRYPTO-V2-002",
+      "task_name": "Implement Session Key Management",
+      "feature_details": "Create session key management for ongoing conversations with forward secrecy.",
+      "feature_dependency": ["CRYPTO-V2-001"],
+      "ai_prompt": "Implement session key management:\n\n1. Create services/socket-service/src/e2e/session-key-manager.ts that:\n   - Manages session keys per conversation\n   - Implements Double Ratchet for key evolution\n   - Stores session state in Redis\n   - Handles session key rotation\n\n2. Create services/socket-service/src/e2e/double-ratchet.ts implementing:\n   - Root key derivation\n   - Chain key evolution\n   - Message key generation\n   - Out-of-order message handling\n\n3. Add socket events for session management:\n   - e2e:session_init - Initialize session\n   - e2e:session_accept - Accept session\n   - e2e:session_rotate - Rotate session keys\n   - e2e:message_key_request - Request message key\n\n4. Create services/crypto-service/src/e2e/session-store.ts for:\n   - Storing session state\n   - Retrieving session keys\n   - Archiving old sessions\n\n5. Implement forward secrecy:\n   - Delete old chain keys after rotation\n   - Limit session key lifetime\n   - Automatic key rotation trigger\n\n6. Add session health monitoring and metrics",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test Double Ratchet key evolution",
+          "Test session key rotation",
+          "Test out-of-order message handling"
+        ],
+        "integration_tests": [
+          "Test session initialization flow",
+          "Test key rotation in active session",
+          "Test session recovery"
+        ],
+        "e2e_tests": [
+          "Test complete session lifecycle"
+        ]
+      },
+      "acceptance_criteria": [
+        "Session keys managed per conversation",
+        "Double Ratchet implemented",
+        "Forward secrecy enforced",
+        "Session state stored in Redis",
+        "Automatic key rotation",
+        "Out-of-order messages handled"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/e2e/session-key-manager.ts",
+        "services/socket-service/src/e2e/double-ratchet.ts",
+        "services/crypto-service/src/e2e/session-store.ts"
+      ],
+      "files_to_modify": [
+        "services/socket-service/src/namespaces/chat.ts"
+      ],
+      "docker_requirements": {
+        "services": ["socket-service", "crypto-service", "redis"],
+        "environment_variables": [
+          "SESSION_KEY_LIFETIME_HOURS=168",
+          "SESSION_ROTATION_THRESHOLD=1000"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "sessions",
+            "description": "Store E2E session state"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "sessions",
+            "fields": ["conversation_id", "user_id"],
+            "options": { "background": true }
+          }
+        ],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 5,
+      "tags": ["crypto", "e2e", "session-keys", "double-ratchet"]
+    },
+    {
+      "id": "CRYPTO-V2-003",
+      "task_name": "Implement Group Encryption with Sender Keys",
+      "feature_details": "Create group encryption using sender keys for efficient group messaging.",
+      "feature_dependency": ["CRYPTO-V2-002"],
+      "ai_prompt": "Implement group encryption with sender keys:\n\n1. Create services/socket-service/src/e2e/group-encryption.ts that:\n   - Manages sender keys per user per group\n   - Distributes sender keys to group members\n   - Handles member join/leave key updates\n   - Implements sender key rotation\n\n2. Create services/crypto-service/src/e2e/sender-key-manager.ts for:\n   - Generating sender keys\n   - Storing sender key chains\n   - Distributing sender keys\n   - Rotating compromised keys\n\n3. Add group encryption socket events:\n   - e2e:group_sender_key_distribute - Distribute sender key\n   - e2e:group_sender_key_request - Request sender key\n   - e2e:group_key_update - Update keys for member changes\n\n4. Implement member change handling:\n   - New member: distribute all existing sender keys\n   - Member leaves: rotate all sender keys\n   - Member removed: same as leave\n\n5. Create services/socket-service/src/e2e/group-key-announcement.ts for:\n   - Announcing key changes to group\n   - Coordinating key rotation\n   - Handling key conflicts\n\n6. Add group encryption metrics and monitoring",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test sender key generation",
+          "Test key distribution",
+          "Test member join/leave handling"
+        ],
+        "integration_tests": [
+          "Test group encryption setup",
+          "Test key rotation on member change",
+          "Test multiple sender keys in group"
+        ],
+        "e2e_tests": [
+          "Test complete group encryption flow"
+        ]
+      },
+      "acceptance_criteria": [
+        "Sender keys generated per user per group",
+        "Keys distributed to all members",
+        "Member join distributes existing keys",
+        "Member leave triggers key rotation",
+        "Efficient group messaging with sender keys",
+        "Key conflicts resolved"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/e2e/group-encryption.ts",
+        "services/socket-service/src/e2e/group-key-announcement.ts",
+        "services/crypto-service/src/e2e/sender-key-manager.ts"
+      ],
+      "files_to_modify": [
+        "services/socket-service/src/namespaces/chat.ts"
+      ],
+      "docker_requirements": {
+        "services": ["socket-service", "crypto-service", "redis"],
+        "environment_variables": [
+          "SENDER_KEY_ROTATION_INTERVAL_HOURS=168"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "sender_keys",
+            "description": "Store sender keys for group encryption"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "sender_keys",
+            "fields": ["conversation_id", "user_id"],
+            "options": { "background": true }
+          }
+        ],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 4,
+      "tags": ["crypto", "e2e", "group-encryption", "sender-keys"]
+    }
+  ]
+}

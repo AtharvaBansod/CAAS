@@ -1,0 +1,272 @@
+{
+  "task_group": "messaging-service-api-v2",
+  "description": "Expose messaging service as standalone HTTP API service",
+  "priority": "critical",
+  "estimated_hours": 14,
+  "phase": "4-v2",
+  "feature_area": "messaging-service-api",
+  "tasks": [
+    {
+      "id": "MSG-V2-001",
+      "task_name": "Implement Messaging Service HTTP Server",
+      "feature_details": "Create HTTP server for messaging service with Fastify to expose message and conversation APIs.",
+      "feature_dependency": [],
+      "ai_prompt": "Implement messaging service HTTP server:\n\n1. Update services/messaging-service/src/index.ts to create Fastify HTTP server on port 3004, register routes, add health check endpoint, implement graceful shutdown\n\n2. Create services/messaging-service/src/server.ts with server setup, middleware registration, error handling\n\n3. Add Fastify configuration with logging, CORS, rate limiting\n\n4. Create services/messaging-service/src/config/index.ts for environment configuration\n\n5. Update Dockerfile to expose port 3004\n\n6. Update docker-compose.yml to add messaging-service with proper environment variables\n\n7. Add health check endpoint at /health\n\n8. Add graceful shutdown handling for SIGTERM",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test server starts correctly",
+          "Test health endpoint"
+        ],
+        "integration_tests": [
+          "Test server runs in Docker",
+          "Test health check responds"
+        ],
+        "e2e_tests": [
+          "Test complete server startup"
+        ]
+      },
+      "acceptance_criteria": [
+        "HTTP server runs on port 3004",
+        "Health endpoint responds",
+        "Docker container starts",
+        "Graceful shutdown works",
+        "Environment variables loaded"
+      ],
+      "files_to_create": [
+        "services/messaging-service/src/server.ts",
+        "services/messaging-service/src/config/index.ts"
+      ],
+      "files_to_modify": [
+        "services/messaging-service/src/index.ts",
+        "services/messaging-service/Dockerfile",
+        "docker-compose.yml"
+      ],
+      "docker_requirements": {
+        "services": ["messaging-service", "mongodb", "kafka"],
+        "environment_variables": [
+          "PORT=3004",
+          "MONGODB_URI=mongodb://mongodb-primary:27017/caas_platform",
+          "KAFKA_BROKERS=kafka-1:29092"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/health",
+          "description": "Health check endpoint"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 3,
+      "tags": ["messaging", "http", "server"]
+    },
+    {
+      "id": "MSG-V2-002",
+      "task_name": "Implement Message API Endpoints",
+      "feature_details": "Create REST API endpoints for message operations in messaging service.",
+      "feature_dependency": ["MSG-V2-001"],
+      "ai_prompt": "Implement message API endpoints:\n\n1. Create services/messaging-service/src/routes/messages.ts with endpoints: POST /messages - Send message, GET /conversations/:id/messages - List messages, GET /messages/:id - Get single message, PUT /messages/:id - Edit message, DELETE /messages/:id - Delete message, POST /messages/:id/reactions - Add reaction, DELETE /messages/:id/reactions/:reaction - Remove reaction\n\n2. Create request/response schemas with Zod for validation\n\n3. Implement authentication middleware to validate JWT tokens\n\n4. Add tenant isolation middleware\n\n5. Implement pagination with cursor-based pagination for messages\n\n6. Add rate limiting for message sending\n\n7. Publish events to Kafka for real-time updates\n\n8. Add comprehensive error handling",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test each endpoint",
+          "Test validation",
+          "Test pagination"
+        ],
+        "integration_tests": [
+          "Test message CRUD operations",
+          "Test reactions",
+          "Test pagination",
+          "Test rate limiting"
+        ],
+        "e2e_tests": [
+          "Test complete message flow"
+        ]
+      },
+      "acceptance_criteria": [
+        "All message endpoints work",
+        "Validation enforced",
+        "Pagination works",
+        "Rate limiting active",
+        "Events published to Kafka",
+        "Tenant isolation enforced"
+      ],
+      "files_to_create": [
+        "services/messaging-service/src/routes/messages.ts",
+        "services/messaging-service/src/routes/schemas.ts",
+        "services/messaging-service/src/middleware/auth.ts",
+        "services/messaging-service/src/middleware/tenant.ts"
+      ],
+      "files_to_modify": [
+        "services/messaging-service/src/server.ts"
+      ],
+      "docker_requirements": {
+        "services": ["messaging-service"],
+        "environment_variables": [
+          "JWT_PUBLIC_KEY",
+          "RATE_LIMIT_MESSAGES_PER_MINUTE=60"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/messages",
+          "description": "Send a message"
+        },
+        {
+          "method": "GET",
+          "path": "/conversations/:id/messages",
+          "description": "List messages in conversation"
+        },
+        {
+          "method": "PUT",
+          "path": "/messages/:id",
+          "description": "Edit message"
+        },
+        {
+          "method": "DELETE",
+          "path": "/messages/:id",
+          "description": "Delete message"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 5,
+      "tags": ["messaging", "api", "rest"]
+    },
+    {
+      "id": "MSG-V2-003",
+      "task_name": "Implement Conversation API Endpoints",
+      "feature_details": "Create REST API endpoints for conversation operations in messaging service.",
+      "feature_dependency": ["MSG-V2-001"],
+      "ai_prompt": "Implement conversation API endpoints:\n\n1. Create services/messaging-service/src/routes/conversations.ts with endpoints: POST /conversations - Create conversation, GET /conversations - List conversations, GET /conversations/:id - Get conversation, PUT /conversations/:id - Update conversation, DELETE /conversations/:id - Delete conversation, POST /conversations/:id/members - Add member, DELETE /conversations/:id/members/:userId - Remove member, PUT /conversations/:id/members/:userId/role - Update member role\n\n2. Create conversation schemas with Zod\n\n3. Implement authorization checks for conversation access\n\n4. Add member management with role checks\n\n5. Implement conversation search and filtering\n\n6. Add conversation archiving functionality\n\n7. Publish conversation events to Kafka\n\n8. Add unread count tracking",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test conversation endpoints",
+          "Test member management",
+          "Test authorization"
+        ],
+        "integration_tests": [
+          "Test conversation CRUD",
+          "Test member add/remove",
+          "Test role updates",
+          "Test authorization"
+        ],
+        "e2e_tests": [
+          "Test complete conversation flow"
+        ]
+      },
+      "acceptance_criteria": [
+        "All conversation endpoints work",
+        "Member management works",
+        "Authorization enforced",
+        "Events published to Kafka",
+        "Unread counts tracked",
+        "Search and filtering work"
+      ],
+      "files_to_create": [
+        "services/messaging-service/src/routes/conversations.ts"
+      ],
+      "files_to_modify": [
+        "services/messaging-service/src/server.ts"
+      ],
+      "docker_requirements": {
+        "services": ["messaging-service"],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/conversations",
+          "description": "Create conversation"
+        },
+        {
+          "method": "GET",
+          "path": "/conversations",
+          "description": "List conversations"
+        },
+        {
+          "method": "POST",
+          "path": "/conversations/:id/members",
+          "description": "Add member"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 4,
+      "tags": ["messaging", "conversations", "api"]
+    },
+    {
+      "id": "MSG-V2-004",
+      "task_name": "Update Gateway to Proxy to Messaging Service",
+      "feature_details": "Update Gateway routes to proxy requests to messaging service instead of direct database access.",
+      "feature_dependency": ["MSG-V2-002", "MSG-V2-003"],
+      "ai_prompt": "Update Gateway to proxy to messaging service:\n\n1. Update services/gateway/src/routes/v1/messages/index.ts to proxy requests to messaging-service instead of direct DB access\n\n2. Update services/gateway/src/routes/v1/conversations/index.ts to proxy to messaging-service\n\n3. Create services/gateway/src/services/messaging-client.ts as HTTP client for messaging service\n\n4. Add service discovery for messaging-service\n\n5. Implement circuit breaker for messaging service calls\n\n6. Add retry logic for failed requests\n\n7. Update error handling to pass through messaging service errors\n\n8. Remove direct MongoDB imports from Gateway routes\n\n9. Update docker-compose.yml to ensure Gateway depends on messaging-service",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test messaging client",
+          "Test circuit breaker"
+        ],
+        "integration_tests": [
+          "Test Gateway proxies to messaging service",
+          "Test error handling",
+          "Test retry logic"
+        ],
+        "e2e_tests": [
+          "Test complete Gateway to messaging flow"
+        ]
+      },
+      "acceptance_criteria": [
+        "Gateway proxies to messaging service",
+        "No direct DB access from Gateway",
+        "Circuit breaker implemented",
+        "Retry logic works",
+        "Error handling correct",
+        "Service discovery works"
+      ],
+      "files_to_create": [
+        "services/gateway/src/services/messaging-client.ts"
+      ],
+      "files_to_modify": [
+        "services/gateway/src/routes/v1/messages/index.ts",
+        "services/gateway/src/routes/v1/conversations/index.ts",
+        "docker-compose.yml"
+      ],
+      "docker_requirements": {
+        "services": ["gateway", "messaging-service"],
+        "environment_variables": [
+          "MESSAGING_SERVICE_URL=http://messaging-service:3004"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 2,
+      "tags": ["gateway", "messaging", "proxy"]
+    }
+  ]
+}

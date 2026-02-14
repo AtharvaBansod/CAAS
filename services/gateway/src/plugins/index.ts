@@ -10,6 +10,8 @@ import mongoPlugin from './mongodb';
 import rateLimitPlugin from './rate-limit';
 import metricsPlugin from './metrics';
 import authServicesPlugin from './auth-services';
+import authorizationPlugin from './authorization';
+import sessionServicesPlugin from './session-services';
 
 export const registerPlugins = async (app: FastifyInstance) => {
   await app.register(sensiblePlugin);
@@ -23,8 +25,13 @@ export const registerPlugins = async (app: FastifyInstance) => {
   await app.register(metricsPlugin);
 
   // Auth services (depends on MongoDB and Redis)
-  // TODO: Re-enable after fixing service architecture
   await app.register(authServicesPlugin);
+
+  // Initialize authorization enforcer with MongoDB and Redis
+  await app.register(authorizationPlugin);
+
+  // Session services (depends on auth-services)
+  await app.register(sessionServicesPlugin);
 
   // Swagger should be registered last or near last to capture schemas
   await app.register(swaggerPlugin);

@@ -1,30 +1,25 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { UserSettingsService } from '@messaging-service/conversations/user-settings.service';
-import { GroupInfoService } from '@messaging-service/conversations/group-info.service';
-import { ConversationService } from '@messaging-service/conversations/conversation.service';
-import { GroupConversationService } from '@messaging-service/conversations/group-conversation.service';
-import { InvitationService } from '@messaging-service/conversations/invitation.service';
-import { ModerationService } from '@messaging-service/conversations/moderation.service';
-import { PinnedMessagesService } from '@messaging-service/conversations/pinned-messages.service';
+import type { TenantContext } from '../middleware/tenant/tenant-context';
 
 declare module 'fastify' {
   interface FastifyInstance {
     container: {
-      resolve<T>(name: 'userSettingsService'): UserSettingsService;
-      resolve<T>(name: 'groupInfoService'): GroupInfoService;
-      resolve<T>(name: 'conversationService'): ConversationService;
-      resolve<T>(name: 'groupConversationService'): GroupConversationService;
-      resolve<T>(name: 'invitationService'): InvitationService;
-      resolve<T>(name: 'moderationService'): ModerationService;
-      resolve<T>(name: 'pinnedMessagesService'): PinnedMessagesService;
-      // Add other services as needed
+      resolve<T>(name: string): T;
     };
     authenticate(request: FastifyRequest, reply: FastifyReply): Promise<void>;
+    requireAdmin?(request: FastifyRequest, reply: FastifyReply): Promise<void>;
+    sessionStore?: any;
+    revocationService?: any;
+    deviceSync?: any;
+    io?: any;
+    auditLogger?: any;
+    mfaEnforcement?: any;
   }
 
   interface FastifyRequest {
-    user: {
+    user?: {
       id: string;
+      user_id?: string;
       tenant_id: string;
       sub?: string;
       jti?: string;
@@ -32,7 +27,9 @@ declare module 'fastify' {
       roles?: string[];
       scopes?: string[];
     };
-    apiVersion: string;
-    // tenant is already defined in tenant-context.ts
+    apiVersion?: string;
+    session?: any;
+    file?: any;
+    tenant?: TenantContext | (Record<string, unknown> & { id?: string; tenant_id?: string });
   }
 }

@@ -1,0 +1,239 @@
+{
+  "task_group": "mongodb-optimization-v2",
+  "description": "Implement MongoDB bulk operations, change streams, and connection resilience",
+  "priority": "high",
+  "estimated_hours": 12,
+  "phase": "1-v2",
+  "feature_area": "mongodb-optimization",
+  "tasks": [
+    {
+      "id": "MONGO-V2-001",
+      "task_name": "Implement Bulk Write Operations",
+      "feature_details": "Create bulk write operations for efficient batch processing of messages and other high-volume data.",
+      "feature_dependency": [],
+      "ai_prompt": "Implement MongoDB bulk write operations:\n\n1. Create services/mongodb-service/src/operations/bulk-writer.ts with BulkWriter class that:\n   - Buffers write operations (insert, update, delete)\n   - Flushes buffer when size threshold reached (default 1000)\n   - Flushes buffer on time interval (default 1 second)\n   - Executes bulkWrite() for efficiency\n   - Handles partial failures\n   - Provides ordered and unordered modes\n\n2. Create services/mongodb-service/src/operations/bulk-operations.ts with helper functions:\n   - bulkInsertMessages(messages): Bulk insert messages\n   - bulkUpdateConversations(updates): Bulk update conversations\n   - bulkDeleteMessages(ids): Bulk soft-delete messages\n\n3. Update services/mongodb-service/src/repositories/base.repository.ts to add:\n   - bulkInsert(docs): Insert multiple documents efficiently\n   - bulkUpdate(updates): Update multiple documents\n   - bulkDelete(ids): Soft delete multiple documents\n\n4. Create services/mongodb-service/src/operations/write-concern-config.ts with optimized write concerns:\n   - FAST: w=1, j=false (for high throughput)\n   - SAFE: w=majority, j=true (for critical data)\n   - BALANCED: w=1, j=true (default)\n\n5. Update message-repository.ts to use bulk operations for high-volume scenarios\n\n6. Add metrics collection for bulk operations (count, latency, errors)",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test bulk writer buffering",
+          "Test flush on size threshold",
+          "Test flush on time interval",
+          "Test partial failure handling"
+        ],
+        "integration_tests": [
+          "Test bulk insert performance vs individual inserts",
+          "Test bulk update operations",
+          "Test write concern configurations"
+        ],
+        "e2e_tests": [
+          "Test bulk operations under high load"
+        ]
+      },
+      "acceptance_criteria": [
+        "Bulk writer buffers operations",
+        "Flush on size and time thresholds",
+        "Bulk operations 10x faster than individual",
+        "Partial failures handled correctly",
+        "Write concerns configurable",
+        "Metrics collected for bulk ops"
+      ],
+      "files_to_create": [
+        "services/mongodb-service/src/operations/bulk-writer.ts",
+        "services/mongodb-service/src/operations/bulk-operations.ts",
+        "services/mongodb-service/src/operations/write-concern-config.ts",
+        "services/mongodb-service/src/operations/index.ts"
+      ],
+      "files_to_modify": [
+        "services/mongodb-service/src/repositories/base.repository.ts"
+      ],
+      "docker_requirements": {
+        "services": ["mongodb-service", "mongodb"],
+        "environment_variables": [
+          "BULK_WRITE_BATCH_SIZE=1000",
+          "BULK_WRITE_FLUSH_INTERVAL_MS=1000"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 3,
+      "tags": ["mongodb", "bulk-operations", "performance"]
+    },
+    {
+      "id": "MONGO-V2-002",
+      "task_name": "Implement Change Streams for Real-Time Updates",
+      "feature_details": "Create change streams to watch for database changes and emit real-time events to Kafka for downstream processing.",
+      "feature_dependency": [],
+      "ai_prompt": "Implement MongoDB change streams:\n\n1. Create services/mongodb-service/src/change-streams/change-stream-manager.ts that:\n   - Manages multiple change streams\n   - Watches messages collection for inserts\n   - Watches conversations collection for updates\n   - Handles resume tokens for fault tolerance\n   - Batches change events for efficiency\n\n2. Create services/mongodb-service/src/change-streams/message-change-handler.ts that:\n   - Processes message insert events\n   - Publishes to Kafka topic for notifications\n   - Updates search index via Kafka\n   - Triggers push notifications\n\n3. Create services/mongodb-service/src/change-streams/conversation-change-handler.ts that:\n   - Processes conversation update events\n   - Publishes member changes to Kafka\n   - Updates conversation cache in Redis\n\n4. Create services/mongodb-service/src/change-streams/resume-token-store.ts that:\n   - Stores resume tokens in Redis\n   - Retrieves tokens on restart\n   - Handles token expiration\n\n5. Update services/mongodb-service/src/index.ts to start change streams on service startup\n\n6. Add configuration for change streams:\n   - FullDocument option (updateLookup for updates)\n   - Batch size for change events\n   - Max await time for polling\n\n7. Add health check for change streams",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test change stream event handling",
+          "Test resume token storage",
+          "Test batch processing"
+        ],
+        "integration_tests": [
+          "Test change stream detects inserts",
+          "Test change stream detects updates",
+          "Test resume after restart",
+          "Test events published to Kafka"
+        ],
+        "e2e_tests": [
+          "Test real-time updates flow through change streams"
+        ]
+      },
+      "acceptance_criteria": [
+        "Change streams watch messages and conversations",
+        "Insert events published to Kafka",
+        "Update events processed correctly",
+        "Resume tokens stored in Redis",
+        "Fault tolerance with resume on restart",
+        "Batch processing for efficiency"
+      ],
+      "files_to_create": [
+        "services/mongodb-service/src/change-streams/change-stream-manager.ts",
+        "services/mongodb-service/src/change-streams/message-change-handler.ts",
+        "services/mongodb-service/src/change-streams/conversation-change-handler.ts",
+        "services/mongodb-service/src/change-streams/resume-token-store.ts",
+        "services/mongodb-service/src/change-streams/index.ts"
+      ],
+      "files_to_modify": [
+        "services/mongodb-service/src/index.ts"
+      ],
+      "docker_requirements": {
+        "services": ["mongodb-service", "mongodb", "redis", "kafka"],
+        "environment_variables": [
+          "CHANGE_STREAM_BATCH_SIZE=100",
+          "CHANGE_STREAM_MAX_AWAIT_MS=1000"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 4,
+      "tags": ["mongodb", "change-streams", "real-time", "events"]
+    },
+    {
+      "id": "MONGO-V2-003",
+      "task_name": "Implement Connection Resilience and Retry Logic",
+      "feature_details": "Add connection retry logic, failover handling, and circuit breaker for MongoDB connections.",
+      "feature_dependency": [],
+      "ai_prompt": "Implement MongoDB connection resilience:\n\n1. Create services/mongodb-service/src/connections/connection-manager.ts with:\n   - Automatic reconnection on disconnect\n   - Exponential backoff for retries\n   - Max retry attempts (default 10)\n   - Circuit breaker pattern\n   - Connection health monitoring\n\n2. Create services/mongodb-service/src/connections/retry-policy.ts with:\n   - Configurable retry delays\n   - Jitter to prevent thundering herd\n   - Different policies for reads vs writes\n\n3. Create services/mongodb-service/src/connections/circuit-breaker.ts that:\n   - Opens circuit after failure threshold\n   - Half-open state for testing recovery\n   - Closes circuit when healthy\n   - Tracks failure metrics\n\n4. Update services/mongodb-service/src/connections/connection-factory.ts to use connection manager\n\n5. Add connection events logging:\n   - Connect events\n   - Disconnect events\n   - Reconnect events\n   - Error events\n\n6. Create services/mongodb-service/src/health/connection-health.ts for health checks\n\n7. Update docker-compose.yml to test failover by stopping/starting MongoDB nodes",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test retry logic",
+          "Test circuit breaker state transitions",
+          "Test exponential backoff"
+        ],
+        "integration_tests": [
+          "Test reconnection after MongoDB restart",
+          "Test circuit breaker opens on failures",
+          "Test circuit breaker closes on recovery",
+          "Test failover to secondary nodes"
+        ],
+        "e2e_tests": [
+          "Test application survives MongoDB restart"
+        ]
+      },
+      "acceptance_criteria": [
+        "Automatic reconnection on disconnect",
+        "Exponential backoff for retries",
+        "Circuit breaker prevents cascade failures",
+        "Connection health monitoring",
+        "Failover to secondary nodes works",
+        "All connection events logged"
+      ],
+      "files_to_create": [
+        "services/mongodb-service/src/connections/connection-manager.ts",
+        "services/mongodb-service/src/connections/retry-policy.ts",
+        "services/mongodb-service/src/connections/circuit-breaker.ts",
+        "services/mongodb-service/src/health/connection-health.ts"
+      ],
+      "files_to_modify": [
+        "services/mongodb-service/src/connections/connection-factory.ts"
+      ],
+      "docker_requirements": {
+        "services": ["mongodb-service", "mongodb-primary", "mongodb-secondary-1", "mongodb-secondary-2"],
+        "environment_variables": [
+          "MONGO_RETRY_MAX_ATTEMPTS=10",
+          "MONGO_RETRY_INITIAL_DELAY_MS=1000",
+          "MONGO_CIRCUIT_BREAKER_THRESHOLD=5"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 3,
+      "tags": ["mongodb", "resilience", "retry", "circuit-breaker"]
+    },
+    {
+      "id": "MONGO-V2-004",
+      "task_name": "Create MongoDB Optimization Tests",
+      "feature_details": "Create tests for bulk operations, change streams, and connection resilience.",
+      "feature_dependency": ["MONGO-V2-001", "MONGO-V2-002", "MONGO-V2-003"],
+      "ai_prompt": "Create MongoDB optimization tests:\n\n1. Create services/mongodb-service/tests/integration/bulk-operations.test.ts with tests for:\n   - Bulk insert performance vs individual inserts\n   - Bulk update operations\n   - Buffer flush on size threshold\n   - Buffer flush on time interval\n   - Partial failure handling\n\n2. Create services/mongodb-service/tests/integration/change-streams.test.ts with tests for:\n   - Change stream detects inserts\n   - Change stream detects updates\n   - Resume token storage and retrieval\n   - Events published to Kafka\n   - Resume after restart\n\n3. Create services/mongodb-service/tests/integration/connection-resilience.test.ts with tests for:\n   - Reconnection after disconnect\n   - Retry with exponential backoff\n   - Circuit breaker behavior\n   - Failover to secondary\n\n4. Create test utilities:\n   - services/mongodb-service/tests/utils/mongo-helpers.ts\n   - services/mongodb-service/tests/fixtures/messages.ts\n\n5. Create docker-compose.test.yml for MongoDB service tests\n\n6. Add performance benchmarks for bulk operations",
+      "testing_instructions": {
+        "unit_tests": [],
+        "integration_tests": [
+          "Run bulk operations tests",
+          "Run change streams tests",
+          "Run connection resilience tests"
+        ],
+        "e2e_tests": [
+          "Test all optimizations together"
+        ]
+      },
+      "acceptance_criteria": [
+        "Bulk operations tested",
+        "Change streams tested",
+        "Connection resilience tested",
+        "Performance benchmarks created",
+        "Tests run in Docker environment"
+      ],
+      "files_to_create": [
+        "services/mongodb-service/tests/integration/bulk-operations.test.ts",
+        "services/mongodb-service/tests/integration/change-streams.test.ts",
+        "services/mongodb-service/tests/integration/connection-resilience.test.ts",
+        "services/mongodb-service/tests/utils/mongo-helpers.ts",
+        "services/mongodb-service/tests/fixtures/messages.ts",
+        "services/mongodb-service/docker-compose.test.yml"
+      ],
+      "files_to_modify": [
+        "services/mongodb-service/package.json"
+      ],
+      "docker_requirements": {
+        "services": ["mongodb-service", "mongodb", "redis", "kafka"],
+        "environment_variables": [
+          "NODE_ENV=test"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 2,
+      "tags": ["mongodb", "testing", "integration"]
+    }
+  ]
+}

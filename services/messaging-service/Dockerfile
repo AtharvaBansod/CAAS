@@ -6,19 +6,20 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install --production
+# Install all dependencies (including dev for build)
+RUN npm install
 
 # Copy source code
 COPY . .
 
 # Build TypeScript
-RUN npm install -g typescript && \
-    npm run build && \
-    npm uninstall -g typescript
+RUN npm run build
 
-# Expose port (if needed for health checks)
+# Remove dev dependencies for smaller image
+RUN npm prune --production
+
+# Expose HTTP API port
 EXPOSE 3004
 
-# Start the service
+# Start the HTTP server
 CMD ["npm", "start"]

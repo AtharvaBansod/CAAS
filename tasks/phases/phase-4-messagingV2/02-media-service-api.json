@@ -1,0 +1,297 @@
+{
+  "task_group": "media-service-api-v2",
+  "description": "Add HTTP endpoints for media upload and download",
+  "priority": "high",
+  "estimated_hours": 12,
+  "phase": "4-v2",
+  "feature_area": "media-service-api",
+  "tasks": [
+    {
+      "id": "MEDIA-V2-001",
+      "task_name": "Implement Media Service HTTP Server",
+      "feature_details": "Create HTTP server for media service with Fastify to expose upload and download APIs.",
+      "feature_dependency": [],
+      "ai_prompt": "Implement media service HTTP server:\n\n1. Update services/media-service/src/index.ts to create Fastify HTTP server on port 3005 with upload and download routes\n\n2. Create services/media-service/src/server.ts with server configuration, multipart support for uploads, static file serving\n\n3. Add middleware for authentication and tenant isolation\n\n4. Create services/media-service/src/config/index.ts for environment configuration including S3 settings\n\n5. Update Dockerfile to expose port 3005\n\n6. Update docker-compose.yml to add media-service with proper environment variables\n\n7. Add health check endpoint at /health\n\n8. Implement graceful shutdown handling",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test server starts",
+          "Test health endpoint"
+        ],
+        "integration_tests": [
+          "Test server in Docker",
+          "Test health check"
+        ],
+        "e2e_tests": [
+          "Test complete server startup"
+        ]
+      },
+      "acceptance_criteria": [
+        "HTTP server on port 3005",
+        "Multipart upload support",
+        "Health endpoint works",
+        "Docker container starts",
+        "Graceful shutdown works"
+      ],
+      "files_to_create": [
+        "services/media-service/src/server.ts",
+        "services/media-service/src/config/index.ts",
+        "services/media-service/src/middleware/auth.ts",
+        "services/media-service/src/middleware/tenant.ts"
+      ],
+      "files_to_modify": [
+        "services/media-service/src/index.ts",
+        "services/media-service/Dockerfile",
+        "docker-compose.yml"
+      ],
+      "docker_requirements": {
+        "services": ["media-service", "minio", "mongodb"],
+        "environment_variables": [
+          "PORT=3005",
+          "S3_ENDPOINT=http://minio:9000",
+          "S3_BUCKET=caas-media"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/health",
+          "description": "Health check"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 3,
+      "tags": ["media", "http", "server"]
+    },
+    {
+      "id": "MEDIA-V2-002",
+      "task_name": "Implement Upload API with Progress",
+      "feature_details": "Create upload endpoint with progress tracking, validation, and chunked upload support.",
+      "feature_dependency": ["MEDIA-V2-001"],
+      "ai_prompt": "Implement upload API:\n\n1. Create services/media-service/src/routes/upload.ts with endpoints: POST /upload - Single file upload, POST /upload/chunk - Chunked upload, POST /upload/complete - Complete chunked upload, GET /upload/:id/progress - Get upload progress\n\n2. Implement multipart form handling with @fastify/multipart\n\n3. Add file validation: size limits, type checking, malware scanning placeholder\n\n4. Implement chunked upload for large files with temporary storage\n\n5. Create upload progress tracking in Redis\n\n6. Upload files to S3/MinIO with streaming\n\n7. Store file metadata in MongoDB\n\n8. Generate thumbnails for images and videos\n\n9. Publish upload events to Kafka\n\n10. Add quota checking per tenant",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test upload validation",
+          "Test chunked upload",
+          "Test progress tracking"
+        ],
+        "integration_tests": [
+          "Test file upload to S3",
+          "Test chunked upload flow",
+          "Test progress updates",
+          "Test quota enforcement"
+        ],
+        "e2e_tests": [
+          "Test complete upload flow"
+        ]
+      },
+      "acceptance_criteria": [
+        "Single file upload works",
+        "Chunked upload works",
+        "Progress tracking accurate",
+        "Validation enforced",
+        "Thumbnails generated",
+        "Events published",
+        "Quota checked"
+      ],
+      "files_to_create": [
+        "services/media-service/src/routes/upload.ts",
+        "services/media-service/src/upload/upload-tracker.ts",
+        "services/media-service/src/upload/chunk-manager.ts"
+      ],
+      "files_to_modify": [
+        "services/media-service/src/server.ts"
+      ],
+      "docker_requirements": {
+        "services": ["media-service", "minio", "redis"],
+        "environment_variables": [
+          "MAX_FILE_SIZE_MB=100",
+          "CHUNK_SIZE_MB=5",
+          "UPLOAD_TIMEOUT_MS=300000"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/upload",
+          "description": "Upload file"
+        },
+        {
+          "method": "POST",
+          "path": "/upload/chunk",
+          "description": "Upload chunk"
+        },
+        {
+          "method": "GET",
+          "path": "/upload/:id/progress",
+          "description": "Get upload progress"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          {
+            "name": "media_files",
+            "description": "Store file metadata"
+          }
+        ],
+        "indexes": [
+          {
+            "collection": "media_files",
+            "fields": ["tenant_id", "uploader_id"],
+            "options": { "background": true }
+          }
+        ],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 5,
+      "tags": ["media", "upload", "api"]
+    },
+    {
+      "id": "MEDIA-V2-003",
+      "task_name": "Implement Download and Streaming API",
+      "feature_details": "Create download endpoint with signed URLs, streaming, and range request support.",
+      "feature_dependency": ["MEDIA-V2-001"],
+      "ai_prompt": "Implement download API:\n\n1. Create services/media-service/src/routes/download.ts with endpoints: GET /download/:id - Download file, GET /download/:id/signed - Get signed URL, GET /stream/:id - Stream file with range support\n\n2. Implement signed URL generation with expiration\n\n3. Add range request support for video streaming\n\n4. Create services/media-service/src/delivery/signed-url-generator.ts for URL signing\n\n5. Implement access control checks before download\n\n6. Add download tracking and analytics\n\n7. Support content disposition for inline vs attachment\n\n8. Add bandwidth limiting for downloads\n\n9. Implement CDN integration placeholder\n\n10. Add cache headers for static files",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test signed URL generation",
+          "Test range requests",
+          "Test access control"
+        ],
+        "integration_tests": [
+          "Test file download",
+          "Test signed URL access",
+          "Test video streaming",
+          "Test access denial"
+        ],
+        "e2e_tests": [
+          "Test complete download flow"
+        ]
+      },
+      "acceptance_criteria": [
+        "Direct download works",
+        "Signed URLs generated",
+        "Range requests supported",
+        "Access control enforced",
+        "Streaming works",
+        "Download tracking active"
+      ],
+      "files_to_create": [
+        "services/media-service/src/routes/download.ts",
+        "services/media-service/src/delivery/signed-url-generator.ts",
+        "services/media-service/src/delivery/download-tracker.ts"
+      ],
+      "files_to_modify": [
+        "services/media-service/src/server.ts"
+      ],
+      "docker_requirements": {
+        "services": ["media-service", "minio"],
+        "environment_variables": [
+          "SIGNED_URL_EXPIRY_SECONDS=3600",
+          "DOWNLOAD_RATE_LIMIT_KBPS=10240"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [
+        {
+          "method": "GET",
+          "path": "/download/:id",
+          "description": "Download file"
+        },
+        {
+          "method": "GET",
+          "path": "/download/:id/signed",
+          "description": "Get signed URL"
+        },
+        {
+          "method": "GET",
+          "path": "/stream/:id",
+          "description": "Stream file"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 3,
+      "tags": ["media", "download", "streaming"]
+    },
+    {
+      "id": "MEDIA-V2-004",
+      "task_name": "Update Gateway to Proxy to Media Service",
+      "feature_details": "Update Gateway routes to proxy media requests to media service.",
+      "feature_dependency": ["MEDIA-V2-002", "MEDIA-V2-003"],
+      "ai_prompt": "Update Gateway to proxy to media service:\n\n1. Create services/gateway/src/routes/v1/media.ts with endpoints that proxy to media-service: POST /media/upload, GET /media/download/:id, GET /media/stream/:id\n\n2. Create services/gateway/src/services/media-client.ts as HTTP client for media service\n\n3. Implement streaming proxy for download and stream endpoints\n\n4. Add multipart proxy for upload endpoint\n\n5. Add service discovery for media-service\n\n6. Implement circuit breaker for media service calls\n\n7. Update docker-compose.yml to ensure Gateway depends on media-service\n\n8. Remove any direct media handling from Gateway",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test media client",
+          "Test proxy functionality"
+        ],
+        "integration_tests": [
+          "Test upload proxy",
+          "Test download proxy",
+          "Test streaming proxy"
+        ],
+        "e2e_tests": [
+          "Test complete Gateway to media flow"
+        ]
+      },
+      "acceptance_criteria": [
+        "Gateway proxies uploads",
+        "Gateway proxies downloads",
+        "Gateway proxies streaming",
+        "Circuit breaker implemented",
+        "Streaming works correctly",
+        "No direct media handling in Gateway"
+      ],
+      "files_to_create": [
+        "services/gateway/src/routes/v1/media.ts",
+        "services/gateway/src/services/media-client.ts"
+      ],
+      "files_to_modify": [
+        "services/gateway/src/routes/v1/index.ts",
+        "docker-compose.yml"
+      ],
+      "docker_requirements": {
+        "services": ["gateway", "media-service"],
+        "environment_variables": [
+          "MEDIA_SERVICE_URL=http://media-service:3005"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/v1/media/upload",
+          "description": "Upload media"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/media/download/:id",
+          "description": "Download media"
+        }
+      ],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 1,
+      "tags": ["gateway", "media", "proxy"]
+    }
+  ]
+}

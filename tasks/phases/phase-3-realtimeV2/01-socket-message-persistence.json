@@ -1,0 +1,232 @@
+{
+  "task_group": "socket-message-persistence-v2",
+  "description": "Persist socket messages to MongoDB via Kafka for durability",
+  "priority": "critical",
+  "estimated_hours": 14,
+  "phase": "3-v2",
+  "feature_area": "socket-message-persistence",
+  "tasks": [
+    {
+      "id": "SOCKET-V2-001",
+      "task_name": "Implement Socket Message Producer",
+      "feature_details": "Create Kafka producer in socket service to publish messages for persistence.",
+      "feature_dependency": [],
+      "ai_prompt": "Implement socket message producer:\n\n1. Create services/socket-service/src/messaging/kafka-producer.ts that connects to Kafka, publishes messages to chat.messages topic, handles producer errors, implements retry logic\n\n2. Create services/socket-service/src/messaging/message-validator.ts to validate message structure, check conversation membership, verify rate limits\n\n3. Update services/socket-service/src/namespaces/chat.ts sendMessage handler to validate message, publish to Kafka before broadcasting, wait for Kafka acknowledgment, handle publish failures\n\n4. Create message envelope format with message_id, conversation_id, tenant_id, sender_id, content, timestamp, metadata\n\n5. Add producer metrics for messages published, publish latency, error rates\n\n6. Configure producer for exactly-once semantics with idempotence",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test message validation",
+          "Test Kafka publish",
+          "Test retry logic"
+        ],
+        "integration_tests": [
+          "Test message published to Kafka",
+          "Test broadcast after publish",
+          "Test failure handling"
+        ],
+        "e2e_tests": [
+          "Test complete socket to Kafka flow"
+        ]
+      },
+      "acceptance_criteria": [
+        "Messages published to Kafka",
+        "Messages validated before publish",
+        "Broadcast happens after Kafka ack",
+        "Producer errors handled",
+        "Exactly-once semantics",
+        "Metrics collected"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/messaging/kafka-producer.ts",
+        "services/socket-service/src/messaging/message-validator.ts",
+        "services/socket-service/src/messaging/index.ts"
+      ],
+      "files_to_modify": [
+        "services/socket-service/src/namespaces/chat.ts",
+        "services/socket-service/src/config/index.ts"
+      ],
+      "docker_requirements": {
+        "services": ["socket-service", "kafka"],
+        "environment_variables": [
+          "KAFKA_BROKERS=kafka-1:29092,kafka-2:29092,kafka-3:29092",
+          "KAFKA_MESSAGE_TOPIC=chat.messages"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 4,
+      "tags": ["socket", "kafka", "messaging", "persistence"]
+    },
+    {
+      "id": "SOCKET-V2-002",
+      "task_name": "Implement Message Persistence Consumer",
+      "feature_details": "Create consumer that persists messages from Kafka to MongoDB.",
+      "feature_dependency": ["SOCKET-V2-001", "KAFKA-V2-002"],
+      "ai_prompt": "Implement message persistence consumer:\n\n1. Create services/kafka-service/src/consumers/message-persistence-consumer.ts that consumes from chat.messages topic, persists to MongoDB, updates conversation last_message_at, handles duplicates with idempotency\n\n2. Create services/kafka-service/src/persistence/message-repository.ts with methods: saveMessage, updateConversationLastMessage, checkDuplicate\n\n3. Implement idempotency using message_id to prevent duplicates\n\n4. Add bulk write support for high throughput scenarios\n\n5. Create services/kafka-service/src/persistence/conversation-cache.ts to cache conversation metadata in Redis\n\n6. Add consumer metrics for messages persisted, persistence latency, error rates\n\n7. Configure consumer for at-least-once delivery with manual offset commits",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test message persistence",
+          "Test idempotency",
+          "Test bulk writes"
+        ],
+        "integration_tests": [
+          "Test consumer processes messages",
+          "Test messages appear in MongoDB",
+          "Test conversation updated",
+          "Test duplicate handling"
+        ],
+        "e2e_tests": [
+          "Test socket to Kafka to MongoDB flow"
+        ]
+      },
+      "acceptance_criteria": [
+        "Messages persisted to MongoDB",
+        "Conversation last_message_at updated",
+        "Duplicates prevented",
+        "Bulk writes for throughput",
+        "Redis caching for performance",
+        "Metrics collected"
+      ],
+      "files_to_create": [
+        "services/kafka-service/src/consumers/message-persistence-consumer.ts",
+        "services/kafka-service/src/persistence/message-repository.ts",
+        "services/kafka-service/src/persistence/conversation-cache.ts"
+      ],
+      "files_to_modify": [
+        "services/kafka-service/src/index.ts"
+      ],
+      "docker_requirements": {
+        "services": ["kafka-service", "kafka", "mongodb", "redis"],
+        "environment_variables": [
+          "MESSAGE_PERSISTENCE_BATCH_SIZE=100"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [
+          {
+            "collection": "messages",
+            "fields": ["message_id"],
+            "options": { "unique": true, "sparse": true }
+          }
+        ],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 5,
+      "tags": ["kafka", "consumer", "mongodb", "persistence"]
+    },
+    {
+      "id": "SOCKET-V2-003",
+      "task_name": "Implement Message Delivery Confirmation",
+      "feature_details": "Create delivery confirmation system to track message persistence status.",
+      "feature_dependency": ["SOCKET-V2-002"],
+      "ai_prompt": "Implement message delivery confirmation:\n\n1. Create services/socket-service/src/messaging/delivery-confirmation.ts that tracks message persistence status, notifies sender of persistence confirmation, handles persistence failures\n\n2. Create services/kafka-service/src/persistence/persistence-notifier.ts that publishes persistence events to Kafka, notifies socket service of success/failure\n\n3. Add socket events for delivery status: message:persisted, message:persist_failed\n\n4. Update sendMessage handler to wait for persistence confirmation before acknowledging to client\n\n5. Implement timeout handling for persistence confirmation\n\n6. Add retry mechanism for failed persistence\n\n7. Create delivery status tracking in Redis",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test delivery tracking",
+          "Test confirmation notification",
+          "Test timeout handling"
+        ],
+        "integration_tests": [
+          "Test persistence confirmation flow",
+          "Test failure notification",
+          "Test retry mechanism"
+        ],
+        "e2e_tests": [
+          "Test complete delivery confirmation flow"
+        ]
+      },
+      "acceptance_criteria": [
+        "Message persistence tracked",
+        "Sender notified of persistence",
+        "Failures handled with retry",
+        "Timeout handling works",
+        "Redis tracks delivery status",
+        "Client receives confirmation"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/messaging/delivery-confirmation.ts",
+        "services/kafka-service/src/persistence/persistence-notifier.ts"
+      ],
+      "files_to_modify": [
+        "services/socket-service/src/namespaces/chat.ts"
+      ],
+      "docker_requirements": {
+        "services": ["socket-service", "kafka-service", "redis"],
+        "environment_variables": [
+          "PERSISTENCE_CONFIRMATION_TIMEOUT_MS=5000"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 3,
+      "tags": ["socket", "kafka", "delivery", "confirmation"]
+    },
+    {
+      "id": "SOCKET-V2-004",
+      "task_name": "Create Message Persistence Integration Tests",
+      "feature_details": "Create comprehensive tests for socket message persistence flow.",
+      "feature_dependency": ["SOCKET-V2-001", "SOCKET-V2-002", "SOCKET-V2-003"],
+      "ai_prompt": "Create message persistence integration tests:\n\n1. Create tests/integration/socket-message-persistence.test.ts with tests for: message from socket published to Kafka, message from Kafka persisted to MongoDB, delivery confirmation sent to client, duplicate messages handled, failure retry works, bulk persistence works\n\n2. Create test utilities for producing test messages, verifying MongoDB state, simulating failures\n\n3. Create docker-compose.test.yml for integration tests with all services\n\n4. Add performance tests for high throughput scenarios\n\n5. Add chaos tests for failure scenarios",
+      "testing_instructions": {
+        "unit_tests": [],
+        "integration_tests": [
+          "Run socket to Kafka tests",
+          "Run Kafka to MongoDB tests",
+          "Run delivery confirmation tests",
+          "Run failure scenario tests"
+        ],
+        "e2e_tests": [
+          "Test complete persistence flow"
+        ]
+      },
+      "acceptance_criteria": [
+        "All persistence scenarios tested",
+        "Performance tests pass",
+        "Failure scenarios tested",
+        "Tests run in Docker environment"
+      ],
+      "files_to_create": [
+        "tests/integration/socket-message-persistence.test.ts",
+        "tests/docker-compose.test.yml"
+      ],
+      "files_to_modify": [
+        "tests/package.json"
+      ],
+      "docker_requirements": {
+        "services": ["socket-service", "kafka-service", "kafka", "mongodb", "redis", "zookeeper"],
+        "environment_variables": [
+          "NODE_ENV=test"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 2,
+      "tags": ["socket", "kafka", "testing", "integration"]
+    }
+  ]
+}

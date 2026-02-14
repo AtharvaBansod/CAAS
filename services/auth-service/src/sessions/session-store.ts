@@ -47,6 +47,11 @@ export class SessionStore {
     // Add to user's session index
     await this.addToUserIndex(data.user_id, sessionId);
 
+    // Add to device index for multi-device tracking
+    if (data.device_id) {
+      await this.addToDeviceIndex(data.user_id, data.device_id, sessionId);
+    }
+
     return session;
   }
 
@@ -249,5 +254,33 @@ export class SessionStore {
 
   private getUserSessionsKey(userId: string): string {
     return `user_sessions:${userId}`;
+  }
+
+  private getDeviceSessionsKey(userId: string, deviceId: string): string {
+    return `device_sessions:${userId}:${deviceId}`;
+  }
+
+  private async addToDeviceIndex(userId: string, deviceId: string, sessionId: string): Promise<void> {
+    const key = this.getDeviceSessionsKey(userId, deviceId);
+    await this.redis.sadd(key, sessionId);
+    await this.redis.expire(key, this.config.ttl_seconds);
+  }
+
+  /**
+   * Get sessions by user and device
+   */
+  async getDeviceSessions(userId: string, deviceId: string): Promise<Session[]> {
+    const key = this.getDeviceSessionsKey(userId, deviceId);
+    const sessionIds = await this.redis.smembers(key);
+    const sessions: Session[] = [];
+
+    for (const sessionId of sessionIds) {
+      const session = await this.get(sessionId);
+      if (session) {
+        sessions.push(session);
+      }
+    }
+
+    return sessions;
   }
 }

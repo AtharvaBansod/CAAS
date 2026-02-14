@@ -1,18 +1,17 @@
 import { Client } from '@elastic/elasticsearch';
 import { MongoClient } from 'mongodb';
-import { createClient, RedisClientType } from 'redis';
+import Redis from 'ioredis';
 import { UserSuggestion } from '../types';
 
 export class SuggestionsService {
-  private redis: RedisClientType;
+  private redis: Redis;
 
   constructor(
     private esClient: Client,
     private mongoClient: MongoClient,
     redisUrl: string,
   ) {
-    this.redis = createClient({ url: redisUrl });
-    this.redis.connect().catch(console.error);
+    this.redis = new Redis(redisUrl);
   }
 
   async autocompleteUsers(
@@ -33,15 +32,13 @@ export class SuggestionsService {
     try {
       const result = await this.esClient.search({
         index: 'users',
-        body: {
-          query: {
-            bool: {
-              must: [{ match: { 'name.autocomplete': query } }],
-              filter,
-            },
+        query: {
+          bool: {
+            must: [{ match: { 'name.autocomplete': query } }],
+            filter,
           },
-          size: 10,
         },
+        size: 10,
       });
 
       return result.hits.hits.map((hit: any) => ({
@@ -57,7 +54,7 @@ export class SuggestionsService {
 
   async getRecentSearches(userId: string): Promise<string[]> {
     try {
-      return await this.redis.lRange(`recent_searches:${userId}`, 0, 9);
+      return await this.redis.lrange(`recent_searches:${userId}`, 0, 9);
     } catch (error) {
       console.error('Failed to get recent searches:', error);
       return [];
@@ -66,8 +63,8 @@ export class SuggestionsService {
 
   async saveRecentSearch(userId: string, query: string): Promise<void> {
     try {
-      await this.redis.lPush(`recent_searches:${userId}`, query);
-      await this.redis.lTrim(`recent_searches:${userId}`, 0, 9);
+      await this.redis.lpush(`recent_searches:${userId}`, query);
+      await this.redis.ltrim(`recent_searches:${userId}`, 0, 9);
     } catch (error) {
       console.error('Failed to save recent search:', error);
     }

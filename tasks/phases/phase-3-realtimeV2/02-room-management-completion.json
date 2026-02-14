@@ -1,0 +1,172 @@
+{
+  "task_group": "room-management-completion-v2",
+  "description": "Complete room state persistence and authorization",
+  "priority": "high",
+  "estimated_hours": 10,
+  "phase": "3-v2",
+  "feature_area": "room-management",
+  "tasks": [
+    {
+      "id": "ROOM-V2-001",
+      "task_name": "Implement Room State Persistence",
+      "feature_details": "Create proper room state management with Redis persistence and recovery.",
+      "feature_dependency": [],
+      "ai_prompt": "Implement room state persistence:\n\n1. Create services/socket-service/src/rooms/room-state-manager.ts that manages room state in Redis, tracks room members, persists room metadata, handles room lifecycle\n\n2. Create room state data structure with room_id, tenant_id, conversation_id, members array with user_id, socket_id, joined_at, role, metadata like created_at, last_activity\n\n3. Implement room operations: createRoom, deleteRoom, addMember, removeMember, updateMemberRole, getRoomState\n\n4. Add room state TTL with automatic cleanup for inactive rooms\n\n5. Create room state recovery on socket service restart\n\n6. Add room metrics: member count, message rate, activity levels\n\n7. Update services/socket-service/src/namespaces/chat.ts to use room state manager",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test room state operations",
+          "Test member tracking",
+          "Test TTL cleanup"
+        ],
+        "integration_tests": [
+          "Test room creation and deletion",
+          "Test member join and leave",
+          "Test state recovery"
+        ],
+        "e2e_tests": [
+          "Test complete room lifecycle"
+        ]
+      },
+      "acceptance_criteria": [
+        "Room state persisted in Redis",
+        "Members tracked accurately",
+        "TTL cleanup works",
+        "State recovers on restart",
+        "Metrics collected",
+        "All room operations work"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/rooms/room-state-manager.ts"
+      ],
+      "files_to_modify": [
+        "services/socket-service/src/namespaces/chat.ts"
+      ],
+      "docker_requirements": {
+        "services": ["socket-service", "redis"],
+        "environment_variables": [
+          "ROOM_STATE_TTL_HOURS=24"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 3,
+      "tags": ["socket", "rooms", "redis", "state-management"]
+    },
+    {
+      "id": "ROOM-V2-002",
+      "task_name": "Implement Room Authorization",
+      "feature_details": "Create comprehensive room authorization to ensure only members can access rooms.",
+      "feature_dependency": ["ROOM-V2-001"],
+      "ai_prompt": "Implement room authorization:\n\n1. Create services/socket-service/src/rooms/room-authorizer.ts that checks user is conversation member, verifies user role for actions, validates tenant isolation, handles banned users\n\n2. Create authorization checks: canJoinRoom, canSendMessage, canModerate, canAdminister\n\n3. Update joinRoom handler to verify membership before allowing join, check if user is banned, validate role permissions\n\n4. Update sendMessage handler to verify user is in room, check rate limits, validate content permissions\n\n5. Add room-level bans that prevent users from joining\n\n6. Implement room moderation actions: mute user, kick user, ban user\n\n7. Add authorization caching in Redis to reduce database queries\n\n8. Create authorization events for audit logging",
+      "testing_instructions": {
+        "unit_tests": [
+          "Test authorization checks",
+          "Test role validation",
+          "Test ban enforcement"
+        ],
+        "integration_tests": [
+          "Test non-member cannot join",
+          "Test banned user blocked",
+          "Test role permissions enforced",
+          "Test moderation actions"
+        ],
+        "e2e_tests": [
+          "Test complete authorization flow"
+        ]
+      },
+      "acceptance_criteria": [
+        "Only members can join rooms",
+        "Banned users blocked",
+        "Role permissions enforced",
+        "Moderation actions work",
+        "Authorization cached",
+        "Audit events logged"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/rooms/room-authorizer.ts",
+        "services/socket-service/src/rooms/room-moderation.ts"
+      ],
+      "files_to_modify": [
+        "services/socket-service/src/namespaces/chat.ts"
+      ],
+      "docker_requirements": {
+        "services": ["socket-service", "mongodb", "redis"],
+        "environment_variables": [
+          "ROOM_AUTHZ_CACHE_TTL=300"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [
+          {
+            "collection": "conversations",
+            "fields": ["tenant_id", "participants.user_id"],
+            "options": { "background": true }
+          }
+        ],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 4,
+      "tags": ["socket", "rooms", "authorization", "security"]
+    },
+    {
+      "id": "ROOM-V2-003",
+      "task_name": "Create Room Management Tests",
+      "feature_details": "Create comprehensive tests for room state and authorization.",
+      "feature_dependency": ["ROOM-V2-001", "ROOM-V2-002"],
+      "ai_prompt": "Create room management tests:\n\n1. Create services/socket-service/tests/integration/room-state.test.ts with tests for room creation and deletion, member join and leave, state persistence, state recovery, TTL cleanup\n\n2. Create services/socket-service/tests/integration/room-authorization.test.ts with tests for member-only access, ban enforcement, role permissions, moderation actions, cross-tenant isolation\n\n3. Create test utilities for room simulation, member management\n\n4. Add load tests for high-concurrency room operations\n\n5. Add chaos tests for failure scenarios",
+      "testing_instructions": {
+        "unit_tests": [],
+        "integration_tests": [
+          "Run room state tests",
+          "Run room authorization tests",
+          "Run load tests"
+        ],
+        "e2e_tests": [
+          "Test complete room management flow"
+        ]
+      },
+      "acceptance_criteria": [
+        "All room state scenarios tested",
+        "All authorization scenarios tested",
+        "Load tests pass",
+        "Tests run in Docker environment"
+      ],
+      "files_to_create": [
+        "services/socket-service/tests/integration/room-state.test.ts",
+        "services/socket-service/tests/integration/room-authorization.test.ts"
+      ],
+      "files_to_modify": [
+        "services/socket-service/package.json"
+      ],
+      "docker_requirements": {
+        "services": ["socket-service", "mongodb", "redis"],
+        "environment_variables": [
+          "NODE_ENV=test"
+        ],
+        "volumes": [],
+        "networks": ["caas-network"]
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "pending",
+      "estimated_hours": 3,
+      "tags": ["socket", "rooms", "testing"]
+    }
+  ]
+}

@@ -338,6 +338,10 @@ services:
       - CORS_ORIGINS=${CORS_ORIGINS:-*}
       - ELASTICSEARCH_URL=http://elasticsearch:9200
       - ELASTICSEARCH_PASSWORD=${ELASTICSEARCH_PASSWORD:-changeme}
+      - MESSAGING_SERVICE_URL=http://messaging-service:3004
+      - MEDIA_SERVICE_URL=http://media-service:3005
+      - SEARCH_SERVICE_URL=http://search-service:3006
+      - SEARCH_CACHE_TTL_SECONDS=60
     networks:
       caas-network:
         ipv4_address: 172.28.6.1
@@ -348,6 +352,12 @@ services:
         condition: service_healthy
       kafka-1:
         condition: service_healthy
+      messaging-service:
+        condition: service_healthy
+      media-service:
+        condition: service_healthy
+      search-service:
+        condition: service_started
     healthcheck:
       test: ["CMD", "node", "-e", "const http = require('http'); http.get('http://127.0.0.1:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"]
       interval: 30s
@@ -490,6 +500,7 @@ services:
       - MONGODB_URI=mongodb://${MONGO_ROOT_USER:-caas_admin}:${MONGO_ROOT_PASSWORD:-caas_secret_2026}@mongodb-primary:27017/caas_platform?authSource=admin&replicaSet=caas-rs
       - REDIS_URL=redis://:${REDIS_PASSWORD:-caas_redis_2026}@redis:6379/0
       - KAFKA_BROKERS=kafka-1:29092,kafka-2:29092,kafka-3:29092
+      - JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY}
       - MESSAGE_EDIT_WINDOW_MINUTES=15
       - MAX_FORWARD_TARGETS=5
       - MAX_FORWARD_MESSAGES=10
@@ -505,7 +516,7 @@ services:
       caas-network:
         ipv4_address: 172.28.8.1
     healthcheck:
-      test: ["CMD", "node", "-e", "console.log('healthy')"]
+      test: ["CMD", "node", "-e", "const http = require('http'); http.get('http://127.0.0.1:3004/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -635,6 +646,7 @@ services:
       - MONGODB_URI=mongodb://${MONGO_ROOT_USER:-caas_admin}:${MONGO_ROOT_PASSWORD:-caas_secret_2026}@mongodb-primary:27017/caas_platform?authSource=admin&replicaSet=caas-rs
       - REDIS_URL=redis://:${REDIS_PASSWORD:-caas_redis_2026}@redis:6379/0
       - KAFKA_BROKERS=kafka-1:29092,kafka-2:29092,kafka-3:29092
+      - JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY}
       - S3_ENDPOINT=http://minio:9000
       - S3_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
       - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
@@ -654,7 +666,7 @@ services:
       caas-network:
         ipv4_address: 172.28.9.2
     healthcheck:
-      test: ["CMD", "node", "-e", "console.log('healthy')"]
+      test: ["CMD", "node", "-e", "const http = require('http'); http.get('http://127.0.0.1:3005/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"]
       interval: 30s
       timeout: 10s
       retries: 3

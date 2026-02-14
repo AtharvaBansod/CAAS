@@ -1,5 +1,5 @@
 export type CallStatus = 'initiating' | 'ringing' | 'answered' | 'connected' | 'ended' | 'rejected' | 'missed';
-export type MediaType = 'audio' | 'video';
+export type MediaType = 'audio' | 'video' | 'screen';
 export type CallType = 'one_to_one' | 'group';
 export type EndReason = 'user_hangup' | 'timeout' | 'error' | 'network_failure' | 'rejected' | 'cancelled' | 'busy';
 
