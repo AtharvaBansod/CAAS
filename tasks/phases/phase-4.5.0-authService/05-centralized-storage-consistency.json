@@ -1,0 +1,185 @@
+{
+  "id": "AUTH-4.5.0-05",
+  "title": "Auth Service Centralized Storage & Consistency",
+  "description": "Implement centralized storage patterns for auth service with proper data consistency, audit trails, and professional enterprise storage architecture",
+  "priority": "High",
+  "phase": "4.5.0",
+  "status": "pending",
+  "dependencies": ["AUTH-4.5.0-02"],
+  "estimatedHours": 20,
+  "deliverables": [
+    "auth-storage-service.ts",
+    "user-repository.ts",
+    "session-repository.ts",
+    "audit-repository.ts",
+    "consistency-manager.ts",
+    "data-migration-scripts.ts",
+    "backup-restore-service.ts"
+  ],
+  "acceptanceCriteria": [
+    "Centralized user data storage with proper indexing",
+    "Session data consistency across services",
+    "Audit trail immutability with hash chains",
+    "Data migration from existing auth library",
+    "Backup and restore procedures implemented",
+    "Database optimization for auth queries",
+    "Multi-tenant data isolation enforced"
+  ],
+  "technicalDetails": {
+    "storageArchitecture": {
+      "primaryDatabase": "MongoDB with replica set",
+      "cacheLayer": "Redis for session and token cache",
+      "auditStorage": "Immutable hash chain in separate collection",
+      "backupStrategy": "Point-in-time recovery enabled",
+      "encryption": "AES-256-GCM for sensitive data at rest"
+    },
+    "dataModels": {
+      "users": {
+        "user_id": "UUID PRIMARY KEY",
+        "tenant_id": "UUID INDEXED",
+        "email": "VARCHAR(255) UNIQUE INDEXED",
+        "username": "VARCHAR(100) UNIQUE INDEXED",
+        "password_hash": "VARCHAR(255)",
+        "mfa_secret": "VARCHAR(255) ENCRYPTED",
+        "mfa_enabled": "BOOLEAN DEFAULT FALSE",
+        "mfa_backup_codes": "TEXT ENCRYPTED",
+        "profile_data": "JSONB",
+        "preferences": "JSONB",
+        "status": "ENUM('active', 'suspended', 'deleted')",
+        "last_login_at": "TIMESTAMP",
+        "created_at": "TIMESTAMP",
+        "updated_at": "TIMESTAMP"
+      },
+      "sessions": {
+        "session_id": "UUID PRIMARY KEY",
+        "user_id": "UUID FOREIGN KEY INDEXED",
+        "tenant_id": "UUID INDEXED",
+        "device_fingerprint": "VARCHAR(255) INDEXED",
+        "ip_address": "VARCHAR(45)",
+        "user_agent": "TEXT",
+        "location": "JSONB",
+        "expires_at": "TIMESTAMP INDEXED",
+        "refresh_token_hash": "VARCHAR(255)",
+        "is_active": "BOOLEAN DEFAULT TRUE",
+        "created_at": "TIMESTAMP",
+        "last_activity_at": "TIMESTAMP"
+      },
+      "audit_logs": {
+        "audit_id": "UUID PRIMARY KEY",
+        "user_id": "UUID INDEXED",
+        "tenant_id": "UUID INDEXED",
+        "session_id": "UUID INDEXED",
+        "action": "VARCHAR(100) INDEXED",
+        "resource_type": "VARCHAR(50)",
+        "resource_id": "UUID",
+        "metadata": "JSONB",
+        "ip_address": "VARCHAR(45)",
+        "user_agent": "TEXT",
+        "hash_chain": "VARCHAR(255)",
+        "created_at": "TIMESTAMP"
+      },
+      "api_keys": {
+        "key_id": "UUID PRIMARY KEY",
+        "user_id": "UUID FOREIGN KEY INDEXED",
+        "tenant_id": "UUID INDEXED",
+        "key_hash": "VARCHAR(255) UNIQUE",
+        "name": "VARCHAR(100)",
+        "permissions": "JSONB",
+        "expires_at": "TIMESTAMP",
+        "last_used_at": "TIMESTAMP",
+        "is_active": "BOOLEAN DEFAULT TRUE",
+        "created_at": "TIMESTAMP"
+      }
+    },
+    "consistencyPatterns": {
+      "transactional": "MongoDB transactions for multi-document operations",
+      "eventual": "Redis cache sync with database",
+      "audit": "Immutable append-only audit logs",
+      "backup": "Consistent point-in-time snapshots",
+      "migration": "Zero-downtime data migration"
+    },
+    "performanceOptimizations": {
+      "indexes": "Composite indexes on (tenant_id, user_id), (email), (session_id)",
+      "caching": "Redis cache for active sessions and user profiles",
+      "connectionPooling": "MongoDB connection pool optimization",
+      "queryOptimization": "Explain plans and index usage monitoring",
+      "partitioning": "Tenant-based collection partitioning for large datasets"
+    }
+  },
+  "implementationSteps": [
+    {
+      "step": 1,
+      "description": "Design database schema with proper indexing",
+      "deliverable": "database/schema.sql and schema.js",
+      "estimatedHours": 3
+    },
+    {
+      "step": 2,
+      "description": "Create user repository with CRUD operations",
+      "deliverable": "src/repositories/user-repository.ts",
+      "estimatedHours": 3
+    },
+    {
+      "step": 3,
+      "description": "Implement session repository with caching",
+      "deliverable": "src/repositories/session-repository.ts",
+      "estimatedHours": 3
+    },
+    {
+      "step": 4,
+      "description": "Create audit repository with hash chain",
+      "deliverable": "src/repositories/audit-repository.ts",
+      "estimatedHours": 3
+    },
+    {
+      "step": 5,
+      "description": "Implement consistency manager for transactions",
+      "deliverable": "src/services/consistency-manager.ts",
+      "estimatedHours": 2
+    },
+    {
+      "step": 6,
+      "description": "Create data migration scripts from existing auth",
+      "deliverable": "scripts/migrate-auth-data.ts",
+      "estimatedHours": 3
+    },
+    {
+      "step": 7,
+      "description": "Implement backup and restore service",
+      "deliverable": "src/services/backup-restore-service.ts",
+      "estimatedHours": 2
+    },
+    {
+      "step": 8,
+      "description": "Create performance monitoring and optimization",
+      "deliverable": "src/services/performance-monitor.ts",
+      "estimatedHours": 2
+    },
+    {
+      "step": 9,
+      "description": "Write comprehensive storage tests",
+      "deliverable": "test/storage/ directory with tests",
+      "estimatedHours": 3
+    },
+    {
+      "step": 10,
+      "description": "Document storage architecture and procedures",
+      "deliverable": "docs/storage-architecture.md",
+      "estimatedHours": 2
+    }
+  ],
+  "risks": [
+    "Data migration complexity and downtime",
+    "Performance degradation during migration",
+    "Cache consistency issues",
+    "Audit log tampering detection",
+    "Backup restoration complexity"
+  ],
+  "mitigation": [
+    "Zero-downtime migration strategy",
+    "Performance monitoring and optimization",
+    "Cache invalidation strategies",
+    "Cryptographic audit trail verification",
+    "Automated backup testing procedures"
+  ]
+}

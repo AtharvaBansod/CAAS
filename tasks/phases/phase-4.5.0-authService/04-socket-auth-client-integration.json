@@ -1,0 +1,134 @@
+{
+  "id": "AUTH-4.5.0-04",
+  "title": "Socket Service Auth Client Integration",
+  "description": "Refactor socket service to use standalone auth service client for authentication, session management, and user validation instead of embedded auth logic",
+  "priority": "Critical",
+  "phase": "4.5.0",
+  "status": "pending",
+  "dependencies": ["AUTH-4.5.0-02"],
+  "estimatedHours": 12,
+  "deliverables": [
+    "socket-auth-client.ts",
+    "socket-auth-middleware.ts",
+    "session-validator.ts",
+    "user-cache-service.ts",
+    "socket-circuit-breaker.ts",
+    "namespace-auth-integration.ts"
+  ],
+  "acceptanceCriteria": [
+    "Socket service uses auth service client for authentication",
+    "JWT validation delegated to auth service",
+    "Session management centralized in auth service",
+    "User caching implemented for performance",
+    "Circuit breaker for auth service calls",
+    "Graceful handling of auth service unavailability",
+    "All existing socket auth functionality preserved"
+  ],
+  "technicalDetails": {
+    "socketAuthFlow": {
+      "connection": "Socket.IO connection with JWT token",
+      "validation": "Auth service validates token",
+      "session": "Session info cached in Redis",
+      "namespace": "Tenant-specific namespace isolation",
+      "room": "User-specific room assignment",
+      "disconnect": "Session cleanup and audit"
+    },
+    "authIntegration": {
+      "tokenValidation": "GET /api/v1/auth/validate",
+      "sessionInfo": "GET /api/v1/auth/session",
+      "userProfile": "GET /api/v1/users/profile",
+      "sessionRefresh": "POST /api/v1/auth/refresh",
+      "sessionTermination": "DELETE /api/v1/auth/sessions/:id"
+    },
+    "performanceOptimizations": {
+      "tokenCache": "Redis TTL 300 seconds",
+      "sessionCache": "Redis TTL 600 seconds",
+      "userCache": "Redis TTL 1800 seconds",
+      "batchValidation": "Batch multiple token validations",
+      "connectionPooling": "HTTP keep-alive connections"
+    },
+    "errorHandling": {
+      "authServiceDown": "Circuit breaker fallback",
+      "invalidToken": "Immediate disconnection",
+      "expiredToken": "Graceful reconnection flow",
+      "networkErrors": "Retry with exponential backoff",
+      "serviceUnavailable": "Temporary auth bypass for existing sessions"
+    }
+  },
+  "implementationSteps": [
+    {
+      "step": 1,
+      "description": "Create socket-specific auth service client",
+      "deliverable": "src/auth/socket-auth-client.ts",
+      "estimatedHours": 2
+    },
+    {
+      "step": 2,
+      "description": "Implement socket authentication middleware",
+      "deliverable": "src/middleware/socket-auth-middleware.ts",
+      "estimatedHours": 3
+    },
+    {
+      "step": 3,
+      "description": "Create user cache service for performance",
+      "deliverable": "src/services/user-cache-service.ts",
+      "estimatedHours": 2
+    },
+    {
+      "step": 4,
+      "description": "Implement session validator service",
+      "deliverable": "src/services/session-validator.ts",
+      "estimatedHours": 2
+    },
+    {
+      "step": 5,
+      "description": "Create circuit breaker for auth service",
+      "deliverable": "src/utils/socket-circuit-breaker.ts",
+      "estimatedHours": 1
+    },
+    {
+      "step": 6,
+      "description": "Update namespace authentication integration",
+      "deliverable": "src/namespaces/auth-integration.ts",
+      "estimatedHours": 2
+    },
+    {
+      "step": 7,
+      "description": "Refactor existing auth middleware",
+      "deliverable": "src/middleware/auth-middleware.ts (refactored)",
+      "estimatedHours": 2
+    },
+    {
+      "step": 8,
+      "description": "Update Docker configuration for auth service",
+      "deliverable": "docker-compose.yml updates",
+      "estimatedHours": 1
+    },
+    {
+      "step": 9,
+      "description": "Write socket auth integration tests",
+      "deliverable": "test/socket-auth.test.ts",
+      "estimatedHours": 2
+    },
+    {
+      "step": 10,
+      "description": "Performance testing and optimization",
+      "deliverable": "socket-performance-test.md",
+      "estimatedHours": 2
+    }
+  ],
+  "risks": [
+    "Socket connection latency increase",
+    "Auth service downtime affecting real-time features",
+    "Token validation race conditions",
+    "Cache invalidation complexity",
+    "Namespace isolation issues"
+  ],
+  "mitigation": [
+    "Implement aggressive caching with TTL",
+    "Use circuit breaker with graceful degradation",
+    "Add connection retry logic",
+    "Implement cache warming strategies",
+    "Test namespace isolation thoroughly"
+  ]
+}

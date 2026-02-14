@@ -1,0 +1,264 @@
+{
+  "id": "CRYPTO-4.5.2-02",
+  "title": "Crypto Service Standalone Implementation",
+  "description": "Implement standalone crypto service with Signal Protocol, HSM integration, key management, and professional enterprise cryptographic operations",
+  "priority": "Critical",
+  "phase": "4.5.2",
+  "status": "pending",
+  "dependencies": ["CRYPTO-4.5.2-01"],
+  "estimatedHours": 32,
+  "deliverables": [
+    "crypto-server.ts",
+    "signal-protocol-controller.ts",
+    "key-management-controller.ts",
+    "hsm-integration-service.ts",
+    "double-ratchet-implementation.ts",
+    "x3dh-key-agreement.ts",
+    "key-rotation-service.ts",
+    "crypto-audit-service.ts",
+    "tenant-isolation-service.ts",
+    "docker-compose.yml"
+  ],
+  "acceptanceCriteria": [
+    "Standalone crypto service runs on port 3003",
+    "Signal Protocol implementation with Double Ratchet",
+    "HSM integration for key storage and operations",
+    "Key rotation and lifecycle management",
+    "End-to-end encryption with forward secrecy",
+    "Multi-tenant cryptographic isolation",
+    "FIPS 140-2 compliant operations",
+    "Docker container builds and runs"
+  ],
+  "technicalDetails": {
+    "serviceConfiguration": {
+      "port": 3003,
+      "basePath": "/api/v1",
+      "cors": {
+        "origin": ["http://gateway:3000", "http://localhost:3000"],
+        "credentials": true
+      },
+      "rateLimit": {
+        "windowMs": 3600000,
+        "max": 1000,
+        "message": "Cryptographic operation rate limit exceeded"
+      },
+      "timeout": {
+        "cryptoOperation": 30000,
+        "hsmOperation": 60000
+      }
+    },
+    "cryptographicImplementation": {
+      "signalProtocol": {
+        "doubleRatchetAlgorithm": "Forward secrecy implementation",
+        "x3dhKeyAgreement": "Extended Triple Diffie-Hellman",
+        "sesameProtocol": "Multi-device synchronization",
+        "groupMessaging": "Secure group encryption",
+        "messageAuthentication": "HMAC-SHA256 for integrity"
+      },
+      "keyManagement": {
+        "keyGeneration": "Hardware-based random generation",
+        "keyDerivation": "HKDF-SHA256 for key expansion",
+        "keyStorage": "HSM with PKCS#11 interface",
+        "keyRotation": "Automated rotation policies",
+        "keyBackup": "Encrypted backup procedures",
+        "keyRecovery": "Secure key restoration"
+      },
+      "encryptionStandards": {
+        "symmetric": "AES-256-GCM for bulk encryption",
+        "asymmetric": "ECDSA P-256 for digital signatures",
+        "hashing": "SHA-256 for message digests",
+        "randomGeneration": "NIST SP 800-90A DRBG",
+        "padding": "PKCS#1 v2.2 for RSA operations"
+      },
+      "hsmIntegration": {
+        "pkcs11Interface": "Standard PKCS#11 implementation",
+        "keyStorage": "Secure key storage in HSM",
+        "cryptoOperations": "Hardware-accelerated cryptography",
+        "accessControl": "Role-based HSM access",
+        "auditLogging": "HSM operation audit trail",
+        "backupRecovery": "HSM key backup and restore"
+      }
+    },
+    "databaseSchema": {
+      "keys": {
+        "key_id": "UUID PRIMARY KEY",
+        "tenant_id": "UUID INDEXED",
+        "user_id": "UUID INDEXED",
+        "key_type": "ENUM('identity', 'signed_prekey', 'one_time_prekey', 'group')",
+        "key_data": "TEXT ENCRYPTED",
+        "public_key": "TEXT",
+        "private_key_handle": "VARCHAR(255)",
+        "created_at": "TIMESTAMP",
+        "expires_at": "TIMESTAMP",
+        "is_active": "BOOLEAN DEFAULT TRUE"
+      },
+      "signal_sessions": {
+        "session_id": "UUID PRIMARY KEY",
+        "tenant_id": "UUID INDEXED",
+        "user_id": "UUID INDEXED",
+        "peer_user_id": "UUID INDEXED",
+        "session_data": "TEXT ENCRYPTED",
+        "ratchet_state": "TEXT ENCRYPTED",
+        "message_counter": "INTEGER DEFAULT 0",
+        "created_at": "TIMESTAMP",
+        "last_message_at": "TIMESTAMP",
+        "is_active": "BOOLEAN DEFAULT TRUE"
+      },
+      "group_sessions": {
+        "group_id": "UUID PRIMARY KEY",
+        "tenant_id": "UUID INDEXED",
+        "session_data": "TEXT ENCRYPTED",
+        "member_keys": "TEXT ENCRYPTED",
+        "sender_keys": "TEXT ENCRYPTED",
+        "created_at": "TIMESTAMP",
+        "updated_at": "TIMESTAMP",
+        "is_active": "BOOLEAN DEFAULT TRUE"
+      },
+      "crypto_operations": {
+        "operation_id": "UUID PRIMARY KEY",
+        "tenant_id": "UUID INDEXED",
+        "operation_type": "VARCHAR(50) INDEXED",
+        "key_id": "UUID",
+        "session_id": "UUID",
+        "input_hash": "VARCHAR(64)",
+        "output_hash": "VARCHAR(64)",
+        "hsm_handle": "VARCHAR(255)",
+        "status": "ENUM('success', 'failed', 'pending')",
+        "error_message": "TEXT",
+        "created_at": "TIMESTAMP",
+        "completed_at": "TIMESTAMP"
+      }
+    },
+    "securityArchitecture": {
+      "keyHierarchy": {
+        "masterKey": "HSM-protected root key",
+        "keyEncryptionKey": "KEK for key wrapping",
+        "dataEncryptionKey": "DEK for data encryption",
+        "sessionKey": "Ephemeral session keys",
+        "messageKey": "Per-message encryption keys"
+      },
+      "accessControl": {
+        "roleBased": "Crypto officer, auditor, service roles",
+        "multiFactor": "MFA for critical key operations",
+        "timeBased": "Key access time restrictions",
+        "contextBased": "Device and location-based access"
+      },
+      "compliance": {
+        "fips140": "FIPS 140-2 Level 3 operations",
+        "commonCriteria": "Common Criteria EAL4+",
+        "keyManagement": "NIST SP 800-57 compliance",
+        "randomNumbers": "NIST SP 800-90A compliance"
+      },
+      "monitoring": {
+        "operationMetrics": "Cryptographic operation statistics",
+        "keyMetrics": "Key lifecycle metrics",
+        "hsmMetrics": "HSM utilization and health",
+        "securityAlerts": "Anomaly detection and alerting"
+      }
+    }
+  },
+  "implementationSteps": [
+    {
+      "step": 1,
+      "description": "Create crypto service server with Fastify and security middleware",
+      "deliverable": "src/server.ts",
+      "estimatedHours": 4
+    },
+    {
+      "step": 2,
+      "description": "Implement Signal Protocol Double Ratchet algorithm",
+      "deliverable": "src/modules/signal/double-ratchet.ts",
+      "estimatedHours": 6
+    },
+    {
+      "step": 3,
+      "description": "Create X3DH key agreement implementation",
+      "deliverable": "src/modules/signal/x3dh.ts",
+      "estimatedHours": 4
+    },
+    {
+      "step": 4,
+      "description": "Implement Signal Protocol controllers and services",
+      "deliverable": "src/controllers/signal-controller.ts",
+      "estimatedHours": 4
+    },
+    {
+      "step": 5,
+      "description": "Create HSM integration with PKCS#11 interface",
+      "deliverable": "src/modules/hsm/hsm-client.ts",
+      "estimatedHours": 5
+    },
+    {
+      "step": 6,
+      "description": "Implement key management service with rotation",
+      "deliverable": "src/services/key-management-service.ts",
+      "estimatedHours": 4
+    },
+    {
+      "step": 7,
+      "description": "Create key rotation and lifecycle management",
+      "deliverable": "src/services/key-rotation-service.ts",
+      "estimatedHours": 3
+    },
+    {
+      "step": 8,
+      "description": "Implement cryptographic operations service",
+      "deliverable": "src/services/crypto-operations-service.ts",
+      "estimatedHours": 3
+    },
+    {
+      "step": 9,
+      "description": "Create multi-tenant key isolation service",
+      "deliverable": "src/services/tenant-isolation-service.ts",
+      "estimatedHours": 3
+    },
+    {
+      "step": 10,
+      "description": "Implement crypto audit and integrity verification",
+      "deliverable": "src/services/crypto-audit-service.ts",
+      "estimatedHours": 2
+    },
+    {
+      "step": 11,
+      "description": "Create database models and repositories",
+      "deliverable": "src/repositories/ directory with models",
+      "estimatedHours": 3
+    },
+    {
+      "step": 12,
+      "description": "Setup Docker configuration with HSM integration",
+      "deliverable": "Dockerfile, docker-compose.yml, hsm-config.yml",
+      "estimatedHours": 2
+    },
+    {
+      "step": 13,
+      "description": "Write comprehensive cryptographic tests",
+      "deliverable": "test/crypto/ directory with tests",
+      "estimatedHours": 6
+    },
+    {
+      "step": 14,
+      "description": "Security audit and penetration testing",
+      "deliverable": "security-audit-report.md",
+      "estimatedHours": 4
+    }
+  ],
+  "risks": [
+    "Complexity of Signal Protocol implementation",
+    "HSM vendor lock-in and integration complexity",
+    "Performance impact of cryptographic operations",
+    "Key management security and lifecycle complexity",
+    "FIPS 140-2 compliance certification requirements",
+    "Multi-tenant cryptographic isolation security",
+    "Hardware security module availability and cost"
+  ],
+  "mitigation": [
+    "Use established Signal Protocol reference implementations",
+    "Abstract HSM interface for vendor independence",
+    "Implement hardware acceleration and intelligent caching",
+    "Use proven key management frameworks and procedures",
+    "Design for FIPS compliance from architecture phase",
+    "Implement strict cryptographic tenant boundaries",
+    "Design cloud-agnostic HSM integration with failover"
+  ]
+}

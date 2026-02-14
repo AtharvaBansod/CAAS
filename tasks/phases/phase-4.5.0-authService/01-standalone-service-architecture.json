@@ -1,0 +1,109 @@
+{
+  "id": "AUTH-4.5.0-01",
+  "title": "Standalone Auth Service Architecture Design",
+  "description": "Design comprehensive REST API architecture for standalone auth service with proper service boundaries, centralized authentication logic, and professional enterprise patterns",
+  "priority": "Critical",
+  "phase": "4.5.0",
+  "status": "pending",
+  "dependencies": [],
+  "estimatedHours": 16,
+  "deliverables": [
+    "auth-service-api-design.md",
+    "service-boundaries-definition.md", 
+    "authentication-flow-diagrams.md",
+    "rest-endpoint-specification.md"
+  ],
+  "acceptanceCriteria": [
+    "Complete REST API specification with OpenAPI 3.0",
+    "Service boundary definitions clear",
+    "Authentication flows documented",
+    "Enterprise security patterns implemented"
+  ],
+  "technicalDetails": {
+    "architecture": {
+      "servicePort": 3001,
+      "basePath": "/api/v1",
+      "protocol": "REST",
+      "authentication": "Internal JWT validation",
+      "authorization": "RBAC/ABAC hybrid",
+      "rateLimiting": "Per-tenant and per-user",
+      "circuitBreaker": "50% error threshold, 30s timeout"
+    },
+    "apiEndpoints": {
+      "authentication": "/auth/login",
+      "tokenRefresh": "/auth/refresh",
+      "logout": "/auth/logout",
+      "mfaChallenge": "/auth/mfa/challenge",
+      "mfaVerify": "/auth/mfa/verify",
+      "sessionInfo": "/auth/session",
+      "userProfile": "/users/profile",
+      "apiKeys": "/auth/api-keys",
+      "sessions": "/auth/sessions",
+      "revocation": "/auth/revoke"
+    },
+    "dataFlow": {
+      "requestFlow": "Client → Gateway → Auth Service → Central Storage",
+      "responseFlow": "Auth Service → Gateway → Client",
+      "tokenValidation": "Gateway validates via Auth Service",
+      "sessionManagement": "Centralized in Auth Service",
+      "auditLogging": "All auth events logged"
+    },
+    "securityPatterns": {
+      "jwtValidation": "RS256 with key rotation",
+      "sessionBinding": "Device fingerprint + IP",
+      "rateLimiting": "Redis-based distributed",
+      "encryption": "AES-256-GCM for sensitive data",
+      "auditTrail": "Immutable hash chain"
+    }
+  },
+  "implementationSteps": [
+    {
+      "step": 1,
+      "description": "Design REST API specification with OpenAPI 3.0",
+      "deliverable": "auth-api-openapi.yml",
+      "estimatedHours": 4
+    },
+    {
+      "step": 2,
+      "description": "Define service boundaries and responsibilities",
+      "deliverable": "service-boundaries.md",
+      "estimatedHours": 2
+    },
+    {
+      "step": 3,
+      "description": "Create authentication flow diagrams",
+      "deliverable": "auth-flow-diagrams.png",
+      "estimatedHours": 3
+    },
+    {
+      "step": 4,
+      "description": "Design centralized session management",
+      "deliverable": "session-management-design.md",
+      "estimatedHours": 3
+    },
+    {
+      "step": 5,
+      "description": "Plan audit logging and compliance integration",
+      "deliverable": "audit-logging-spec.md",
+      "estimatedHours": 2
+    },
+    {
+      "step": 6,
+      "description": "Review and validate architecture",
+      "deliverable": "architecture-review.md",
+      "estimatedHours": 2
+    }
+  ],
+  "risks": [
+    "Complexity of migrating from library to service",
+    "Performance impact of network calls",
+    "Service discovery and load balancing",
+    "Data consistency during migration"
+  ],
+  "mitigation": [
+    "Implement circuit breakers",
+    "Use Redis caching",
+    "Gradual migration strategy",
+    "Comprehensive testing"
+  ]
+}

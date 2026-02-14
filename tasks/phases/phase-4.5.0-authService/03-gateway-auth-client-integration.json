@@ -1,0 +1,140 @@
+{
+  "id": "AUTH-4.5.0-03",
+  "title": "Gateway Service Auth Client Integration",
+  "description": "Refactor gateway service to use standalone auth service client instead of embedded auth library, implement proper service communication patterns",
+  "priority": "Critical",
+  "phase": "4.5.0",
+  "status": "pending",
+  "dependencies": ["AUTH-4.5.0-02"],
+  "estimatedHours": 16,
+  "deliverables": [
+    "auth-client.ts",
+    "auth-middleware-refactor.ts",
+    "token-validation-service.ts",
+    "session-cache-service.ts",
+    "circuit-breaker-config.ts",
+    "service-discovery.ts",
+    "gateway-auth-integration.ts"
+  ],
+  "acceptanceCriteria": [
+    "Gateway uses auth service client for all auth operations",
+    "Token validation calls auth service API",
+    "Session management delegated to auth service",
+    "Circuit breaker implemented for auth service calls",
+    "Redis caching for auth responses",
+    "Graceful degradation when auth service unavailable",
+    "All existing auth functionality preserved"
+  ],
+  "technicalDetails": {
+    "clientArchitecture": {
+      "baseURL": "http://auth-service:3001",
+      "timeout": 5000,
+      "retries": 3,
+      "circuitBreaker": {
+        "failureThreshold": 50,
+        "resetTimeout": 30000,
+        "monitoringPeriod": 10000
+      },
+      "cache": {
+        "ttl": 300,
+        "keyPrefix": "auth:",
+        "redis": "redis://redis:6379"
+      }
+    },
+    "apiIntegration": {
+      "tokenValidation": "GET /api/v1/auth/validate",
+      "sessionInfo": "GET /api/v1/auth/session",
+      "userProfile": "GET /api/v1/users/profile",
+      "sessionRefresh": "POST /api/v1/auth/refresh",
+      "sessionTermination": "DELETE /api/v1/auth/sessions/:id",
+      "apiKeyValidation": "GET /api/v1/auth/api-keys/validate"
+    },
+    "middlewareRefactor": {
+      "authPlugin": "Refactor to use auth client",
+      "jwtValidation": "Delegate to auth service",
+      "sessionResolution": "Cache-based with fallback",
+      "tenantResolution": "Preserve existing logic",
+      "rateLimiting": "Enhanced with auth service data"
+    },
+    "serviceDiscovery": {
+      "healthCheck": "GET /health",
+      "loadBalancing": "Round-robin with health",
+      "failover": "Circuit breaker pattern",
+      "monitoring": "Prometheus metrics"
+    }
+  },
+  "implementationSteps": [
+    {
+      "step": 1,
+      "description": "Create auth service client with HTTP wrapper",
+      "deliverable": "src/clients/auth-client.ts",
+      "estimatedHours": 3
+    },
+    {
+      "step": 2,
+      "description": "Implement circuit breaker for auth service calls",
+      "deliverable": "src/utils/circuit-breaker.ts",
+      "estimatedHours": 2
+    },
+    {
+      "step": 3,
+      "description": "Create Redis-based auth response cache",
+      "deliverable": "src/services/session-cache-service.ts",
+      "estimatedHours": 2
+    },
+    {
+      "step": 4,
+      "description": "Refactor auth plugin to use auth client",
+      "deliverable": "src/plugins/auth-plugin.ts",
+      "estimatedHours": 3
+    },
+    {
+      "step": 5,
+      "description": "Update JWT validation middleware",
+      "deliverable": "src/middleware/auth/jwt-validation.ts",
+      "estimatedHours": 2
+    },
+    {
+      "step": 6,
+      "description": "Implement service discovery for auth service",
+      "deliverable": "src/services/service-discovery.ts",
+      "estimatedHours": 2
+    },
+    {
+      "step": 7,
+      "description": "Create fallback mechanisms for auth failures",
+      "deliverable": "src/middleware/auth/fallback.ts",
+      "estimatedHours": 2
+    },
+    {
+      "step": 8,
+      "description": "Update Docker configuration for auth service",
+      "deliverable": "docker-compose.yml updates",
+      "estimatedHours": 1
+    },
+    {
+      "step": 9,
+      "description": "Write integration tests for auth client",
+      "deliverable": "test/auth-client.test.ts",
+      "estimatedHours": 3
+    },
+    {
+      "step": 10,
+      "description": "Performance testing and optimization",
+      "deliverable": "performance-test-results.md",
+      "estimatedHours": 2
+    }
+  ],
+  "risks": [
+    "Network latency impact on auth performance",
+    "Auth service availability affecting gateway",
+    "Session state inconsistency during migration",
+    "Circuit breaker false positives"
+  ],
+  "mitigation": [
+    "Implement aggressive caching strategies",
+    "Use connection pooling and keep-alive",
+    "Gradual rollout with monitoring",
+    "Fine-tune circuit breaker thresholds"
+  ]
+}

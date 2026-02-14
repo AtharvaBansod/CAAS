@@ -1,0 +1,211 @@
+{
+  "id": "CRYPTO-4.5.2-01",
+  "title": "Standalone Crypto Service Architecture Design",
+  "description": "Design comprehensive REST API architecture for standalone crypto service with Signal Protocol, key management, HSM integration, and professional enterprise cryptographic patterns",
+  "priority": "Critical",
+  "phase": "4.5.2",
+  "status": "pending",
+  "dependencies": [],
+  "estimatedHours": 20,
+  "deliverables": [
+    "crypto-service-api-design.md",
+    "signal-protocol-implementation.md",
+    "key-management-architecture.md",
+    "hsm-integration-spec.md",
+    "cryptographic-standards.md",
+    "security-audit-spec.md"
+  ],
+  "acceptanceCriteria": [
+    "Complete Signal Protocol implementation with REST API",
+    "HSM integration for key storage and operations",
+    "Key rotation and lifecycle management",
+    "End-to-end encryption with forward secrecy",
+    "Cryptographic audit and compliance reporting",
+    "Multi-tenant key isolation and management",
+    "Professional security standards compliance"
+  ],
+  "technicalDetails": {
+    "serviceArchitecture": {
+      "servicePort": 3003,
+      "basePath": "/api/v1",
+      "protocol": "REST",
+      "authentication": "Internal service-to-service JWT",
+      "authorization": "Crypto officer roles",
+      "rateLimiting": "Per-cryptographic operation",
+      "securityLevel": "FIPS 140-2 Level 3 compliance"
+    },
+    "cryptographicModules": {
+      "signalProtocol": {
+        "doubleRatchet": "Forward secrecy for messaging",
+        "x3dh": "Extended Triple Diffie-Hellman key agreement",
+        "sesame": "Multi-device synchronization",
+        "groupEncryption": "Secure group messaging",
+        "keyDerivation": "HKDF-SHA256 for key derivation"
+      },
+      "keyManagement": {
+        "keyGeneration": "Hardware-based random generation",
+        "keyStorage": "HSM with tamper detection",
+        "keyRotation": "Automated key rotation policies",
+        "keyRecovery": "Secure key backup and recovery",
+        "keyDestruction": "Secure key erasure procedures"
+      },
+      "encryptionStandards": {
+        "symmetric": "AES-256-GCM for bulk encryption",
+        "asymmetric": "ECDSA P-256 for signatures",
+        "hashing": "SHA-256 for message authentication",
+        "randomGeneration": "NIST SP 800-90A DRBG",
+        "padding": "PKCS#1 v2.2 for RSA operations"
+      },
+      "hsmIntegration": {
+        "keyStorage": "Secure key storage in HSM",
+        "cryptographicOperations": "Hardware-accelerated crypto",
+        "accessControl": "Role-based access to HSM keys",
+        "auditLogging": "HSM operation audit trail",
+        "backupRecovery": "HSM key backup procedures"
+      }
+    },
+    "apiEndpoints": {
+      "keyManagement": {
+        "POST /crypto/keys/generate": "Generate new key pair",
+        "GET /crypto/keys/:keyId": "Get key information",
+        "PUT /crypto/keys/:keyId/rotate": "Rotate key",
+        "DELETE /crypto/keys/:keyId": "Revoke key",
+        "POST /crypto/keys/:keyId/backup": "Backup key to HSM",
+        "POST /crypto/keys/:keyId/restore": "Restore key from backup"
+      },
+      "signalProtocol": {
+        "POST /crypto/signal/initialize": "Initialize Signal protocol session",
+        "POST /crypto/signal/encrypt": "Encrypt message with Signal",
+        "POST /crypto/signal/decrypt": "Decrypt Signal message",
+        "POST /crypto/signal/ratchet": "Perform key ratchet step",
+        "POST /crypto/signal/group/create": "Create group session",
+        "POST /crypto/signal/group/encrypt": "Encrypt group message"
+      },
+      "encryption": {
+        "POST /crypto/encrypt/symmetric": "Symmetric encryption",
+        "POST /crypto/decrypt/symmetric": "Symmetric decryption",
+        "POST /crypto/encrypt/asymmetric": "Asymmetric encryption",
+        "POST /crypto/decrypt/asymmetric": "Asymmetric decryption",
+        "POST /crypto/sign": "Create digital signature",
+        "POST /crypto/verify": "Verify digital signature"
+      },
+      "keyDerivation": {
+        "POST /crypto/kdf/derive": "Derive key from password",
+        "POST /crypto/kdf/stretch": "Key stretching with PBKDF2",
+        "POST /crypto/hkdf/extract": "HKDF key extraction",
+        "POST /crypto/hkdf/expand": "HKDF key expansion"
+      },
+      "hsmOperations": {
+        "POST /crypto/hsm/keygen": "Generate key in HSM",
+        "POST /crypto/hsm/encrypt": "HSM encryption operation",
+        "POST /crypto/hsm/decrypt": "HSM decryption operation",
+        "POST /crypto/hsm/sign": "HSM signature operation",
+        "GET /crypto/hsm/status": "HSM status and health"
+      },
+      "audit": {
+        "GET /crypto/audit/operations": "Get crypto operation audit",
+        "GET /crypto/audit/keys/:keyId": "Get key audit trail",
+        "POST /crypto/audit/verify": "Verify cryptographic integrity"
+      }
+    },
+    "securityArchitecture": {
+      "keyHierarchy": {
+        "masterKey": "HSM-protected root key",
+        "keyEncryptionKey": "KEK for key wrapping",
+        "dataEncryptionKey": "DEK for data encryption",
+        "sessionKey": "Ephemeral session keys",
+        "messageKey": "Per-message encryption keys"
+      },
+      "accessControl": {
+        "roleBased": "Crypto officer, auditor, user roles",
+        "multiFactor": "MFA for critical operations",
+        "timeBased": "Key access time restrictions",
+        "contextBased": "Device and location-based access"
+      },
+      "compliance": {
+        "fips140": "FIPS 140-2 Level 3 compliance",
+        "commonCriteria": "Common Criteria EAL4+",
+        "pciDss": "PCI DSS compliance for payment data",
+        "gdpr": "GDPR compliance for personal data"
+      }
+    }
+  },
+  "implementationSteps": [
+    {
+      "step": 1,
+      "description": "Design crypto service API with OpenAPI 3.0 specification",
+      "deliverable": "docs/crypto-api-openapi.yml",
+      "estimatedHours": 4
+    },
+    {
+      "step": 2,
+      "description": "Implement Signal Protocol with Double Ratchet algorithm",
+      "deliverable": "src/modules/signal/double-ratchet.ts",
+      "estimatedHours": 5
+    },
+    {
+      "step": 3,
+      "description": "Create X3DH key agreement implementation",
+      "deliverable": "src/modules/signal/x3dh.ts",
+      "estimatedHours": 3
+    },
+    {
+      "step": 4,
+      "description": "Implement key management with HSM integration",
+      "deliverable": "src/modules/key-management/key-manager.ts",
+      "estimatedHours": 4
+    },
+    {
+      "step": 5,
+      "description": "Create HSM integration layer with PKCS#11",
+      "deliverable": "src/modules/hsm/hsm-client.ts",
+      "estimatedHours": 4
+    },
+    {
+      "step": 6,
+      "description": "Implement cryptographic operations service",
+      "deliverable": "src/modules/crypto/crypto-service.ts",
+      "estimatedHours": 3
+    },
+    {
+      "step": 7,
+      "description": "Create key rotation and lifecycle management",
+      "deliverable": "src/modules/key-management/key-rotation.ts",
+      "estimatedHours": 3
+    },
+    {
+      "step": 8,
+      "description": "Implement cryptographic audit and integrity verification",
+      "deliverable": "src/modules/audit/crypto-audit.ts",
+      "estimatedHours": 2
+    },
+    {
+      "step": 9,
+      "description": "Create multi-tenant key isolation",
+      "deliverable": "src/modules/key-management/tenant-isolation.ts",
+      "estimatedHours": 2
+    },
+    {
+      "step": 10,
+      "description": "Design security architecture and threat model",
+      "deliverable": "docs/security-architecture.md",
+      "estimatedHours": 3
+    }
+  ],
+  "risks": [
+    "Complexity of Signal Protocol implementation",
+    "HSM integration and vendor lock-in",
+    "Performance impact of cryptographic operations",
+    "Key management complexity and security",
+    "FIPS 140-2 compliance certification requirements",
+    "Multi-tenant key isolation security"
+  ],
+  "mitigation": [
+    "Use established Signal Protocol libraries where possible",
+    "Abstract HSM interface for vendor independence",
+    "Implement hardware acceleration and caching",
+    "Use proven key management frameworks",
+    "Design for compliance from the start",
+    "Implement strict tenant isolation with cryptographic boundaries"
+  ]
+}

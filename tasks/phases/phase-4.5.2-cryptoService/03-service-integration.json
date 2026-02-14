@@ -1,0 +1,218 @@
+{
+  "id": "CRYPTO-4.5.2-03",
+  "title": "Service Integration for Cryptographic Operations",
+  "description": "Implement comprehensive service integration patterns for all CAAS services to use standalone crypto service for encryption, key management, and cryptographic operations instead of embedded libraries",
+  "priority": "High",
+  "phase": "4.5.2",
+  "status": "pending",
+  "dependencies": ["CRYPTO-4.5.2-02"],
+  "estimatedHours": 28,
+  "deliverables": [
+    "crypto-client-library.ts",
+    "gateway-crypto-integration.ts",
+    "socket-crypto-integration.ts",
+    "messaging-crypto-integration.ts",
+    "media-crypto-integration.ts",
+    "search-crypto-integration.ts",
+    "e2e-encryption-service.ts",
+    "key-management-service.ts",
+    "crypto-circuit-breaker.ts"
+  ],
+  "acceptanceCriteria": [
+    "All services use crypto service client for cryptographic operations",
+    "End-to-end encryption centralized through crypto service",
+    "Key management delegated to crypto service",
+    "Service-to-service authentication for crypto operations",
+    "Cryptographic operations consistent across all services",
+    "Circuit breaker protection for crypto service calls",
+    "Zero cryptographic implementation duplication"
+  ],
+  "technicalDetails": {
+    "integrationArchitecture": {
+      "clientPattern": "Centralized cryptographic client library",
+      "serviceDiscovery": "Consul-based service discovery",
+      "authentication": "Service-to-service JWT with crypto scopes",
+      "communication": "HTTP/HTTPS with mutual TLS",
+      "errorHandling": "Graceful degradation and cryptographic fallbacks",
+      "monitoring": "Cryptographic operation metrics and alerting"
+    },
+    "cryptoClient": {
+      "baseURL": "http://crypto-service:3003",
+      "timeout": 10000,
+      "retries": 3,
+      "circuitBreaker": {
+        "failureThreshold": 20,
+        "resetTimeout": 60000,
+        "monitoringPeriod": 30000
+      },
+      "caching": {
+        "keyCache": "Redis TTL 3600 seconds",
+        "sessionCache": "Redis TTL 1800 seconds",
+        "encryptionCache": "Redis TTL 300 seconds"
+      },
+      "batching": {
+        "enabled": true,
+        "maxBatchSize": 50,
+        "flushInterval": 1000
+      }
+    },
+    "serviceIntegrations": {
+      "gatewayService": {
+        "cryptoOperations": ["JWT signing", "API key encryption", "session encryption"],
+        "e2eEncryption": "Gateway-level encryption for sensitive data",
+        "keyManagement": "Service authentication keys",
+        "implementation": "Middleware-based crypto integration"
+      },
+      "socketService": {
+        "cryptoOperations": ["Signal Protocol", "E2E encryption", "key ratcheting"],
+        "e2eEncryption": "Real-time messaging encryption",
+        "keyManagement": "Session and device keys",
+        "implementation": "Namespace and room-level crypto integration"
+      },
+      "messagingService": {
+        "cryptoOperations": ["message encryption", "attachment encryption", "search encryption"],
+        "e2eEncryption": "Message content and metadata encryption",
+        "keyManagement": "Conversation and message keys",
+        "implementation": "Repository and service-level crypto integration"
+      },
+      "mediaService": {
+        "cryptoOperations": ["file encryption", "stream encryption", "thumbnail encryption"],
+        "e2eEncryption": "Media file content encryption",
+        "keyManagement": "File and stream encryption keys",
+        "implementation": "File operation crypto integration"
+      },
+      "searchService": {
+        "cryptoOperations": ["index encryption", "search tokenization", "result decryption"],
+        "e2eEncryption": "Search index and query encryption",
+        "keyManagement": "Index and search keys",
+        "implementation": "Index operation crypto integration"
+      }
+    },
+    "cryptographicPatterns": {
+      "e2eEncryption": {
+        "protocol": "Signal Protocol with Double Ratchet",
+        "keyAgreement": "X3DH for initial key exchange",
+        "forwardSecrecy": "Automatic key ratcheting",
+        "groupMessaging": "Secure group encryption",
+        "multiDevice": "Cross-device key synchronization"
+      },
+      "keyManagement": {
+        "hierarchy": "Master key → KEK → DEK → Session keys",
+        "rotation": "Automated key rotation policies",
+        "backup": "Encrypted key backup to secure storage",
+        "recovery": "Secure key restoration procedures",
+        "destruction": "Cryptographic key erasure"
+      },
+      "dataProtection": {
+        "atRest": "AES-256-GCM for data encryption",
+        "inTransit": "TLS 1.3 with perfect forward secrecy",
+        "inMemory": "Memory protection and secure erasure",
+        "backup": "Encrypted backup with key escrow"
+      }
+    }
+  },
+  "implementationSteps": [
+    {
+      "step": 1,
+      "description": "Create centralized cryptographic client library",
+      "deliverable": "packages/crypto-client/src/client.ts",
+      "estimatedHours": 6
+    },
+    {
+      "step": 2,
+      "description": "Implement gateway service crypto integration",
+      "deliverable": "services/gateway/src/middleware/crypto-middleware.ts",
+      "estimatedHours": 4
+    },
+    {
+      "step": 3,
+      "description": "Create socket service Signal Protocol integration",
+      "deliverable": "services/socket-service/src/crypto/signal-integration.ts",
+      "estimatedHours": 5
+    },
+    {
+      "step": 4,
+      "description": "Implement messaging service E2E encryption",
+      "deliverable": "services/messaging-service/src/services/crypto-service.ts",
+      "estimatedHours": 4
+    },
+    {
+      "step": 5,
+      "description": "Create media service file encryption integration",
+      "deliverable": "services/media-service/src/services/crypto-service.ts",
+      "estimatedHours": 3
+    },
+    {
+      "step": 6,
+      "description": "Implement search service encrypted indexing",
+      "deliverable": "services/search-service/src/services/crypto-service.ts",
+      "estimatedHours": 3
+    },
+    {
+      "step": 7,
+      "description": "Create E2E encryption service for all communications",
+      "deliverable": "packages/crypto-client/src/e2e-service.ts",
+      "estimatedHours": 4
+    },
+    {
+      "step": 8,
+      "description": "Implement centralized key management service",
+      "deliverable": "packages/crypto-client/src/key-management.ts",
+      "estimatedHours": 3
+    },
+    {
+      "step": 9,
+      "description": "Create crypto circuit breaker with fallbacks",
+      "deliverable": "packages/crypto-client/src/circuit-breaker.ts",
+      "estimatedHours": 2
+    },
+    {
+      "step": 10,
+      "description": "Implement service-to-service authentication",
+      "deliverable": "packages/crypto-client/src/auth-service.ts",
+      "estimatedHours": 3
+    },
+    {
+      "step": 11,
+      "description": "Create cryptographic operation caching",
+      "deliverable": "packages/crypto-client/src/cache-service.ts",
+      "estimatedHours": 2
+    },
+    {
+      "step": 12,
+      "description": "Write comprehensive integration tests",
+      "deliverable": "test/crypto-integration/ directory",
+      "estimatedHours": 6
+    },
+    {
+      "step": 13,
+      "description": "Performance optimization and monitoring",
+      "deliverable": "packages/crypto-client/src/performance-monitor.ts",
+      "estimatedHours": 3
+    },
+    {
+      "step": 14,
+      "description": "Document integration patterns and APIs",
+      "deliverable": "docs/crypto-integration-guide.md",
+      "estimatedHours": 2
+    }
+  ],
+  "risks": [
+    "Performance impact of centralized cryptographic operations",
+    "Crypto service availability affecting all services",
+    "Complexity of Signal Protocol integration across services",
+    "Key management complexity and security boundaries",
+    "Network latency affecting real-time cryptographic operations",
+    "Cryptographic client library maintenance and versioning",
+    "Service-to-service authentication complexity"
+  ],
+  "mitigation": [
+    "Implement intelligent caching and batching strategies",
+    "Use circuit breakers with graceful cryptographic fallbacks",
+    "Provide clear Signal Protocol integration patterns",
+    "Implement strict cryptographic tenant boundaries",
+    "Use connection pooling and keep-alive strategies",
+    "Design stable client API with backward compatibility",
+    "Implement service mesh with mutual TLS and JWT"
+  ]
+}

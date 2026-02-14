@@ -1,0 +1,217 @@
+{
+  "id": "COMPLIANCE-4.5.1-02",
+  "title": "Compliance Service Standalone Implementation",
+  "description": "Implement standalone compliance service with GDPR automation, audit trails, retention policies, and service integration patterns",
+  "priority": "Critical",
+  "phase": "4.5.1",
+  "status": "pending",
+  "dependencies": ["COMPLIANCE-4.5.1-01"],
+  "estimatedHours": 28,
+  "deliverables": [
+    "compliance-server.ts",
+    "gdpr-controller.ts",
+    "audit-controller.ts",
+    "retention-controller.ts",
+    "consent-manager.ts",
+    "data-export-service.ts",
+    "audit-service.ts",
+    "retention-engine.ts",
+    "hash-chain-service.ts",
+    "docker-compose.yml"
+  ],
+  "acceptanceCriteria": [
+    "Standalone compliance service runs on port 3002",
+    "GDPR automation endpoints implemented",
+    "Immutable audit trail with hash chain verification",
+    "Automated retention policy execution",
+    "Real-time compliance reporting",
+    "Service integration APIs working",
+    "Docker container builds and runs"
+  ],
+  "technicalDetails": {
+    "serviceConfiguration": {
+      "port": 3002,
+      "basePath": "/api/v1",
+      "cors": {
+        "origin": ["http://gateway:3000", "http://localhost:3000"],
+        "credentials": true
+      },
+      "rateLimit": {
+        "windowMs": 3600000,
+        "max": 100,
+        "message": "Compliance API rate limit exceeded"
+      }
+    },
+    "databaseSchema": {
+      "consent_records": {
+        "consent_id": "UUID PRIMARY KEY",
+        "user_id": "UUID INDEXED",
+        "tenant_id": "UUID INDEXED",
+        "consent_type": "VARCHAR(100)",
+        "consent_given": "BOOLEAN",
+        "consent_text": "TEXT",
+        "version": "VARCHAR(50)",
+        "ip_address": "VARCHAR(45)",
+        "user_agent": "TEXT",
+        "created_at": "TIMESTAMP",
+        "expires_at": "TIMESTAMP"
+      },
+      "gdpr_requests": {
+        "request_id": "UUID PRIMARY KEY",
+        "user_id": "UUID INDEXED",
+        "tenant_id": "UUID INDEXED",
+        "request_type": "ENUM('export', 'erasure', 'rectification', 'portability')",
+        "status": "ENUM('pending', 'processing', 'completed', 'failed')",
+        "request_data": "JSONB",
+        "result_data": "JSONB",
+        "completed_at": "TIMESTAMP",
+        "created_at": "TIMESTAMP"
+      },
+      "audit_logs": {
+        "audit_id": "UUID PRIMARY KEY",
+        "tenant_id": "UUID INDEXED",
+        "user_id": "UUID INDEXED",
+        "action": "VARCHAR(100) INDEXED",
+        "resource_type": "VARCHAR(50)",
+        "resource_id": "UUID",
+        "metadata": "JSONB",
+        "hash_chain": "VARCHAR(255)",
+        "previous_hash": "VARCHAR(255)",
+        "created_at": "TIMESTAMP"
+      },
+      "retention_policies": {
+        "policy_id": "UUID PRIMARY KEY",
+        "tenant_id": "UUID INDEXED",
+        "name": "VARCHAR(100)",
+        "data_type": "VARCHAR(50)",
+        "retention_days": "INTEGER",
+        "conditions": "JSONB",
+        "is_active": "BOOLEAN DEFAULT TRUE",
+        "created_at": "TIMESTAMP",
+        "updated_at": "TIMESTAMP"
+      },
+      "retention_executions": {
+        "execution_id": "UUID PRIMARY KEY",
+        "policy_id": "UUID FOREIGN KEY",
+        "tenant_id": "UUID INDEXED",
+        "status": "ENUM('scheduled', 'running', 'completed', 'failed')",
+        "processed_records": "INTEGER",
+        "deleted_records": "INTEGER",
+        "error_log": "TEXT",
+        "started_at": "TIMESTAMP",
+        "completed_at": "TIMESTAMP"
+      }
+    },
+    "serviceModules": {
+      "gdprModule": {
+        "consentTracking": "Real-time consent management",
+        "dataExport": "Automated data packaging and delivery",
+        "dataErasure": "Secure data deletion with verification",
+        "dataRectification": "Data correction with audit trail",
+        "portability": "Data transfer between systems"
+      },
+      "auditModule": {
+        "immutableLogging": "Hash chain for tamper detection",
+        "realTimeMonitoring": "Compliance dashboard and alerts",
+        "automatedReporting": "Scheduled compliance reports",
+        "violationDetection": "Automated breach detection",
+        "integrityVerification": "Cryptographic audit verification"
+      },
+      "retentionModule": {
+        "policyEngine": "Configurable retention rules",
+        "automatedExecution": "Scheduled cleanup operations",
+        "legalHolds": "Data preservation for legal requirements",
+        "dataClassification": "Automated sensitivity categorization",
+        "complianceVerification": "Retention policy validation"
+      }
+    }
+  },
+  "implementationSteps": [
+    {
+      "step": 1,
+      "description": "Create compliance service server with Fastify",
+      "deliverable": "src/server.ts",
+      "estimatedHours": 3
+    },
+    {
+      "step": 2,
+      "description": "Implement GDPR consent management controller",
+      "deliverable": "src/controllers/gdpr/consent-controller.ts",
+      "estimatedHours": 3
+    },
+    {
+      "step": 3,
+      "description": "Create data export and erasure services",
+      "deliverable": "src/services/gdpr/data-export-service.ts",
+      "estimatedHours": 4
+    },
+    {
+      "step": 4,
+      "description": "Implement immutable audit service with hash chain",
+      "deliverable": "src/services/audit/audit-service.ts",
+      "estimatedHours": 4
+    },
+    {
+      "step": 5,
+      "description": "Create retention policy engine",
+      "deliverable": "src/services/retention/retention-engine.ts",
+      "estimatedHours": 3
+    },
+    {
+      "step": 6,
+      "description": "Implement automated retention execution",
+      "deliverable": "src/services/retention/executor.ts",
+      "estimatedHours": 3
+    },
+    {
+      "step": 7,
+      "description": "Create hash chain service for audit integrity",
+      "deliverable": "src/services/audit/hash-chain-service.ts",
+      "estimatedHours": 2
+    },
+    {
+      "step": 8,
+      "description": "Implement compliance reporting service",
+      "deliverable": "src/services/reporting/report-generator.ts",
+      "estimatedHours": 3
+    },
+    {
+      "step": 9,
+      "description": "Create service integration middleware",
+      "deliverable": "src/middleware/service-integration.ts",
+      "estimatedHours": 2
+    },
+    {
+      "step": 10,
+      "description": "Setup Docker configuration and health checks",
+      "deliverable": "Dockerfile, docker-compose.yml",
+      "estimatedHours": 2
+    },
+    {
+      "step": 11,
+      "description": "Write comprehensive compliance tests",
+      "deliverable": "test/compliance/ directory",
+      "estimatedHours": 4
+    },
+    {
+      "step": 12,
+      "description": "Performance optimization and monitoring",
+      "deliverable": "src/services/performance-monitor.ts",
+      "estimatedHours": 2
+    }
+  ],
+  "risks": [
+    "Complex GDPR automation across multiple services",
+    "Performance impact of immutable audit logging",
+    "Data consistency during retention operations",
+    "Hash chain integrity verification complexity",
+    "Service integration complexity with existing systems"
+  ],
+  "mitigation": [
+    "Implement async processing for heavy GDPR operations",
+    "Use write-optimized database for audit logs",
+    "Create transactional retention operations",
+    "Implement cryptographic verification for hash chains",
+    "Provide clear integration APIs and comprehensive documentation"
+  ]
+}

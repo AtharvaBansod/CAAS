@@ -1,0 +1,170 @@
+{
+  "id": "AUTH-4.5.0-02",
+  "title": "Auth Service Standalone Implementation",
+  "description": "Implement standalone auth service with REST API, centralized authentication logic, session management, and proper service boundaries",
+  "priority": "Critical",
+  "phase": "4.5.0",
+  "status": "pending",
+  "dependencies": ["AUTH-4.5.0-01"],
+  "estimatedHours": 24,
+  "deliverables": [
+    "auth-service-server.ts",
+    "auth-controllers.ts",
+    "auth-routes.ts",
+    "auth-middleware.ts",
+    "session-manager.ts",
+    "token-service.ts",
+    "mfa-service.ts",
+    "docker-compose.yml"
+  ],
+  "acceptanceCriteria": [
+    "Standalone auth service runs on port 3001",
+    "REST API endpoints implemented and tested",
+    "JWT validation centralized in auth service",
+    "Session management centralized",
+    "MFA functionality working",
+    "Docker container builds and runs",
+    "Health check endpoint available"
+  ],
+  "technicalDetails": {
+    "serviceConfiguration": {
+      "port": 3001,
+      "basePath": "/api/v1",
+      "cors": {
+        "origin": ["http://gateway:3000", "http://localhost:3000"],
+        "credentials": true
+      },
+      "rateLimit": {
+        "windowMs": 900000,
+        "max": 100,
+        "message": "Too many requests from this IP"
+      }
+    },
+    "databaseSchema": {
+      "users": {
+        "user_id": "UUID PRIMARY KEY",
+        "tenant_id": "UUID NOT NULL",
+        "email": "VARCHAR(255) UNIQUE",
+        "password_hash": "VARCHAR(255)",
+        "mfa_enabled": "BOOLEAN DEFAULT FALSE",
+        "created_at": "TIMESTAMP",
+        "updated_at": "TIMESTAMP"
+      },
+      "sessions": {
+        "session_id": "UUID PRIMARY KEY",
+        "user_id": "UUID FOREIGN KEY",
+        "tenant_id": "UUID NOT NULL",
+        "device_fingerprint": "VARCHAR(255)",
+        "ip_address": "VARCHAR(45)",
+        "user_agent": "TEXT",
+        "expires_at": "TIMESTAMP",
+        "created_at": "TIMESTAMP"
+      },
+      "refresh_tokens": {
+        "token_id": "UUID PRIMARY KEY",
+        "user_id": "UUID FOREIGN KEY",
+        "session_id": "UUID FOREIGN KEY",
+        "token_hash": "VARCHAR(255)",
+        "expires_at": "TIMESTAMP",
+        "created_at": "TIMESTAMP"
+      }
+    },
+    "apiEndpoints": {
+      "POST /auth/login": "Authenticate user and return tokens",
+      "POST /auth/refresh": "Refresh access token",
+      "POST /auth/logout": "Logout user and invalidate session",
+      "POST /auth/mfa/challenge": "Request MFA challenge",
+      "POST /auth/mfa/verify": "Verify MFA code",
+      "GET /auth/session": "Get current session info",
+      "GET /users/profile": "Get user profile",
+      "PUT /users/profile": "Update user profile",
+      "POST /auth/api-keys": "Create API key",
+      "GET /auth/sessions": "List user sessions",
+      "DELETE /auth/sessions/:id": "Terminate specific session",
+      "POST /auth/revoke": "Revoke tokens and sessions"
+    },
+    "securityFeatures": {
+      "passwordHashing": "bcrypt with cost 12",
+      "jwtAlgorithm": "RS256",
+      "tokenExpiry": "15 minutes access, 7 days refresh",
+      "rateLimiting": "Per-IP and per-user",
+      "sessionBinding": "Device fingerprint + IP",
+      "auditLogging": "All auth events",
+      "encryption": "AES-256-GCM for sensitive data"
+    }
+  },
+  "implementationSteps": [
+    {
+      "step": 1,
+      "description": "Create auth service server with Fastify setup",
+      "deliverable": "src/server.ts",
+      "estimatedHours": 3
+    },
+    {
+      "step": 2,
+      "description": "Implement authentication controllers",
+      "deliverable": "src/controllers/auth-controller.ts",
+      "estimatedHours": 4
+    },
+    {
+      "step": 3,
+      "description": "Create session management service",
+      "deliverable": "src/services/session-service.ts",
+      "estimatedHours": 3
+    },
+    {
+      "step": 4,
+      "description": "Implement token service with JWT",
+      "deliverable": "src/services/token-service.ts",
+      "estimatedHours": 3
+    },
+    {
+      "step": 5,
+      "description": "Create MFA service and controllers",
+      "deliverable": "src/services/mfa-service.ts",
+      "estimatedHours": 4
+    },
+    {
+      "step": 6,
+      "description": "Implement user profile management",
+      "deliverable": "src/controllers/user-controller.ts",
+      "estimatedHours": 2
+    },
+    {
+      "step": 7,
+      "description": "Create API key management",
+      "deliverable": "src/services/api-key-service.ts",
+      "estimatedHours": 2
+    },
+    {
+      "step": 8,
+      "description": "Implement audit logging service",
+      "deliverable": "src/services/audit-service.ts",
+      "estimatedHours": 2
+    },
+    {
+      "step": 9,
+      "description": "Create Docker configuration",
+      "deliverable": "Dockerfile, docker-compose.yml",
+      "estimatedHours": 1
+    },
+    {
+      "step": 10,
+      "description": "Write comprehensive tests",
+      "deliverable": "test/ directory with unit and integration tests",
+      "estimatedHours": 4
+    }
+  ],
+  "risks": [
+    "Migration complexity from library to service",
+    "Performance impact of network calls",
+    "Session state consistency during migration",
+    "Backward compatibility with existing tokens"
+  ],
+  "mitigation": [
+    "Implement circuit breaker patterns",
+    "Use Redis caching for session data",
+    "Gradual migration with feature flags",
+    "Token validation bridge during transition"
+  ]
+}

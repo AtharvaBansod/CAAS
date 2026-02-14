@@ -1,0 +1,180 @@
+{
+  "id": "COMPLIANCE-4.5.1-03",
+  "title": "Service Integration for Compliance Requirements",
+  "description": "Implement comprehensive service integration patterns for all CAAS services to use standalone compliance service for GDPR, audit logging, and retention requirements",
+  "priority": "High",
+  "phase": "4.5.1",
+  "status": "pending",
+  "dependencies": ["COMPLIANCE-4.5.1-02"],
+  "estimatedHours": 24,
+  "deliverables": [
+    "compliance-client-library.ts",
+    "gateway-compliance-integration.ts",
+    "socket-compliance-integration.ts",
+    "messaging-compliance-integration.ts",
+    "media-compliance-integration.ts",
+    "search-compliance-integration.ts",
+    "audit-logger-service.ts",
+    "gdpr-integration-service.ts"
+  ],
+  "acceptanceCriteria": [
+    "All services use compliance service client for audit logging",
+    "GDPR operations centralized through compliance service",
+    "Retention policies enforced across all services",
+    "Service-to-service authentication implemented",
+    "Audit trails consistent across all services",
+    "Compliance violations detected and reported",
+    "Zero service disruption during integration"
+  ],
+  "technicalDetails": {
+    "integrationArchitecture": {
+      "clientPattern": "Centralized compliance client library",
+      "serviceDiscovery": "Consul-based service discovery",
+      "authentication": "Service-to-service JWT tokens",
+      "communication": "HTTP/HTTPS with circuit breakers",
+      "errorHandling": "Graceful degradation and fallback",
+      "monitoring": "Prometheus metrics and alerting"
+    },
+    "complianceClient": {
+      "baseURL": "http://compliance-service:3002",
+      "timeout": 10000,
+      "retries": 3,
+      "circuitBreaker": {
+        "failureThreshold": 30,
+        "resetTimeout": 60000,
+        "monitoringPeriod": 30000
+      },
+      "batching": {
+        "enabled": true,
+        "maxBatchSize": 100,
+        "flushInterval": 5000
+      }
+    },
+    "serviceIntegrations": {
+      "gatewayService": {
+        "auditEvents": ["request", "response", "error", "auth"],
+        "gdprIntegration": "User data export/erasure requests",
+        "retention": "Request/response log retention",
+        "implementation": "Middleware-based integration"
+      },
+      "socketService": {
+        "auditEvents": ["connection", "disconnection", "message", "error"],
+        "gdprIntegration": "Real-time messaging data handling",
+        "retention": "Socket connection logs retention",
+        "implementation": "Namespace and room-level integration"
+      },
+      "messagingService": {
+        "auditEvents": ["message_create", "message_update", "message_delete", "conversation"],
+        "gdprIntegration": "Message and conversation data handling",
+        "retention": "Message retention policies",
+        "implementation": "Repository and service-level integration"
+      },
+      "mediaService": {
+        "auditEvents": ["upload", "download", "delete", "process"],
+        "gdprIntegration": "Media file data handling",
+        "retention": "Media file retention policies",
+        "implementation": "File operation integration"
+      },
+      "searchService": {
+        "auditEvents": ["index", "search", "delete", "update"],
+        "gdprIntegration": "Search index data handling",
+        "retention": "Search log retention",
+        "implementation": "Index operation integration"
+      }
+    },
+    "auditEventTypes": {
+      "userEvents": ["user_create", "user_update", "user_delete", "user_login", "user_logout"],
+      "dataEvents": ["data_create", "data_read", "data_update", "data_delete", "data_export"],
+      "systemEvents": ["service_start", "service_stop", "config_change", "error_occurred"],
+      "complianceEvents": ["consent_given", "consent_revoked", "gdpr_request", "retention_executed"]
+    }
+  },
+  "implementationSteps": [
+    {
+      "step": 1,
+      "description": "Create centralized compliance client library",
+      "deliverable": "packages/compliance-client/src/client.ts",
+      "estimatedHours": 4
+    },
+    {
+      "step": 2,
+      "description": "Implement gateway service compliance integration",
+      "deliverable": "services/gateway/src/middleware/compliance-middleware.ts",
+      "estimatedHours": 3
+    },
+    {
+      "step": 3,
+      "description": "Create socket service compliance integration",
+      "deliverable": "services/socket-service/src/middleware/compliance-middleware.ts",
+      "estimatedHours": 3
+    },
+    {
+      "step": 4,
+      "description": "Implement messaging service compliance integration",
+      "deliverable": "services/messaging-service/src/services/compliance-service.ts",
+      "estimatedHours": 3
+    },
+    {
+      "step": 5,
+      "description": "Create media service compliance integration",
+      "deliverable": "services/media-service/src/services/compliance-service.ts",
+      "estimatedHours": 2
+    },
+    {
+      "step": 6,
+      "description": "Implement search service compliance integration",
+      "deliverable": "services/search-service/src/services/compliance-service.ts",
+      "estimatedHours": 2
+    },
+    {
+      "step": 7,
+      "description": "Create audit logger service with batching",
+      "deliverable": "packages/compliance-client/src/audit-logger.ts",
+      "estimatedHours": 3
+    },
+    {
+      "step": 8,
+      "description": "Implement GDPR integration service",
+      "deliverable": "packages/compliance-client/src/gdpr-service.ts",
+      "estimatedHours": 2
+    },
+    {
+      "step": 9,
+      "description": "Create service discovery and configuration",
+      "deliverable": "packages/compliance-client/src/service-discovery.ts",
+      "estimatedHours": 2
+    },
+    {
+      "step": 10,
+      "description": "Write comprehensive integration tests",
+      "deliverable": "test/compliance-integration/ directory",
+      "estimatedHours": 4
+    },
+    {
+      "step": 11,
+      "description": "Performance optimization and monitoring",
+      "deliverable": "packages/compliance-client/src/performance-monitor.ts",
+      "estimatedHours": 2
+    },
+    {
+      "step": 12,
+      "description": "Document integration patterns and APIs",
+      "deliverable": "docs/compliance-integration-guide.md",
+      "estimatedHours": 2
+    }
+  ],
+  "risks": [
+    "Performance impact of compliance logging on all services",
+    "Network latency affecting real-time operations",
+    "Compliance service availability affecting all services",
+    "Complexity of GDPR data coordination across services",
+    "Audit log volume and storage requirements"
+  ],
+  "mitigation": [
+    "Implement async audit logging with batching",
+    "Use circuit breakers with graceful degradation",
+    "Implement local audit log buffering",
+    "Create GDPR data coordination workflows",
+    "Implement audit log rotation and archival"
+  ]
+}
