@@ -39,6 +39,12 @@ export async function buildApp() {
   await app.register(loggingPlugin);
   await app.register(authPlugin);
   
+  // Compliance Middleware (audit logging)
+  const { initializeComplianceClient, complianceMiddleware } = await import('./middleware/compliance-middleware');
+  const complianceServiceURL = process.env.COMPLIANCE_SERVICE_URL || 'http://compliance-service:3008';
+  initializeComplianceClient(complianceServiceURL);
+  app.addHook('onRequest', complianceMiddleware);
+  
   // Tenant Resolution (runs after Auth)
   app.addHook('preHandler', resolveTenant);
 

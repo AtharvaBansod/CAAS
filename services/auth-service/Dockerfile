@@ -1,5 +1,5 @@
 # Auth Service Dockerfile
-# Phase 2 - Authentication
+# Phase 4.5.0 - Standalone Auth Service
 
 FROM node:20-alpine AS builder
 
@@ -38,8 +38,12 @@ RUN mkdir -p /app/keys
 # Set environment
 ENV NODE_ENV=production
 
-# Expose port (if needed)
+# Expose port
 EXPOSE 3001
 
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD node -e "const http = require('http'); http.get('http://127.0.0.1:3001/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"
+
 # Start service
-CMD ["node", "dist/index.js"]
+CMD ["node", "dist/server.js"]

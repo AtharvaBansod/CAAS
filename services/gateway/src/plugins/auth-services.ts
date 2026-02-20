@@ -1,74 +1,48 @@
 /**
  * Auth Services Plugin
- * Integrates auth-service with gateway via dependency injection
+ * Phase 4.5.0 - Integrates standalone auth service via HTTP client
  */
 
 import fp from 'fastify-plugin';
 import { FastifyPluginAsync } from 'fastify';
-import { AuthServiceFactory, AuthServiceConfig } from '../external/auth-service/auth-service-factory';
+import { AuthServiceClient } from '../clients/auth-client';
 
 declare module 'fastify' {
     interface FastifyInstance {
-        authServices: AuthServiceFactory;
+        authClient: AuthServiceClient;
     }
 }
 
 const authServicesPlugin: FastifyPluginAsync = async (fastify) => {
-    // Build auth service configuration from environment
-    const config: AuthServiceConfig = {
-        redis: {
-            host: process.env.REDIS_HOST || 'redis',
-            port: parseInt(process.env.REDIS_PORT || '6379'),
-            password: process.env.REDIS_PASSWORD,
-            db: parseInt(process.env.REDIS_DB || '0'),
+    // Create auth service client
+    const authClient = new AuthServiceClient(
+        {
+            baseURL: process.env.AUTH_SERVICE_URL || 'http://auth-service:3001',
+            timeout: parseInt(process.env.AUTH_SERVICE_TIMEOUT || '5000'),
+            retries: parseInt(process.env.AUTH_SERVICE_RETRIES || '3'),
+            circuitBreaker: {
+                failureThreshold: parseInt(process.env.AUTH_CB_FAILURE_THRESHOLD || '5'),
+                resetTimeout: parseInt(process.env.AUTH_CB_RESET_TIMEOUT || '30000'),
+                monitoringPeriod: parseInt(process.env.AUTH_CB_MONITORING_PERIOD || '10000'),
+            },
+            cache: {
+                ttl: parseInt(process.env.AUTH_CACHE_TTL || '300'),
+                keyPrefix: 'auth:',
+            },
         },
-        mongodb: {
-            url: process.env.MONGODB_URI || 'mongodb://mongodb-primary:27017',
-            database: process.env.MONGODB_DATABASE || 'caas_platform',
-        },
-        kafka: {
-            brokers: (process.env.KAFKA_BROKERS || 'kafka-1:29092').split(','),
-            clientId: process.env.KAFKA_CLIENT_ID || 'gateway-service',
-        },
-        jwt: {
-            algorithm: (process.env.JWT_ALGORITHM as 'RS256' | 'ES256') || 'RS256',
-            accessTokenExpiry: process.env.JWT_ACCESS_TOKEN_EXPIRY || '15m',
-            refreshTokenExpiry: process.env.JWT_REFRESH_TOKEN_EXPIRY || '7d',
-            issuer: process.env.JWT_ISSUER || 'caas.io',
-            privateKeyPath: process.env.JWT_PRIVATE_KEY_PATH || '/app/keys/private.pem',
-            publicKeyPath: process.env.JWT_PUBLIC_KEY_PATH || '/app/keys/public.pem',
-        },
-        session: {
-            ttl: parseInt(process.env.SESSION_TTL_SECONDS || '3600'),
-            maxSessionsPerUser: parseInt(process.env.MAX_SESSIONS_PER_USER || '5'),
-            renewalCooldown: parseInt(process.env.SESSION_RENEWAL_COOLDOWN_MS || '60000'),
-            maxLifetime: parseInt(process.env.SESSION_MAX_LIFETIME_SECONDS || '86400'),
-        },
-        mfa: {
-            totpIssuer: process.env.TOTP_ISSUER || 'CAAS',
-            backupCodeCount: parseInt(process.env.BACKUP_CODE_COUNT || '10'),
-            trustTokenExpiry: parseInt(process.env.TRUST_TOKEN_EXPIRY_DAYS || '30') * 86400,
-            challengeTTL: parseInt(process.env.MFA_CHALLENGE_TTL_SECONDS || '300'),
-            maxAttempts: parseInt(process.env.MFA_MAX_ATTEMPTS || '5'),
-        },
-    };
-
-    // Create and initialize auth service factory
-    const authServices = new AuthServiceFactory(config);
-    await authServices.initialize();
+        fastify.redis
+    );
 
     // Decorate fastify instance
-    fastify.decorate('authServices', authServices);
+    fastify.decorate('authClient', authClient);
 
-    // Cleanup on close
-    fastify.addHook('onClose', async () => {
-        await authServices.shutdown();
+    fastify.log.info({
+        message: 'Auth client plugin registered successfully',
+        baseURL: process.env.AUTH_SERVICE_URL || 'http://auth-service:3001',
+        circuitBreakerState: authClient.getCircuitBreakerState(),
     });
-
-    fastify.log.info('Auth services plugin registered successfully');
 };
 
 export default fp(authServicesPlugin, {
     name: 'auth-services',
-    dependencies: [],
-});
+} as any);

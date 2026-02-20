@@ -52,30 +52,10 @@ class GatewayDeviceSync {
 }
 
 async function sessionServicesPlugin(fastify: any) {
-  // Get auth services from the auth-services plugin
-  const authServices = fastify.authServices;
+  // Phase 4.5.0: Auth client is now used instead of embedded auth services
+  // Session management is handled by the standalone auth service
   
-  if (!authServices) {
-    fastify.log.warn('Auth services not available, session services will not be initialized');
-    return;
-  }
-
   try {
-    // Initialize and decorate session store
-    const sessionService = authServices.getSessionService();
-    const sessionStore = (sessionService as any).sessionStore;
-    if (sessionStore) {
-      fastify.decorate('sessionStore', sessionStore);
-      fastify.log.info('Session store initialized');
-    }
-
-    // Initialize and decorate revocation service
-    const revocationService = authServices.getRevocationService();
-    if (revocationService) {
-      fastify.decorate('revocationService', revocationService);
-      fastify.log.info('Revocation service initialized');
-    }
-
     // Initialize device sync
     const redis = fastify.redis;
     if (redis) {
@@ -122,5 +102,4 @@ async function sessionServicesPlugin(fastify: any) {
 
 export default fp(sessionServicesPlugin, {
   name: 'session-services',
-  dependencies: ['auth-services', 'redis'],
 });

@@ -6,7 +6,8 @@ import { PresenceManager } from '../presence/presence-manager';
 import { registerPresenceEvents } from '../presence/presence-events';
 import { registerPresenceSubscriptionEvents } from '../presence/presence-subscription-events';
 import { AuthenticatedSocket, socketAuthMiddleware } from '../middleware/auth-middleware';
-import { createKeyProvider, JWTValidator, RevocationChecker, MinimalRedisClient } from '../tokens';
+import { MinimalRedisClient } from '../tokens';
+import { AuthServiceClient } from '../clients/auth-client';
 
 export function registerPresenceNamespace(io: Server) {
   const presenceNamespace = io.of('/presence');
@@ -23,17 +24,22 @@ export function registerPresenceNamespace(io: Server) {
     return;
   }
 
-  // Initialize JWT Validator components
-  const keyProvider = createKeyProvider();
-  const revocationChecker = new RevocationChecker({ redis: redisClient, keyPrefix: 'revoked:' });
-  const jwtValidator = new JWTValidator(
-    keyProvider,
-    config.jwt,
-    revocationChecker,
+  // Initialize Auth Service Client (Phase 4.5.0)
+  const authClient = new AuthServiceClient(
+    {
+      baseURL: process.env.AUTH_SERVICE_URL || 'http://auth-service:3001',
+      timeout: parseInt(process.env.AUTH_SERVICE_TIMEOUT || '5000'),
+      retries: parseInt(process.env.AUTH_SERVICE_RETRIES || '3'),
+      cache: {
+        ttl: parseInt(process.env.AUTH_CACHE_TTL || '300'),
+        keyPrefix: 'presence:auth:',
+      },
+    },
+    redisClient as any
   );
 
   // Apply authentication middleware to the presence namespace
-  presenceNamespace.use(socketAuthMiddleware(jwtValidator));
+  presenceNamespace.use(socketAuthMiddleware(authClient));
 
   // Initialize PresenceStore
   const presenceStore = new PresenceStore(redisClient as MinimalRedisClient, {

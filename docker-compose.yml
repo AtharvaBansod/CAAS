@@ -308,6 +308,134 @@ services:
     restart: unless-stopped
 
   # ============================================
+  # AUTH SERVICE (Phase 4.5.0)
+  # ============================================
+
+  auth-service:
+    build:
+      context: ./services/auth-service
+    container_name: caas-auth-service
+    hostname: auth-service
+    ports:
+      - "3007:3001"
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - AUTH_PORT=3001
+      - AUTH_HOST=0.0.0.0
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - MONGODB_URI=mongodb://${MONGO_ROOT_USER:-caas_admin}:${MONGO_ROOT_PASSWORD:-caas_secret_2026}@mongodb-primary:27017/caas_platform?authSource=admin&replicaSet=caas-rs
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-caas_redis_2026}@redis:6379/0
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-caas_redis_2026}
+      - REDIS_DB=0
+      - KAFKA_BROKERS=kafka-1:29092,kafka-2:29092,kafka-3:29092
+      - JWT_PRIVATE_KEY_PATH=/app/keys/private.pem
+      - JWT_PUBLIC_KEY_PATH=/app/keys/public.pem
+      - JWT_ALGORITHM=RS256
+      - JWT_ACCESS_TOKEN_EXPIRY=900
+      - JWT_REFRESH_TOKEN_EXPIRY=604800
+      - JWT_ISSUER=caas-auth-service
+      - SESSION_TTL_SECONDS=86400
+      - MAX_SESSIONS_PER_USER=10
+      - CORS_ORIGINS=http://gateway:3000,http://localhost:3000
+      - RATE_LIMIT_MAX=100
+      - RATE_LIMIT_WINDOW_MS=900000
+    networks:
+      caas-network:
+        ipv4_address: 172.28.5.1
+    depends_on:
+      mongodb-primary:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka-1:
+        condition: service_healthy
+    volumes:
+      - ./keys:/app/keys:ro
+    healthcheck:
+      test: ["CMD", "node", "-e", "const http = require('http'); http.get('http://127.0.0.1:3001/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  # ============================================
+  # COMPLIANCE SERVICE (Phase 4.5.1)
+  # ============================================
+
+  compliance-service:
+    build:
+      context: ./services/compliance-service
+    container_name: caas-compliance-service
+    hostname: compliance-service
+    ports:
+      - "3008:3008"
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=3008
+      - HOST=0.0.0.0
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - MONGODB_URI=mongodb://${MONGO_ROOT_USER:-caas_admin}:${MONGO_ROOT_PASSWORD:-caas_secret_2026}@mongodb-primary:27017/caas_compliance?authSource=admin&replicaSet=caas-rs
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-caas_redis_2026}@redis:6379/1
+      - CORS_ORIGINS=http://gateway:3000,http://localhost:3000
+      - RATE_LIMIT_MAX=100
+      - RATE_LIMIT_WINDOW=3600000
+    networks:
+      caas-network:
+        ipv4_address: 172.28.5.2
+    depends_on:
+      mongodb-primary:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "const http = require('http'); http.get('http://127.0.0.1:3008/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  # ============================================
+  # CRYPTO SERVICE (Phase 4.5.2)
+  # ============================================
+
+  crypto-service:
+    build:
+      context: ./services/crypto-service
+    container_name: caas-crypto-service
+    hostname: crypto-service
+    ports:
+      - "3009:3009"
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=3009
+      - HOST=0.0.0.0
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - MONGODB_URI=mongodb://${MONGO_ROOT_USER:-caas_admin}:${MONGO_ROOT_PASSWORD:-caas_secret_2026}@mongodb-primary:27017/caas_crypto?authSource=admin&replicaSet=caas-rs
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-caas_redis_2026}@redis:6379/2
+      - CORS_ORIGINS=http://gateway:3000,http://localhost:3000
+      - RATE_LIMIT_MAX=1000
+      - RATE_LIMIT_WINDOW=3600000
+    networks:
+      caas-network:
+        ipv4_address: 172.28.5.3
+    depends_on:
+      mongodb-primary:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "const http = require('http'); http.get('http://127.0.0.1:3009/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  # ============================================
   # API GATEWAY SERVICE
   # ============================================
 
@@ -341,6 +469,7 @@ services:
       - MESSAGING_SERVICE_URL=http://messaging-service:3004
       - MEDIA_SERVICE_URL=http://media-service:3005
       - SEARCH_SERVICE_URL=http://search-service:3006
+      - AUTH_SERVICE_URL=http://auth-service:3001
       - SEARCH_CACHE_TTL_SECONDS=60
     networks:
       caas-network:
@@ -351,6 +480,8 @@ services:
       redis:
         condition: service_healthy
       kafka-1:
+        condition: service_healthy
+      auth-service:
         condition: service_healthy
       messaging-service:
         condition: service_healthy

@@ -4,12 +4,7 @@ import { createClient, RedisClientType } from 'redis';
 import { config } from './config';
 import http from 'http';
 import { socketAuthMiddleware, AuthenticatedSocket } from './middleware/auth-middleware';
-import { JWTValidator } from './tokens/jwt-validator';
-import { JWTConfig } from './tokens/jwt-config';
-import { KeyProvider, createKeyProvider } from './tokens/key-provider';
-import { ClaimValidator } from './tokens/claim-validators';
-import { RevocationChecker } from './tokens/revocation-checker';
-import { SecurityChecker } from './tokens/security-checks';
+import { AuthServiceClient } from './clients/auth-client';
 import { getLogger } from './utils/logger';
 import { SessionManager } from './session-manager';
 import { SocketHealthChecker } from './health/health-checker';
@@ -65,19 +60,27 @@ export async function createSocketServer(httpServer: http.Server): Promise<Serve
   (io as any).presenceAuthorizer = presenceAuthorizer;
   (io as any).lastSeenTracker = lastSeenTracker;
 
-  // Initialize JWT components
-  const jwtConfig = config.jwt;
-  const keyProvider = createKeyProvider();
-  const claimValidator = new ClaimValidator(jwtConfig);
-  const revocationChecker = new RevocationChecker({
-      redis: pubClient as RedisClientType,
-      keyPrefix: config.jwt.revocationKeyPrefix,
-    });
-  const securityChecks = new SecurityChecker();
-  const jwtValidator = new JWTValidator(keyProvider, jwtConfig, revocationChecker);
+  // Initialize Auth Service Client (Phase 4.5.0)
+  const authClient = new AuthServiceClient(
+    {
+      baseURL: process.env.AUTH_SERVICE_URL || 'http://auth-service:3001',
+      timeout: parseInt(process.env.AUTH_SERVICE_TIMEOUT || '5000'),
+      retries: parseInt(process.env.AUTH_SERVICE_RETRIES || '3'),
+      cache: {
+        ttl: parseInt(process.env.AUTH_CACHE_TTL || '300'),
+        keyPrefix: 'socket:auth:',
+      },
+    },
+    pubClient as any
+  );
 
-  // Apply authentication middleware
-  io.use(socketAuthMiddleware(jwtValidator));
+  logger.info({
+    message: 'Auth service client initialized',
+    baseURL: process.env.AUTH_SERVICE_URL || 'http://auth-service:3001',
+  });
+
+  // Apply authentication middleware with auth client
+  io.use(socketAuthMiddleware(authClient));
   logger.info('Socket authentication middleware applied.');
 
   // Initialize SessionManager

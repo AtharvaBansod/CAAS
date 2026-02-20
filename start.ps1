@@ -374,6 +374,9 @@ try {
     Write-Host "  Gateway API:        http://localhost:3000" -ForegroundColor White
     Write-Host "  Gateway Health:     http://localhost:3000/health" -ForegroundColor White
     Write-Host "  Gateway Docs:       http://localhost:3000/documentation" -ForegroundColor White
+    Write-Host "  Auth Service:       http://localhost:3007/health" -ForegroundColor White
+    Write-Host "  Compliance Service: http://localhost:3008/health" -ForegroundColor White
+    Write-Host "  Crypto Service:     http://localhost:3009/health" -ForegroundColor White
     Write-Host "  Search Service:     http://localhost:3006/health" -ForegroundColor White
     Write-Host "  Socket Service 1:   http://localhost:3002/health" -ForegroundColor White
     Write-Host "  Socket Service 2:   http://localhost:3003/health" -ForegroundColor White
@@ -383,7 +386,8 @@ try {
     Write-Host "  Mongo Express:      http://localhost:8082" -ForegroundColor White
     Write-Host "  Redis Commander:    http://localhost:8083" -ForegroundColor White
     Write-Host ""
-    Write-Host "Run './tests/phase4-search-comprehensive-test.ps1' to test search functionality" -ForegroundColor Yellow
+    Write-Host "Run './tests/phase4.5.0-complete-test.ps1' to test Phase 4.5.0" -ForegroundColor Yellow
+    Write-Host "Run './tests/phase4.5.1-compliance-test.ps1' to test Phase 4.5.1" -ForegroundColor Yellow
     Write-Host ""
     
 } catch {
