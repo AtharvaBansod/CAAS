@@ -1,0 +1,149 @@
+{
+  "task_id": "07",
+  "phase": "4.5.z",
+  "name": "Messaging Service Migration and Removal",
+  "description": "Migrate all remaining functionality from messaging-service to socket-service and Kafka consumers, then completely remove messaging-service from the system.",
+  "priority": "critical",
+  "estimated_hours": 16,
+  "dependencies": ["04", "05", "06"],
+  "objectives": [
+    "Verify all messaging-service functionality is migrated",
+    "Create data migration scripts if needed",
+    "Remove messaging-service from docker-compose.yml",
+    "Delete messaging-service directory",
+    "Update all documentation",
+    "Verify system works without messaging-service"
+  ],
+  "detailed_steps": [
+    {
+      "step": 1,
+      "name": "Verify functionality migration",
+      "description": "Ensure all messaging-service features are now in socket-service or Kafka",
+      "checklist": [
+        "Message validation → Socket service ✓",
+        "Message creation → Socket service ✓",
+        "Message editing → Socket service ✓",
+        "Message deletion → Socket service ✓",
+        "Message forwarding → Socket service ✓",
+        "Conversation management → Socket service ✓",
+        "Message persistence → Kafka consumer ✓",
+        "Unread count tracking → Socket service ✓",
+        "Search indexing → Socket service → Search service ✓"
+      ]
+    },
+    {
+      "step": 2,
+      "name": "Create data migration scripts",
+      "description": "Migrate any messaging-service specific data if needed",
+      "actions": [
+        "Check if messaging-service has unique data",
+        "Create migration scripts if needed",
+        "Test migration on staging data",
+        "Document migration process"
+      ],
+      "files_to_create": [
+        "scripts/migrate-messaging-data.js (if needed)"
+      ]
+    },
+    {
+      "step": 3,
+      "name": "Remove from docker-compose.yml",
+      "description": "Remove messaging-service from Docker configuration",
+      "actions": [
+        "Remove messaging-service service definition",
+        "Remove messaging-service dependencies from other services",
+        "Remove MESSAGING_SERVICE_URL environment variables",
+        "Update service dependency chains"
+      ],
+      "files_to_modify": [
+        "docker-compose.yml"
+      ]
+    },
+    {
+      "step": 4,
+      "name": "Delete messaging-service directory",
+      "description": "Remove messaging-service code from repository",
+      "actions": [
+        "Backup messaging-service directory (git history)",
+        "Delete services/messaging-service/ directory",
+        "Remove from any build scripts",
+        "Update root README.md"
+      ],
+      "files_to_delete": [
+        "services/messaging-service/ (entire directory)"
+      ]
+    },
+    {
+      "step": 5,
+      "name": "Update all documentation",
+      "description": "Remove messaging-service references from docs",
+      "actions": [
+        "Update architecture diagrams",
+        "Update service list",
+        "Update deployment guides",
+        "Update API documentation"
+      ],
+      "files_to_modify": [
+        "README.md",
+        "docs/SYSTEM_OVERVIEW.md",
+        "docs/ARCHITECTURE_DIAGRAMS.md",
+        "CURRENT_ARCHITECTURE_VISUAL.md"
+      ]
+    },
+    {
+      "step": 6,
+      "name": "Test system without messaging-service",
+      "description": "Comprehensive testing to ensure system works",
+      "test_scenarios": [
+        "User authentication",
+        "Socket connection",
+        "Send message",
+        "Edit message",
+        "Delete message",
+        "Create conversation",
+        "Add participant",
+        "Search messages",
+        "Upload media",
+        "All operations work without messaging-service"
+      ]
+    },
+    {
+      "step": 7,
+      "name": "Update start/stop scripts",
+      "description": "Remove messaging-service from startup scripts",
+      "actions": [
+        "Update start.ps1",
+        "Update stop.ps1",
+        "Remove messaging-service health checks"
+      ],
+      "files_to_modify": [
+        "start.ps1",
+        "stop.ps1"
+      ]
+    }
+  ],
+  "rollback_plan": {
+    "description": "If removal causes issues, restore messaging-service",
+    "steps": [
+      "Restore services/messaging-service/ from git",
+      "Restore docker-compose.yml messaging-service section",
+      "Rebuild and restart messaging-service",
+      "Route messages through messaging-service again"
+    ]
+  },
+  "success_criteria": [
+    "All messaging functionality works without messaging-service",
+    "Messaging-service removed from docker-compose.yml",
+    "Messaging-service directory deleted",
+    "Documentation updated",
+    "All tests pass",
+    "System is simpler and more maintainable"
+  ],
+  "benefits": [
+    "Simpler architecture (one less service)",
+    "Lower latency (no extra hop)",
+    "Easier to maintain",
+    "Better performance",
+    "Clearer ownership (socket service owns messaging)"
+  ]
+}

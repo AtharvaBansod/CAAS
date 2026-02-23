@@ -1,0 +1,480 @@
+{
+  "task_id": "03",
+  "phase": "4.5.z",
+  "name": "Redis Architecture Refactoring",
+  "description": "Refactor Redis architecture from single instance with multiple DBs to multiple dedicated Redis instances. Each service/purpose gets its own Redis instance for better isolation, performance, and scalability.",
+  "priority": "high",
+  "estimated_hours": 20,
+  "dependencies": [],
+  "objectives": [
+    "Create 5 separate Redis instances in docker-compose.yml",
+    "Assign dedicated Redis instance to each service/purpose",
+    "Update service configurations to use correct Redis instance",
+    "Migrate existing data if needed",
+    "Test Redis isolation and performance",
+    "Document new Redis architecture"
+  ],
+  "redis_instances": {
+    "redis-gateway": {
+      "purpose": "Gateway session cache and rate limiting",
+      "port": 6379,
+      "db": 0,
+      "services": ["gateway"],
+      "data_types": ["sessions", "rate_limits", "api_keys_cache"],
+      "memory_limit": "256MB",
+      "eviction_policy": "allkeys-lru"
+    },
+    "redis-socket": {
+      "purpose": "Socket connections, presence, typing indicators, room metadata",
+      "port": 6380,
+      "db": 0,
+      "services": ["socket-service-1", "socket-service-2"],
+      "data_types": ["socket_connections", "presence", "typing", "rooms", "temp_messages"],
+      "memory_limit": "512MB",
+      "eviction_policy": "volatile-lru"
+    },
+    "redis-shared": {
+      "purpose": "Shared cache for conversation metadata, user profiles, unread counts",
+      "port": 6381,
+      "db": 0,
+      "services": ["gateway", "socket-service", "messaging-service"],
+      "data_types": ["conversation_metadata", "user_profiles", "unread_counts", "last_seen"],
+      "memory_limit": "512MB",
+      "eviction_policy": "allkeys-lru"
+    },
+    "redis-compliance": {
+      "purpose": "Compliance service cache for audit logs and GDPR requests",
+      "port": 6382,
+      "db": 0,
+      "services": ["compliance-service"],
+      "data_types": ["audit_cache", "gdpr_requests", "retention_policies"],
+      "memory_limit": "256MB",
+      "eviction_policy": "noeviction"
+    },
+    "redis-crypto": {
+      "purpose": "Crypto service cache for keys and encryption metadata",
+      "port": 6383,
+      "db": 0,
+      "services": ["crypto-service"],
+      "data_types": ["key_cache", "encryption_metadata", "key_rotation_state"],
+      "memory_limit": "256MB",
+      "eviction_policy": "noeviction"
+    }
+  },
+  "detailed_steps": [
+    {
+      "step": 1,
+      "name": "Update docker-compose.yml with new Redis instances",
+      "description": "Add 5 Redis instances to docker-compose.yml with proper configuration",
+      "actions": [
+        "Rename existing 'redis' service to 'redis-gateway'",
+        "Add redis-socket service (port 6380)",
+        "Add redis-shared service (port 6381)",
+        "Add redis-compliance service (port 6382)",
+        "Add redis-crypto service (port 6383)",
+        "Configure each Redis with appropriate memory limits",
+        "Set eviction policies per instance",
+        "Create separate volumes for each Redis instance",
+        "Assign static IPs in caas-network"
+      ],
+      "docker_compose_changes": {
+        "redis-gateway": {
+          "image": "redis:7-alpine",
+          "container_name": "caas-redis-gateway",
+          "hostname": "redis-gateway",
+          "ports": ["6379:6379"],
+          "command": "redis-server --appendonly yes --requirepass ${REDIS_PASSWORD} --maxmemory 256mb --maxmemory-policy allkeys-lru",
+          "volumes": ["redis_gateway_data:/data"],
+          "networks": {"caas-network": {"ipv4_address": "172.28.2.1"}}
+        },
+        "redis-socket": {
+          "image": "redis:7-alpine",
+          "container_name": "caas-redis-socket",
+          "hostname": "redis-socket",
+          "ports": ["6380:6379"],
+          "command": "redis-server --appendonly yes --requirepass ${REDIS_PASSWORD} --maxmemory 512mb --maxmemory-policy volatile-lru",
+          "volumes": ["redis_socket_data:/data"],
+          "networks": {"caas-network": {"ipv4_address": "172.28.2.2"}}
+        },
+        "redis-shared": {
+          "image": "redis:7-alpine",
+          "container_name": "caas-redis-shared",
+          "hostname": "redis-shared",
+          "ports": ["6381:6379"],
+          "command": "redis-server --appendonly yes --requirepass ${REDIS_PASSWORD} --maxmemory 512mb --maxmemory-policy allkeys-lru",
+          "volumes": ["redis_shared_data:/data"],
+          "networks": {"caas-network": {"ipv4_address": "172.28.2.3"}}
+        },
+        "redis-compliance": {
+          "image": "redis:7-alpine",
+          "container_name": "caas-redis-compliance",
+          "hostname": "redis-compliance",
+          "ports": ["6382:6379"],
+          "command": "redis-server --appendonly yes --requirepass ${REDIS_PASSWORD} --maxmemory 256mb --maxmemory-policy noeviction",
+          "volumes": ["redis_compliance_data:/data"],
+          "networks": {"caas-network": {"ipv4_address": "172.28.2.4"}}
+        },
+        "redis-crypto": {
+          "image": "redis:7-alpine",
+          "container_name": "caas-redis-crypto",
+          "hostname": "redis-crypto",
+          "ports": ["6383:6379"],
+          "command": "redis-server --appendonly yes --requirepass ${REDIS_PASSWORD} --maxmemory 256mb --maxmemory-policy noeviction",
+          "volumes": ["redis_crypto_data:/data"],
+          "networks": {"caas-network": {"ipv4_address": "172.28.2.5"}}
+        }
+      },
+      "volumes_to_add": [
+        "redis_gateway_data",
+        "redis_socket_data",
+        "redis_shared_data",
+        "redis_compliance_data",
+        "redis_crypto_data"
+      ],
+      "files_to_modify": [
+        "docker-compose.yml"
+      ],
+      "validation": [
+        "Run: docker compose config (validate YAML syntax)",
+        "Verify 5 Redis services defined",
+        "Verify each has unique port and IP",
+        "Verify volumes are created"
+      ]
+    },
+    {
+      "step": 2,
+      "name": "Update gateway service configuration",
+      "description": "Configure gateway to use redis-gateway and redis-shared",
+      "actions": [
+        "Update gateway environment variables in docker-compose.yml",
+        "Change REDIS_URL to point to redis-gateway:6379",
+        "Add REDIS_SHARED_URL for shared cache",
+        "Update gateway Redis client initialization",
+        "Create two Redis clients: gatewayRedis and sharedRedis",
+        "Use gatewayRedis for sessions and rate limiting",
+        "Use sharedRedis for conversation metadata and user profiles"
+      ],
+      "environment_variables": {
+        "REDIS_URL": "redis://:${REDIS_PASSWORD}@redis-gateway:6379/0",
+        "REDIS_SHARED_URL": "redis://:${REDIS_PASSWORD}@redis-shared:6379/0"
+      },
+      "files_to_modify": [
+        "docker-compose.yml (gateway service)",
+        "services/gateway/src/config/redis.config.ts",
+        "services/gateway/src/app.ts"
+      ],
+      "code_changes": [
+        "Create gatewayRedis client for sessions",
+        "Create sharedRedis client for shared cache",
+        "Update session middleware to use gatewayRedis",
+        "Update cache middleware to use sharedRedis",
+        "Add health checks for both Redis connections"
+      ],
+      "validation": [
+        "Build gateway: docker compose build gateway",
+        "Start gateway: docker compose up -d gateway redis-gateway redis-shared",
+        "Check gateway logs for Redis connections",
+        "Test session creation (should use redis-gateway)",
+        "Test cache read (should use redis-shared)"
+      ]
+    },
+    {
+      "step": 3,
+      "name": "Update socket service configuration",
+      "description": "Configure socket services to use redis-socket and redis-shared",
+      "actions": [
+        "Update socket service environment variables in docker-compose.yml",
+        "Change REDIS_URL to point to redis-socket:6379",
+        "Add REDIS_SHARED_URL for shared cache",
+        "Update socket Redis client initialization",
+        "Create two Redis clients: socketRedis and sharedRedis",
+        "Use socketRedis for connections, presence, typing, rooms",
+        "Use sharedRedis for conversation metadata and unread counts"
+      ],
+      "environment_variables": {
+        "REDIS_URL": "redis://:${REDIS_PASSWORD}@redis-socket:6379/0",
+        "REDIS_SHARED_URL": "redis://:${REDIS_PASSWORD}@redis-shared:6379/0"
+      },
+      "files_to_modify": [
+        "docker-compose.yml (socket-service-1, socket-service-2)",
+        "services/socket-service/src/config/redis.config.ts",
+        "services/socket-service/src/server.ts"
+      ],
+      "code_changes": [
+        "Create socketRedis client for real-time data",
+        "Create sharedRedis client for shared cache",
+        "Update presence service to use socketRedis",
+        "Update typing service to use socketRedis",
+        "Update room service to use socketRedis",
+        "Update conversation cache to use sharedRedis"
+      ],
+      "validation": [
+        "Build socket service: docker compose build socket-service-1",
+        "Start socket service: docker compose up -d socket-service-1 redis-socket redis-shared",
+        "Check socket logs for Redis connections",
+        "Test socket connection (should use redis-socket)",
+        "Test presence update (should use redis-socket)",
+        "Test conversation cache (should use redis-shared)"
+      ]
+    },
+    {
+      "step": 4,
+      "name": "Update auth service configuration",
+      "description": "Configure auth service to use redis-gateway (shared with gateway for sessions)",
+      "actions": [
+        "Update auth service environment variables in docker-compose.yml",
+        "Change REDIS_URL to point to redis-gateway:6379",
+        "Update auth Redis client initialization",
+        "Use redis-gateway for session storage and token blacklist",
+        "Ensure auth and gateway share same Redis for session consistency"
+      ],
+      "environment_variables": {
+        "REDIS_URL": "redis://:${REDIS_PASSWORD}@redis-gateway:6379/0"
+      },
+      "files_to_modify": [
+        "docker-compose.yml (auth-service)",
+        "services/auth-service/src/config/index.ts"
+      ],
+      "rationale": "Auth and gateway must share same Redis for session consistency",
+      "validation": [
+        "Build auth service: docker compose build auth-service",
+        "Start auth service: docker compose up -d auth-service redis-gateway",
+        "Check auth logs for Redis connection",
+        "Test login (session should be in redis-gateway)",
+        "Verify gateway can read auth sessions"
+      ]
+    },
+    {
+      "step": 5,
+      "name": "Update compliance service configuration",
+      "description": "Configure compliance service to use redis-compliance",
+      "actions": [
+        "Update compliance service environment variables in docker-compose.yml",
+        "Change REDIS_URL to point to redis-compliance:6379",
+        "Update compliance Redis client initialization",
+        "Use redis-compliance for audit log cache and GDPR request tracking",
+        "Set noeviction policy to prevent data loss"
+      ],
+      "environment_variables": {
+        "REDIS_URL": "redis://:${REDIS_PASSWORD}@redis-compliance:6379/0"
+      },
+      "files_to_modify": [
+        "docker-compose.yml (compliance-service)",
+        "services/compliance-service/src/config/index.ts"
+      ],
+      "validation": [
+        "Build compliance service: docker compose build compliance-service",
+        "Start compliance service: docker compose up -d compliance-service redis-compliance",
+        "Check compliance logs for Redis connection",
+        "Test audit log creation (should cache in redis-compliance)"
+      ]
+    },
+    {
+      "step": 6,
+      "name": "Update crypto service configuration",
+      "description": "Configure crypto service to use redis-crypto",
+      "actions": [
+        "Update crypto service environment variables in docker-compose.yml",
+        "Change REDIS_URL to point to redis-crypto:6379",
+        "Update crypto Redis client initialization",
+        "Use redis-crypto for key cache and encryption metadata",
+        "Set noeviction policy to prevent key loss"
+      ],
+      "environment_variables": {
+        "REDIS_URL": "redis://:${REDIS_PASSWORD}@redis-crypto:6379/0"
+      },
+      "files_to_modify": [
+        "docker-compose.yml (crypto-service)",
+        "services/crypto-service/src/config/index.ts"
+      ],
+      "validation": [
+        "Build crypto service: docker compose build crypto-service",
+        "Start crypto service: docker compose up -d crypto-service redis-crypto",
+        "Check crypto logs for Redis connection",
+        "Test key generation (should cache in redis-crypto)"
+      ]
+    },
+    {
+      "step": 7,
+      "name": "Update messaging service configuration",
+      "description": "Configure messaging service to use redis-shared",
+      "actions": [
+        "Update messaging service environment variables in docker-compose.yml",
+        "Change REDIS_URL to point to redis-shared:6379",
+        "Update messaging Redis client initialization",
+        "Use redis-shared for conversation metadata and unread counts",
+        "Share cache with gateway and socket services"
+      ],
+      "environment_variables": {
+        "REDIS_URL": "redis://:${REDIS_PASSWORD}@redis-shared:6379/0"
+      },
+      "files_to_modify": [
+        "docker-compose.yml (messaging-service)",
+        "services/messaging-service/src/config/index.ts"
+      ],
+      "validation": [
+        "Build messaging service: docker compose build messaging-service",
+        "Start messaging service: docker compose up -d messaging-service redis-shared",
+        "Check messaging logs for Redis connection",
+        "Test message creation (should update cache in redis-shared)"
+      ]
+    },
+    {
+      "step": 8,
+      "name": "Update media and search services",
+      "description": "Configure media and search services to use redis-shared for caching",
+      "actions": [
+        "Update media service to use redis-shared",
+        "Update search service to use redis-shared",
+        "Both services use shared cache for metadata and query results"
+      ],
+      "environment_variables": {
+        "REDIS_URL": "redis://:${REDIS_PASSWORD}@redis-shared:6379/0"
+      },
+      "files_to_modify": [
+        "docker-compose.yml (media-service, search-service)",
+        "services/media-service/src/config/index.ts",
+        "services/search-service/src/config/index.ts"
+      ],
+      "validation": [
+        "Build services: docker compose build media-service search-service",
+        "Start services: docker compose up -d media-service search-service redis-shared",
+        "Test media upload (should cache metadata)",
+        "Test search query (should cache results)"
+      ]
+    },
+    {
+      "step": 9,
+      "name": "Update start.ps1 script",
+      "description": "Update startup script to handle multiple Redis instances",
+      "actions": [
+        "Update start.ps1 to start all 5 Redis instances",
+        "Add health checks for each Redis instance",
+        "Ensure proper startup order (Redis before services)",
+        "Add Redis connection verification"
+      ],
+      "files_to_modify": [
+        "start.ps1"
+      ],
+      "script_changes": [
+        "Start all Redis instances first",
+        "Wait for all Redis health checks to pass",
+        "Then start dependent services",
+        "Add Redis connection test commands"
+      ],
+      "validation": [
+        "Run: .\\start.ps1",
+        "Verify all 5 Redis instances start",
+        "Verify all services connect to correct Redis",
+        "Check docker compose ps for all healthy"
+      ]
+    },
+    {
+      "step": 10,
+      "name": "Test and document new architecture",
+      "description": "Comprehensive testing and documentation of new Redis architecture",
+      "actions": [
+        "Test each service with its dedicated Redis",
+        "Test shared Redis access from multiple services",
+        "Verify data isolation between Redis instances",
+        "Test Redis failover and recovery",
+        "Document new Redis architecture",
+        "Create Redis monitoring dashboard",
+        "Update architecture diagrams"
+      ],
+      "files_to_modify": [
+        "docs/REDIS_ARCHITECTURE.md (create)",
+        "CURRENT_ARCHITECTURE_VISUAL.md",
+        "docs/ARCHITECTURE_DIAGRAMS.md"
+      ],
+      "testing_scenarios": [
+        "Gateway session creation (redis-gateway)",
+        "Socket connection tracking (redis-socket)",
+        "Conversation metadata caching (redis-shared)",
+        "Audit log caching (redis-compliance)",
+        "Key caching (redis-crypto)",
+        "Cross-service shared cache access",
+        "Redis instance isolation",
+        "Memory limit enforcement",
+        "Eviction policy behavior"
+      ],
+      "validation": [
+        "All services connect to correct Redis",
+        "Data is properly isolated",
+        "Shared cache works across services",
+        "Memory limits are enforced",
+        "Eviction policies work correctly",
+        "Performance is improved",
+        "Documentation is complete"
+      ]
+    }
+  ],
+  "benefits": {
+    "isolation": "Each service has dedicated Redis, preventing cross-service interference",
+    "performance": "Reduced contention, better cache hit rates, optimized eviction policies",
+    "scalability": "Can scale Redis instances independently based on service needs",
+    "security": "Better data isolation, separate credentials possible",
+    "monitoring": "Easier to monitor and troubleshoot per-service Redis usage",
+    "flexibility": "Different configurations per instance (memory, eviction, persistence)"
+  },
+  "testing_strategy": {
+    "unit_tests": [
+      "Test Redis client initialization in each service",
+      "Test connection to correct Redis instance",
+      "Test fallback behavior on Redis failure"
+    ],
+    "integration_tests": [
+      "Test gateway session storage in redis-gateway",
+      "Test socket presence in redis-socket",
+      "Test shared cache access from multiple services",
+      "Test compliance audit caching in redis-compliance",
+      "Test crypto key caching in redis-crypto"
+    ],
+    "docker_tests": [
+      "Build all services: docker compose build",
+      "Start all services: docker compose up -d",
+      "Verify all Redis instances are healthy",
+      "Test each service connects to correct Redis",
+      "Monitor Redis memory usage per instance"
+    ],
+    "performance_tests": [
+      "Measure cache hit rates per Redis instance",
+      "Test memory limit enforcement",
+      "Test eviction policy behavior",
+      "Compare performance before/after refactoring"
+    ]
+  },
+  "rollback_plan": {
+    "description": "If multi-Redis causes issues, revert to single Redis",
+    "steps": [
+      "Restore original docker-compose.yml from git",
+      "Restore original service configurations",
+      "Rebuild and restart services",
+      "Migrate data back to single Redis if needed"
+    ]
+  },
+  "success_criteria": [
+    "5 Redis instances running in Docker",
+    "Each service connects to correct Redis instance(s)",
+    "Gateway uses redis-gateway and redis-shared",
+    "Socket services use redis-socket and redis-shared",
+    "Auth uses redis-gateway",
+    "Compliance uses redis-compliance",
+    "Crypto uses redis-crypto",
+    "Messaging, media, search use redis-shared",
+    "All services pass health checks",
+    "Data is properly isolated",
+    "Shared cache works correctly",
+    "Performance is improved",
+    "Documentation is complete"
+  ],
+  "notes": [
+    "This is a major architectural change requiring careful testing",
+    "Data migration may be needed if existing Redis has important data",
+    "Consider backup before starting this task",
+    "Monitor memory usage per Redis instance",
+    "Adjust memory limits based on actual usage patterns",
+    "noeviction policy for compliance and crypto prevents data loss",
+    "LRU policies for gateway, socket, shared allow cache eviction"
+  ]
+}

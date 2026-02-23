@@ -1,17 +1,36 @@
 # Multi-stage build for crypto service
+# Phase 4.5.z - Updated for compliance-client package
+
+FROM node:20-alpine AS package-builder
+
+WORKDIR /app/packages/compliance-client
+
+# Copy and build compliance-client package
+COPY packages/compliance-client/package*.json ./
+COPY packages/compliance-client/tsconfig.json ./
+COPY packages/compliance-client/src ./src
+
+RUN npm install && npm run build
+
+# Service builder stage
 FROM node:20-alpine AS builder
 
-WORKDIR /app
+# Create proper directory structure
+WORKDIR /
 
-# Copy package files
-COPY package*.json ./
-COPY tsconfig.json ./
+# Copy built compliance-client package to proper location
+COPY --from=package-builder /app/packages/compliance-client ./packages/compliance-client
 
-# Install dependencies
+# Copy service files
+WORKDIR /services/crypto-service
+COPY services/crypto-service/package*.json ./
+COPY services/crypto-service/tsconfig.json ./
+
+# Install dependencies (now ../../packages/compliance-client will resolve correctly)
 RUN npm install
 
 # Copy source code
-COPY src ./src
+COPY services/crypto-service/src ./src
 
 # Build TypeScript
 RUN npm run build
@@ -19,20 +38,29 @@ RUN npm run build
 # Production stage
 FROM node:20-alpine
 
-WORKDIR /app
-
 # Install dumb-init for proper signal handling
 RUN apk add --no-cache dumb-init
 
-# Copy package files and install production dependencies
-COPY package*.json ./
+# Create proper directory structure
+WORKDIR /
+
+# Copy built compliance-client package
+COPY --from=package-builder /app/packages/compliance-client ./packages/compliance-client
+
+# Copy service files
+WORKDIR /services/crypto-service
+COPY services/crypto-service/package*.json ./
 RUN npm install --only=production
 
 # Copy built files from builder
-COPY --from=builder /app/dist ./dist
+COPY --from=builder /services/crypto-service/dist ./dist
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
+
+# Fix permissions
+RUN chown -R nodejs:nodejs /services /packages
+
 USER nodejs
 
 # Expose port

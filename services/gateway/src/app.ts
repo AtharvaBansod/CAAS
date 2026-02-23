@@ -39,6 +39,10 @@ export async function buildApp() {
   await app.register(loggingPlugin);
   await app.register(authPlugin);
   
+  // Correlation ID Middleware (must be first to track all requests)
+  const { correlationMiddleware } = await import('./middleware/correlation.middleware');
+  app.addHook('onRequest', correlationMiddleware);
+  
   // Compliance Middleware (audit logging)
   const { initializeComplianceClient, complianceMiddleware } = await import('./middleware/compliance-middleware');
   const complianceServiceURL = process.env.COMPLIANCE_SERVICE_URL || 'http://compliance-service:3008';

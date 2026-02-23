@@ -3,13 +3,12 @@ import authRoutes from './auth';
 import webhookRoutes from './webhooks';
 import tenantRoutes from './tenants';
 import usageExportRoutes from './usage/export';
-import { conversationRoutes } from './conversations';
-import { messageRoutes } from './messages';
-import { mediaRoutes } from './media';
-import { searchRoutes } from './search';
 import { sessionsRoutes } from './sessions';
 import { mfaRoutes } from './mfa';
 import { adminRoutes } from './admin';
+
+// Phase 4.5.z Task 06: Removed messaging routes (conversations, messages)
+// Users now connect directly to socket-service for all messaging operations
 
 export const registerV1Routes = async (app: FastifyInstance) => {
   // Auth Routes
@@ -33,17 +32,9 @@ export const registerV1Routes = async (app: FastifyInstance) => {
   // Usage Routes
   await app.register(usageExportRoutes, { prefix: '/usage' });
 
-  // Conversation Routes
-  await app.register(conversationRoutes, { prefix: '/conversations' });
-
-  // Message Routes
-  await app.register(messageRoutes, { prefix: '/messages' });
-
-  // Media Routes
-  await app.register(mediaRoutes, { prefix: '/media' });
-
-  // Search Routes
-  await app.register(searchRoutes, { prefix: '/search' });
+  // Phase 4.5.z Task 06: Messaging routes removed
+  // Conversations and Messages are now handled by socket-service
+  // Media and Search remain as they are infrastructure services
 
   // Placeholder for now to test versioning
   app.get('/ping', async () => {

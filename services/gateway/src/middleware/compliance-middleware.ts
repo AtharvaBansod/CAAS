@@ -1,68 +1,32 @@
 /**
  * Compliance Middleware
- * Phase 4.5.1 - Task 03: Gateway Compliance Integration
+ * Phase 4.5.z - Task 01: Gateway Compliance Integration
  * 
  * Logs all gateway requests to compliance service for audit trail
+ * Now using @caas/compliance-client package for consistency
  */
 
 import { FastifyRequest, FastifyReply } from 'fastify';
-import axios, { AxiosInstance } from 'axios';
+import { createComplianceClient, ComplianceClient } from '@caas/compliance-client';
 
-// Simplified compliance client for gateway
-class SimpleComplianceClient {
-  private client: AxiosInstance;
-  private batchBuffer: any[] = [];
-  private flushTimer: NodeJS.Timeout | null = null;
-
-  constructor(baseURL: string) {
-    this.client = axios.create({
-      baseURL,
-      timeout: 5000,
-      headers: { 'Content-Type': 'application/json' },
-    });
-
-    this.startBatchFlushing();
-  }
-
-  async logAudit(event: any): Promise<void> {
-    this.batchBuffer.push(event);
-    if (this.batchBuffer.length >= 100) {
-      await this.flushBatch();
-    }
-  }
-
-  private async flushBatch(): Promise<void> {
-    if (this.batchBuffer.length === 0) return;
-    const batch = [...this.batchBuffer];
-    this.batchBuffer = [];
-
-    try {
-      await this.client.post('/api/v1/audit/batch', { events: batch });
-    } catch (error) {
-      console.error('Failed to flush audit batch:', error);
-      this.batchBuffer.unshift(...batch);
-    }
-  }
-
-  private startBatchFlushing(): void {
-    this.flushTimer = setInterval(() => {
-      this.flushBatch().catch(console.error);
-    }, 5000);
-  }
-
-  async shutdown(): Promise<void> {
-    if (this.flushTimer) {
-      clearInterval(this.flushTimer);
-      this.flushTimer = null;
-    }
-    await this.flushBatch();
-  }
-}
-
-let complianceClient: SimpleComplianceClient | null = null;
+let complianceClient: ComplianceClient | null = null;
 
 export function initializeComplianceClient(baseURL: string) {
-  complianceClient = new SimpleComplianceClient(baseURL);
+  complianceClient = createComplianceClient({
+    baseURL,
+    timeout: 10000,
+    retries: 3,
+    circuitBreaker: {
+      failureThreshold: 30,
+      resetTimeout: 60000,
+      monitoringPeriod: 30000,
+    },
+    batching: {
+      enabled: true,
+      maxBatchSize: 100,
+      flushInterval: 5000,
+    },
+  });
 
   // Graceful shutdown
   process.on('SIGTERM', async () => {
@@ -125,6 +89,6 @@ export async function complianceMiddleware(
   });
 }
 
-export function getComplianceClient(): SimpleComplianceClient | null {
+export function getComplianceClient(): ComplianceClient | null {
   return complianceClient;
 }

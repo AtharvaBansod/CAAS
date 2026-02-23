@@ -18,6 +18,7 @@ import { errorHandler } from './middleware/error-handler';
 import { requestLogger } from './middleware/request-logger';
 import { MongoDBConnection } from './storage/mongodb-connection';
 import { RedisConnection } from './storage/redis-connection';
+import { initializeComplianceClient } from './middleware/compliance.middleware';
 import pino from 'pino';
 
 const logger = pino({
@@ -102,6 +103,10 @@ export class AuthServer {
       skipOnError: true,
     });
 
+    // Correlation ID middleware (must be first)
+    const { correlationMiddleware } = await import('./middleware/correlation.middleware');
+    this.server.addHook('onRequest', correlationMiddleware);
+    
     // Request logging
     this.server.addHook('onRequest', requestLogger);
   }
@@ -112,6 +117,11 @@ export class AuthServer {
     try {
       await MongoDBConnection.connect();
       await RedisConnection.connect();
+      
+      // Initialize compliance client
+      const complianceUrl = process.env.COMPLIANCE_SERVICE_URL || 'http://compliance-service:3008';
+      initializeComplianceClient(complianceUrl);
+      logger.info('Compliance client initialized');
       
       // Initialize database indexes
       await this.initializeIndexes();

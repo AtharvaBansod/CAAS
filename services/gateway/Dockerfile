@@ -1,43 +1,74 @@
-# Multi-stage build for production
+# Gateway Service Dockerfile
+# Phase 4.5.z - Updated for compliance-client package
+
+FROM node:20-alpine AS package-builder
+
+WORKDIR /app/packages/compliance-client
+
+# Copy and build compliance-client package
+COPY packages/compliance-client/package*.json ./
+COPY packages/compliance-client/tsconfig.json ./
+COPY packages/compliance-client/src ./src
+
+RUN npm install && npm run build
+
+# Service builder stage
 FROM node:20-alpine AS builder
 
-WORKDIR /app
+# Create proper directory structure
+WORKDIR /
 
-# Copy package files
-COPY ./services/gateway/package*.json /app/
-RUN npm install && \
-    npm cache clean --force
-COPY ./services/gateway .
-COPY ./services/messaging-service /app/services/messaging-service
+# Copy built compliance-client package to proper location
+COPY --from=package-builder /app/packages/compliance-client ./packages/compliance-client
+
+# Copy service files
+WORKDIR /services/gateway
+COPY services/gateway/package*.json ./
+COPY services/gateway/tsconfig.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy source code
+COPY services/gateway/src ./src
 
 # Build TypeScript
 RUN npm run build
 
-# Production stage
+# Production image
 FROM node:20-alpine
 
-WORKDIR /app
+# Create proper directory structure
+WORKDIR /
 
-# Copy package files and install production dependencies only
-COPY ./services/gateway/package*.json /app/
-RUN npm install && \
-    npm cache clean --force
+# Copy built compliance-client package
+COPY --from=package-builder /app/packages/compliance-client ./packages/compliance-client
 
-# Copy built application from builder
-COPY --from=builder /app/dist ./dist
+# Copy service files
+WORKDIR /services/gateway
+COPY services/gateway/package*.json ./
+
+# Install production dependencies only
+RUN npm install --only=production
+
+# Copy built files from builder
+COPY --from=builder /services/gateway/dist ./dist
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
 # Change ownership
-RUN chown -R nodejs:nodejs /app
+RUN chown -R nodejs:nodejs /services/gateway
 
 # Switch to non-root user
 USER nodejs
 
+# Set environment
+ENV NODE_ENV=production
+
 # Expose ports
-EXPOSE 3000 3001
+EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \

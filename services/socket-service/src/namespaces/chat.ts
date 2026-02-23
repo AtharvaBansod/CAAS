@@ -219,6 +219,11 @@ export function registerChatNamespace(io: Server) {
 
       const messageId = `msg_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
       const timestamp = new Date();
+      
+      // Get correlation ID from socket
+      const { getCorrelationIdFromSocket } = await import('../middleware/correlation.middleware');
+      const correlationId = getCorrelationIdFromSocket(socket);
+      
       const message = {
         id: messageId,
         senderId: userId,
@@ -247,6 +252,7 @@ export function registerChatNamespace(io: Server) {
             timestamp,
             metadata: {
               socket_id: socket.id,
+              correlation_id: correlationId,
             },
           });
         } else {

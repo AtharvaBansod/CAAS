@@ -9,6 +9,7 @@
     "dev": "ts-node src/server.ts"
   },
   "dependencies": {
+    "@caas/compliance-client": "file:../../packages/compliance-client",
     "fastify": "^4.25.2",
     "@fastify/cors": "^8.4.2",
     "@fastify/helmet": "^11.1.1",

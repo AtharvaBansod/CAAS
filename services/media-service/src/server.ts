@@ -8,6 +8,7 @@ import Redis from 'ioredis';
 import { loadConfig } from './config/index.js';
 import { uploadRoutes } from './routes/upload.js';
 import { downloadRoutes } from './routes/download.js';
+import { initializeComplianceClient } from './middleware/compliance.middleware.js';
 
 export async function createServer(): Promise<FastifyInstance> {
   const config = loadConfig();
@@ -18,6 +19,11 @@ export async function createServer(): Promise<FastifyInstance> {
     },
     bodyLimit: config.upload.maxFileSizeMB * 1024 * 1024,
   });
+
+  // Initialize compliance client
+  const complianceUrl = process.env.COMPLIANCE_SERVICE_URL || 'http://compliance-service:3008';
+  initializeComplianceClient(complianceUrl);
+  fastify.log.info('Compliance client initialized');
 
   // Register CORS
   await fastify.register(cors, {
@@ -31,6 +37,10 @@ export async function createServer(): Promise<FastifyInstance> {
       fileSize: config.upload.maxFileSizeMB * 1024 * 1024,
     },
   });
+
+  // Correlation ID middleware (must be first)
+  const { correlationMiddleware } = await import('./middleware/correlation.middleware.js');
+  fastify.addHook('onRequest', correlationMiddleware);
 
   // MongoDB connection
   const mongoClient = new MongoClient(config.mongodb.uri);

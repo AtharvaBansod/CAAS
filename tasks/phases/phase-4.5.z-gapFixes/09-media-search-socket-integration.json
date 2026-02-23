@@ -1,0 +1,290 @@
+{
+  "task_id": "09",
+  "phase": "4.5.z",
+  "name": "Media & Search Socket Integration",
+  "description": "Enable socket service to directly integrate with media and search services for file uploads and search operations. Users can perform these operations through socket connections without going through gateway.",
+  "priority": "medium",
+  "estimated_hours": 16,
+  "dependencies": ["04"],
+  "objectives": [
+    "Add media upload/download via socket",
+    "Add search operations via socket",
+    "Implement proper authorization",
+    "Maintain backward compatibility with gateway routes",
+    "Optimize for real-time operations"
+  ],
+  "detailed_steps": [
+    {
+      "step": 1,
+      "name": "Add media client to socket service",
+      "description": "Create HTTP client for media service operations",
+      "actions": [
+        "Create services/socket-service/src/clients/media-client.ts",
+        "Implement upload URL generation",
+        "Implement file metadata retrieval",
+        "Implement file deletion",
+        "Add circuit breaker for resilience"
+      ],
+      "media_operations": [
+        "requestUploadUrl(userId, tenantId, fileMetadata)",
+        "getFileMetadata(fileId)",
+        "getDownloadUrl(fileId, userId)",
+        "deleteFile(fileId, userId)",
+        "validateFileUpload(fileId)"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/clients/media-client.ts"
+      ]
+    },
+    {
+      "step": 2,
+      "name": "Add socket events for media operations",
+      "description": "Implement socket event handlers for file operations",
+      "socket_events": {
+        "media:request-upload": {
+          "description": "Request signed URL for file upload",
+          "request": {
+            "file_name": "string",
+            "file_size": "number",
+            "mime_type": "string",
+            "conversation_id": "string (optional)"
+          },
+          "response": {
+            "upload_url": "string",
+            "file_id": "string",
+            "expires_at": "number"
+          }
+        },
+        "media:upload-complete": {
+          "description": "Notify server that upload is complete",
+          "request": {
+            "file_id": "string",
+            "conversation_id": "string (optional)"
+          },
+          "response": {
+            "status": "success | failed",
+            "file_metadata": "object"
+          }
+        },
+        "media:get-download-url": {
+          "description": "Get signed URL for file download",
+          "request": {
+            "file_id": "string"
+          },
+          "response": {
+            "download_url": "string",
+            "expires_at": "number"
+          }
+        },
+        "media:delete": {
+          "description": "Delete file",
+          "request": {
+            "file_id": "string"
+          },
+          "response": {
+            "status": "success | failed"
+          }
+        }
+      },
+      "files_to_create": [
+        "services/socket-service/src/media/media.handler.ts"
+      ]
+    },
+    {
+      "step": 3,
+      "name": "Add search client to socket service",
+      "description": "Create HTTP client for search service operations",
+      "actions": [
+        "Create services/socket-service/src/clients/search-client.ts",
+        "Implement message search",
+        "Implement conversation search",
+        "Implement user search",
+        "Add result caching in Redis"
+      ],
+      "search_operations": [
+        "searchMessages(query, filters, userId, tenantId)",
+        "searchConversations(query, userId, tenantId)",
+        "searchUsers(query, tenantId)",
+        "indexMessage(message)",
+        "removeFromIndex(messageId)"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/clients/search-client.ts"
+      ]
+    },
+    {
+      "step": 4,
+      "name": "Add socket events for search operations",
+      "description": "Implement socket event handlers for search",
+      "socket_events": {
+        "search:messages": {
+          "description": "Search messages",
+          "request": {
+            "query": "string",
+            "conversation_id": "string (optional)",
+            "from_date": "number (optional)",
+            "to_date": "number (optional)",
+            "limit": "number (default: 20)"
+          },
+          "response": {
+            "results": "array",
+            "total": "number",
+            "has_more": "boolean"
+          }
+        },
+        "search:conversations": {
+          "description": "Search conversations",
+          "request": {
+            "query": "string",
+            "limit": "number (default: 20)"
+          },
+          "response": {
+            "results": "array",
+            "total": "number"
+          }
+        },
+        "search:users": {
+          "description": "Search users in tenant",
+          "request": {
+            "query": "string",
+            "limit": "number (default: 20)"
+          },
+          "response": {
+            "results": "array",
+            "total": "number"
+          }
+        }
+      },
+      "files_to_create": [
+        "services/socket-service/src/search/search.handler.ts"
+      ]
+    },
+    {
+      "step": 5,
+      "name": "Implement authorization for media operations",
+      "description": "Ensure users can only access their own files",
+      "authorization_rules": {
+        "upload": "User must be authenticated",
+        "download": "User must be file owner or conversation participant",
+        "delete": "User must be file owner",
+        "metadata": "User must have access to file"
+      },
+      "files_to_create": [
+        "services/socket-service/src/media/media.authorization.ts"
+      ]
+    },
+    {
+      "step": 6,
+      "name": "Implement authorization for search operations",
+      "description": "Ensure users can only search their own data",
+      "authorization_rules": {
+        "search_messages": "Only in conversations user is participant",
+        "search_conversations": "Only user's own conversations",
+        "search_users": "Only users in same tenant"
+      },
+      "files_to_create": [
+        "services/socket-service/src/search/search.authorization.ts"
+      ]
+    },
+    {
+      "step": 7,
+      "name": "Add caching for search results",
+      "description": "Cache search results in Redis for performance",
+      "actions": [
+        "Cache search results in redis-socket",
+        "Set TTL to 60 seconds",
+        "Invalidate on new messages",
+        "Use query hash as cache key"
+      ],
+      "cache_strategy": {
+        "key_format": "search:{tenant_id}:{query_hash}",
+        "ttl": 60,
+        "invalidation": "On new message in searched conversations"
+      }
+    },
+    {
+      "step": 8,
+      "name": "Add rate limiting",
+      "description": "Prevent abuse of media and search operations",
+      "rate_limits": {
+        "media_upload": "10 per minute per user",
+        "media_download": "100 per minute per user",
+        "search": "30 per minute per user"
+      },
+      "files_to_create": [
+        "services/socket-service/src/ratelimit/media.ratelimit.ts",
+        "services/socket-service/src/ratelimit/search.ratelimit.ts"
+      ]
+    },
+    {
+      "step": 9,
+      "name": "Test media integration",
+      "description": "Test file operations via socket",
+      "test_scenarios": [
+        "Request upload URL",
+        "Upload file to signed URL",
+        "Notify upload complete",
+        "Attach file to message",
+        "Download file",
+        "Delete file",
+        "Test authorization (access denied scenarios)"
+      ]
+    },
+    {
+      "step": 10,
+      "name": "Test search integration",
+      "description": "Test search operations via socket",
+      "test_scenarios": [
+        "Search messages in conversation",
+        "Search across all conversations",
+        "Search conversations by name",
+        "Search users",
+        "Test result caching",
+        "Test authorization (only own data)"
+      ]
+    },
+    {
+      "step": 11,
+      "name": "Update client documentation",
+      "description": "Document new socket events for media and search",
+      "actions": [
+        "Add media events to socket API docs",
+        "Add search events to socket API docs",
+        "Provide code examples",
+        "Update client SDK if exists"
+      ]
+    }
+  ],
+  "benefits": {
+    "performance": "Direct socket connection, no gateway hop",
+    "real_time": "Immediate feedback on operations",
+    "simplicity": "Single connection for all operations",
+    "efficiency": "Reduced latency for file and search operations"
+  },
+  "backward_compatibility": {
+    "gateway_routes": "Keep gateway routes for REST API clients",
+    "migration": "Clients can migrate gradually to socket-based operations",
+    "support": "Support both gateway and socket approaches"
+  },
+  "testing_strategy": {
+    "unit_tests": "Test media and search clients",
+    "integration_tests": "Test socket events end-to-end",
+    "authorization_tests": "Test access control",
+    "performance_tests": "Compare socket vs gateway performance"
+  },
+  "success_criteria": [
+    "Media operations work via socket",
+    "Search operations work via socket",
+    "Authorization enforced correctly",
+    "Rate limiting works",
+    "Caching improves performance",
+    "Documentation complete",
+    "Tests pass"
+  ],
+  "notes": [
+    "This enables true single-connection architecture",
+    "Users connect once to socket service for everything",
+    "Gateway becomes optional for REST API clients",
+    "Socket service is now the primary user interface"
+  ]
+}

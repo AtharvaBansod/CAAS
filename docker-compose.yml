@@ -17,7 +17,11 @@ volumes:
   mongodb_secondary1_data:
   mongodb_secondary2_data:
   mongodb_config:
-  redis_data:
+  redis_gateway_data:
+  redis_socket_data:
+  redis_shared_data:
+  redis_compliance_data:
+  redis_crypto_data:
   kafka1_data:
   kafka2_data:
   kafka3_data:
@@ -145,18 +149,98 @@ services:
   #   command: bash /docker-entrypoint-initdb.d/init.sh
   #   restart: "no"
 
-  redis:
+  # ============================================
+  # REDIS SERVICES (Phase 4.5.z - Multiple Instances)
+  # ============================================
+
+  redis-gateway:
     image: redis:7-alpine
-    container_name: caas-redis
-    hostname: redis
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-caas_redis_2026}
+    container_name: caas-redis-gateway
+    hostname: redis-gateway
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-caas_redis_2026} --maxmemory 256mb --maxmemory-policy allkeys-lru
     ports:
       - "6379:6379"
     volumes:
-      - redis_data:/data
+      - redis_gateway_data:/data
     networks:
       caas-network:
         ipv4_address: 172.28.2.1
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-caas_redis_2026}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis-socket:
+    image: redis:7-alpine
+    container_name: caas-redis-socket
+    hostname: redis-socket
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-caas_redis_2026} --maxmemory 512mb --maxmemory-policy volatile-lru
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_socket_data:/data
+    networks:
+      caas-network:
+        ipv4_address: 172.28.2.2
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-caas_redis_2026}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis-shared:
+    image: redis:7-alpine
+    container_name: caas-redis-shared
+    hostname: redis-shared
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-caas_redis_2026} --maxmemory 512mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6381:6379"
+    volumes:
+      - redis_shared_data:/data
+    networks:
+      caas-network:
+        ipv4_address: 172.28.2.3
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-caas_redis_2026}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis-compliance:
+    image: redis:7-alpine
+    container_name: caas-redis-compliance
+    hostname: redis-compliance
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-caas_redis_2026} --maxmemory 256mb --maxmemory-policy noeviction
+    ports:
+      - "6382:6379"
+    volumes:
+      - redis_compliance_data:/data
+    networks:
+      caas-network:
+        ipv4_address: 172.28.2.4
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-caas_redis_2026}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis-crypto:
+    image: redis:7-alpine
+    container_name: caas-redis-crypto
+    hostname: redis-crypto
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-caas_redis_2026} --maxmemory 256mb --maxmemory-policy noeviction
+    ports:
+      - "6383:6379"
+    volumes:
+      - redis_crypto_data:/data
+    networks:
+      caas-network:
+        ipv4_address: 172.28.2.5
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-caas_redis_2026}", "ping"]
       interval: 10s
@@ -313,7 +397,8 @@ services:
 
   auth-service:
     build:
-      context: ./services/auth-service
+      context: .
+      dockerfile: ./services/auth-service/Dockerfile
     container_name: caas-auth-service
     hostname: auth-service
     ports:
@@ -324,8 +409,8 @@ services:
       - AUTH_HOST=0.0.0.0
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - MONGODB_URI=mongodb://${MONGO_ROOT_USER:-caas_admin}:${MONGO_ROOT_PASSWORD:-caas_secret_2026}@mongodb-primary:27017/caas_platform?authSource=admin&replicaSet=caas-rs
-      - REDIS_URL=redis://:${REDIS_PASSWORD:-caas_redis_2026}@redis:6379/0
-      - REDIS_HOST=redis
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-caas_redis_2026}@redis-gateway:6379/0
+      - REDIS_HOST=redis-gateway
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD:-caas_redis_2026}
       - REDIS_DB=0
@@ -338,6 +423,7 @@ services:
       - JWT_ISSUER=caas-auth-service
       - SESSION_TTL_SECONDS=86400
       - MAX_SESSIONS_PER_USER=10
+      - COMPLIANCE_SERVICE_URL=http://compliance-service:3008
       - CORS_ORIGINS=http://gateway:3000,http://localhost:3000
       - RATE_LIMIT_MAX=100
       - RATE_LIMIT_WINDOW_MS=900000
@@ -347,7 +433,7 @@ services:
     depends_on:
       mongodb-primary:
         condition: service_healthy
-      redis:
+      redis-gateway:
         condition: service_healthy
       kafka-1:
         condition: service_healthy
@@ -367,7 +453,8 @@ services:
 
   compliance-service:
     build:
-      context: ./services/compliance-service
+      context: .
+      dockerfile: ./services/compliance-service/Dockerfile
     container_name: caas-compliance-service
     hostname: compliance-service
     ports:
@@ -378,7 +465,7 @@ services:
       - HOST=0.0.0.0
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - MONGODB_URI=mongodb://${MONGO_ROOT_USER:-caas_admin}:${MONGO_ROOT_PASSWORD:-caas_secret_2026}@mongodb-primary:27017/caas_compliance?authSource=admin&replicaSet=caas-rs
-      - REDIS_URL=redis://:${REDIS_PASSWORD:-caas_redis_2026}@redis:6379/1
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-caas_redis_2026}@redis-compliance:6379/0
       - CORS_ORIGINS=http://gateway:3000,http://localhost:3000
       - RATE_LIMIT_MAX=100
       - RATE_LIMIT_WINDOW=3600000
@@ -388,7 +475,7 @@ services:
     depends_on:
       mongodb-primary:
         condition: service_healthy
-      redis:
+      redis-compliance:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "node", "-e", "const http = require('http'); http.get('http://127.0.0.1:3008/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"]
@@ -404,7 +491,8 @@ services:
 
   crypto-service:
     build:
-      context: ./services/crypto-service
+      context: .
+      dockerfile: ./services/crypto-service/Dockerfile
     container_name: caas-crypto-service
     hostname: crypto-service
     ports:
@@ -415,7 +503,8 @@ services:
       - HOST=0.0.0.0
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - MONGODB_URI=mongodb://${MONGO_ROOT_USER:-caas_admin}:${MONGO_ROOT_PASSWORD:-caas_secret_2026}@mongodb-primary:27017/caas_crypto?authSource=admin&replicaSet=caas-rs
-      - REDIS_URL=redis://:${REDIS_PASSWORD:-caas_redis_2026}@redis:6379/2
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-caas_redis_2026}@redis-crypto:6379/0
+      - COMPLIANCE_SERVICE_URL=http://compliance-service:3008
       - CORS_ORIGINS=http://gateway:3000,http://localhost:3000
       - RATE_LIMIT_MAX=1000
       - RATE_LIMIT_WINDOW=3600000
@@ -425,7 +514,7 @@ services:
     depends_on:
       mongodb-primary:
         condition: service_healthy
-      redis:
+      redis-crypto:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "node", "-e", "const http = require('http'); http.get('http://127.0.0.1:3009/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"]
@@ -454,8 +543,9 @@ services:
       - PORT=3000
       - METRICS_PORT=3001
       - MONGODB_URI=mongodb://${MONGO_ROOT_USER:-caas_admin}:${MONGO_ROOT_PASSWORD:-caas_secret_2026}@mongodb-primary:27017/caas_platform?authSource=admin&replicaSet=caas-rs
-      - REDIS_URL=redis://:${REDIS_PASSWORD:-caas_redis_2026}@redis:6379/0
-      - REDIS_HOST=redis
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-caas_redis_2026}@redis-gateway:6379/0
+      - REDIS_SHARED_URL=redis://:${REDIS_PASSWORD:-caas_redis_2026}@redis-shared:6379/0
+      - REDIS_HOST=redis-gateway
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD:-caas_redis_2026}
       - REDIS_DB=0
@@ -466,10 +556,12 @@ services:
       - CORS_ORIGINS=${CORS_ORIGINS:-*}
       - ELASTICSEARCH_URL=http://elasticsearch:9200
       - ELASTICSEARCH_PASSWORD=${ELASTICSEARCH_PASSWORD:-changeme}
-      - MESSAGING_SERVICE_URL=http://messaging-service:3004
       - MEDIA_SERVICE_URL=http://media-service:3005
       - SEARCH_SERVICE_URL=http://search-service:3006
       - AUTH_SERVICE_URL=http://auth-service:3001
+      - COMPLIANCE_SERVICE_URL=http://compliance-service:3008
+      - SOCKET_SERVICE_1_URL=ws://socket-service-1:3001
+      - SOCKET_SERVICE_2_URL=ws://socket-service-2:3001
       - SEARCH_CACHE_TTL_SECONDS=60
     networks:
       caas-network:
@@ -477,13 +569,13 @@ services:
     depends_on:
       mongodb-primary:
         condition: service_healthy
-      redis:
+      redis-gateway:
+        condition: service_healthy
+      redis-shared:
         condition: service_healthy
       kafka-1:
         condition: service_healthy
       auth-service:
-        condition: service_healthy
-      messaging-service:
         condition: service_healthy
       media-service:
         condition: service_healthy
@@ -498,9 +590,9 @@ services:
     restart: unless-stopped
     command: >
       sh -c "
-      mkdir -p /app/keys;
-      if [ ! -z \"$JWT_PRIVATE_KEY\" ]; then echo \"$JWT_PRIVATE_KEY\" > /app/keys/private.pem; fi;
-      if [ ! -z \"$JWT_PUBLIC_KEY\" ]; then echo \"$JWT_PUBLIC_KEY\" > /app/keys/public.pem; fi;
+      mkdir -p keys;
+      if [ ! -z \"$JWT_PRIVATE_KEY\" ]; then echo \"$JWT_PRIVATE_KEY\" > keys/private.pem; fi;
+      if [ ! -z \"$JWT_PUBLIC_KEY\" ]; then echo \"$JWT_PUBLIC_KEY\" > keys/public.pem; fi;
       node dist/src/main.js
       "
 
@@ -548,13 +640,17 @@ services:
     image: rediscommander/redis-commander:latest
     container_name: caas-redis-commander
     environment:
-      REDIS_HOSTS: local:redis:6379:0:${REDIS_PASSWORD:-caas_redis_2026}
+      REDIS_HOSTS: gateway:redis-gateway:6379:0:${REDIS_PASSWORD:-caas_redis_2026},socket:redis-socket:6379:0:${REDIS_PASSWORD:-caas_redis_2026},shared:redis-shared:6379:0:${REDIS_PASSWORD:-caas_redis_2026},compliance:redis-compliance:6379:0:${REDIS_PASSWORD:-caas_redis_2026},crypto:redis-crypto:6379:0:${REDIS_PASSWORD:-caas_redis_2026}
     ports:
       - "8083:8081"
     networks:
       - caas-network
     depends_on:
-      - redis
+      - redis-gateway
+      - redis-socket
+      - redis-shared
+      - redis-compliance
+      - redis-crypto
     restart: unless-stopped
 
   # ============================================
@@ -563,21 +659,26 @@ services:
 
   socket-service-1:
     build:
-      context: ./services/socket-service
+      context: .
+      dockerfile: services/socket-service/Dockerfile
     container_name: caas-socket-1
     ports:
       - "3002:3001"
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - SOCKET_PORT=3001
-      - REDIS_URL=redis://:${REDIS_PASSWORD:-caas_redis_2026}@redis:6379/0
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-caas_redis_2026}@redis-socket:6379/0
+      - REDIS_SHARED_URL=redis://:${REDIS_PASSWORD:-caas_redis_2026}@redis-shared:6379/0
       - MONGODB_URI=mongodb://${MONGO_ROOT_USER:-caas_admin}:${MONGO_ROOT_PASSWORD:-caas_secret_2026}@mongodb-primary:27017/caas_platform?authSource=admin&replicaSet=caas-rs
       - KAFKA_BROKERS=kafka-1:29092,kafka-2:29092,kafka-3:29092
       - INSTANCE_ID=socket-1
+      - COMPLIANCE_SERVICE_URL=http://compliance-service:3008
       - JWT_SECRET=${JWT_SECRET:-change_this_in_production_please}
       - JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY}
     depends_on:
-      redis:
+      redis-socket:
+        condition: service_healthy
+      redis-shared:
         condition: service_healthy
       mongodb-primary:
         condition: service_healthy
@@ -593,21 +694,26 @@ services:
 
   socket-service-2:
     build:
-      context: ./services/socket-service
+      context: .
+      dockerfile: services/socket-service/Dockerfile
     container_name: caas-socket-2
     ports:
       - "3003:3001"
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - SOCKET_PORT=3001
-      - REDIS_URL=redis://:${REDIS_PASSWORD:-caas_redis_2026}@redis:6379/0
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-caas_redis_2026}@redis-socket:6379/0
+      - REDIS_SHARED_URL=redis://:${REDIS_PASSWORD:-caas_redis_2026}@redis-shared:6379/0
       - MONGODB_URI=mongodb://${MONGO_ROOT_USER:-caas_admin}:${MONGO_ROOT_PASSWORD:-caas_secret_2026}@mongodb-primary:27017/caas_platform?authSource=admin&replicaSet=caas-rs
       - KAFKA_BROKERS=kafka-1:29092,kafka-2:29092,kafka-3:29092
       - INSTANCE_ID=socket-2
+      - COMPLIANCE_SERVICE_URL=http://compliance-service:3008
       - JWT_SECRET=${JWT_SECRET:-change_this_in_production_please}
       - JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY}
     depends_on:
-      redis:
+      redis-socket:
+        condition: service_healthy
+      redis-shared:
         condition: service_healthy
       mongodb-primary:
         condition: service_healthy
@@ -619,39 +725,6 @@ services:
   # ============================================
   # MESSAGING SERVICE
   # ============================================
-
-  messaging-service:
-    build:
-      context: ./services/messaging-service
-    container_name: caas-messaging-service
-    ports:
-      - "3004:3004"
-    environment:
-      - NODE_ENV=${NODE_ENV:-production}
-      - MONGODB_URI=mongodb://${MONGO_ROOT_USER:-caas_admin}:${MONGO_ROOT_PASSWORD:-caas_secret_2026}@mongodb-primary:27017/caas_platform?authSource=admin&replicaSet=caas-rs
-      - REDIS_URL=redis://:${REDIS_PASSWORD:-caas_redis_2026}@redis:6379/0
-      - KAFKA_BROKERS=kafka-1:29092,kafka-2:29092,kafka-3:29092
-      - JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY}
-      - MESSAGE_EDIT_WINDOW_MINUTES=15
-      - MAX_FORWARD_TARGETS=5
-      - MAX_FORWARD_MESSAGES=10
-      - MAX_MESSAGE_LENGTH=4000
-    depends_on:
-      mongodb-primary:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      kafka-1:
-        condition: service_healthy
-    networks:
-      caas-network:
-        ipv4_address: 172.28.8.1
-    healthcheck:
-      test: ["CMD", "node", "-e", "const http = require('http'); http.get('http://127.0.0.1:3004/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    restart: unless-stopped
 
   # ============================================
   # TEST SERVICES
@@ -704,7 +777,8 @@ services:
 
   search-service:
     build:
-      context: ./services/search-service
+      context: .
+      dockerfile: services/search-service/Dockerfile
     container_name: caas-search-service
     ports:
       - "3006:3006"
@@ -714,14 +788,15 @@ services:
       - ELASTICSEARCH_URL=http://elasticsearch:9200
       - ELASTICSEARCH_PASSWORD=${ELASTICSEARCH_PASSWORD:-changeme}
       - MONGODB_URI=mongodb://${MONGO_ROOT_USER:-caas_admin}:${MONGO_ROOT_PASSWORD:-caas_secret_2026}@mongodb-primary:27017/caas_platform?authSource=admin&replicaSet=caas-rs
-      - REDIS_URL=redis://:${REDIS_PASSWORD:-caas_redis_2026}@redis:6379/0
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-caas_redis_2026}@redis-shared:6379/0
       - KAFKA_BROKERS=kafka-1:29092,kafka-2:29092,kafka-3:29092
+      - COMPLIANCE_SERVICE_URL=http://compliance-service:3008
     depends_on:
       elasticsearch:
         condition: service_healthy
       mongodb-primary:
         condition: service_healthy
-      redis:
+      redis-shared:
         condition: service_healthy
       kafka-1:
         condition: service_healthy
@@ -768,16 +843,18 @@ services:
 
   media-service:
     build:
-      context: ./services/media-service
+      context: .
+      dockerfile: services/media-service/Dockerfile
     container_name: caas-media-service
     ports:
       - "3005:3005"
     environment:
       - NODE_ENV=${NODE_ENV:-production}
       - MONGODB_URI=mongodb://${MONGO_ROOT_USER:-caas_admin}:${MONGO_ROOT_PASSWORD:-caas_secret_2026}@mongodb-primary:27017/caas_platform?authSource=admin&replicaSet=caas-rs
-      - REDIS_URL=redis://:${REDIS_PASSWORD:-caas_redis_2026}@redis:6379/0
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-caas_redis_2026}@redis-shared:6379/0
       - KAFKA_BROKERS=kafka-1:29092,kafka-2:29092,kafka-3:29092
       - JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY}
+      - COMPLIANCE_SERVICE_URL=http://compliance-service:3008
       - S3_ENDPOINT=http://minio:9000
       - S3_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
       - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
@@ -787,7 +864,7 @@ services:
     depends_on:
       mongodb-primary:
         condition: service_healthy
-      redis:
+      redis-shared:
         condition: service_healthy
       kafka-1:
         condition: service_healthy

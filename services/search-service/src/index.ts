@@ -9,6 +9,7 @@ import { usersIndexMapping } from './indices/users.index.js';
 import { searchRoutes } from './routes/search.js';
 import { KafkaIndexer } from './indexing/kafka-indexer.js';
 import { Reindexer } from './indexing/reindexer.js';
+import { initializeComplianceClient } from './middleware/compliance.middleware.js';
 
 const ELASTICSEARCH_URL = process.env.ELASTICSEARCH_URL || 'http://elasticsearch:9200';
 const ELASTICSEARCH_PASSWORD = process.env.ELASTICSEARCH_PASSWORD || 'changeme';
@@ -19,6 +20,11 @@ const PORT = parseInt(process.env.PORT || '3006', 10);
 
 async function main() {
   console.log('Starting Search Service...');
+
+  // Initialize compliance client
+  const complianceUrl = process.env.COMPLIANCE_SERVICE_URL || 'http://compliance-service:3008';
+  initializeComplianceClient(complianceUrl);
+  console.log('Compliance client initialized');
 
   // Initialize Elasticsearch client
   const esClient = new Client({
@@ -75,6 +81,10 @@ async function main() {
 
   // Initialize Fastify server
   const fastify = Fastify({ logger: true });
+
+  // Correlation ID middleware (must be first)
+  const { correlationMiddleware } = await import('./middleware/correlation.middleware.js');
+  fastify.addHook('onRequest', correlationMiddleware);
 
   // Health check (don't fail if indexer not yet started)
   fastify.get('/health', async () => {

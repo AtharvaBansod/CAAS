@@ -7,6 +7,7 @@ import { mongoConnection } from './storage/mongodb-connection';
 import { redisConnection } from './storage/redis-connection';
 import { healthRoutes } from './routes/health.routes';
 import { EncryptionService } from './services/encryption.service';
+import { initializeComplianceClient } from './middleware/compliance.middleware';
 
 // Declare module augmentation for Fastify
 declare module 'fastify' {
@@ -37,6 +38,11 @@ async function start() {
     await redisConnection.connect();
     fastify.log.info('Database connections established');
 
+    // Initialize compliance client
+    const complianceUrl = process.env.COMPLIANCE_SERVICE_URL || 'http://compliance-service:3008';
+    initializeComplianceClient(complianceUrl);
+    fastify.log.info('Compliance client initialized');
+
     // Initialize services
     const encryptionService = new EncryptionService();
 
@@ -54,6 +60,10 @@ async function start() {
       max: config.rateLimit.max,
       timeWindow: config.rateLimit.timeWindow,
     });
+
+    // Correlation ID middleware (must be first)
+    const { correlationMiddleware } = await import('./middleware/correlation.middleware');
+    fastify.addHook('onRequest', correlationMiddleware);
 
     // Register routes
     await fastify.register(healthRoutes);

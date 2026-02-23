@@ -1,0 +1,507 @@
+{
+  "task_id": "04",
+  "phase": "4.5.z",
+  "name": "Socket Service Enhancement",
+  "description": "Enhance socket service to handle all message business logic, validation, and operations. Socket service becomes the primary user interaction point, handling everything that messaging-service currently does, plus real-time delivery.",
+  "priority": "critical",
+  "estimated_hours": 40,
+  "dependencies": ["03"],
+  "objectives": [
+    "Move message validation logic to socket service",
+    "Add conversation management to socket service",
+    "Implement message business rules in socket service",
+    "Add Redis-based metadata caching",
+    "Implement optimistic acknowledgments with status updates",
+    "Add direct integration with media and search services",
+    "Maintain real-time delivery capabilities",
+    "Prepare for messaging-service removal"
+  ],
+  "architecture_changes": {
+    "before": {
+      "flow": "User → Socket → Kafka → Messaging Service → DB",
+      "socket_role": "Real-time delivery only",
+      "validation": "In messaging-service",
+      "business_logic": "In messaging-service"
+    },
+    "after": {
+      "flow": "User → Socket → Kafka → DB (direct)",
+      "socket_role": "Validation + business logic + real-time delivery",
+      "validation": "In socket-service",
+      "business_logic": "In socket-service"
+    }
+  },
+  "detailed_steps": [
+    {
+      "step": 1,
+      "name": "Add message validation module",
+      "description": "Create comprehensive message validation in socket service",
+      "actions": [
+        "Create services/socket-service/src/validation/message.validator.ts",
+        "Implement message content validation (length, format, attachments)",
+        "Implement conversation validation (exists, user is participant, not blocked)",
+        "Implement permission validation (can send, can edit, can delete)",
+        "Add rate limiting per user/conversation",
+        "Cache validation results in Redis for performance"
+      ],
+      "validation_rules": {
+        "message_content": [
+          "Max length: 4000 characters",
+          "No empty messages (unless has attachments)",
+          "Valid UTF-8 encoding",
+          "No malicious content (XSS, SQL injection)",
+          "Attachment count limit: 10 per message",
+          "Attachment size limit: 100MB total"
+        ],
+        "conversation_rules": [
+          "Conversation must exist",
+          "User must be participant",
+          "Conversation not archived/deleted",
+          "User not blocked by recipient",
+          "Recipient not blocked by user"
+        ],
+        "permission_rules": [
+          "Can send: User is participant and not muted",
+          "Can edit: Message owner, within 15 min window",
+          "Can delete: Message owner or conversation admin",
+          "Can forward: User has read access to source conversation"
+        ]
+      ],
+      "files_to_create": [
+        "services/socket-service/src/validation/message.validator.ts",
+        "services/socket-service/src/validation/conversation.validator.ts",
+        "services/socket-service/src/validation/permission.validator.ts"
+      ],
+      "validation": [
+        "Test valid message passes validation",
+        "Test invalid message fails validation",
+        "Test blocked user cannot send",
+        "Test non-participant cannot send",
+        "Test rate limiting works"
+      ]
+    },
+    {
+      "step": 2,
+      "name": "Add conversation management module",
+      "description": "Implement conversation operations in socket service",
+      "actions": [
+        "Create services/socket-service/src/conversations/conversation.service.ts",
+        "Implement conversation CRUD operations",
+        "Add participant management (add, remove, leave)",
+        "Add conversation settings (mute, archive, delete)",
+        "Cache conversation metadata in redis-shared",
+        "Implement unread count management"
+      ],
+      "conversation_operations": [
+        "createConversation(participants, type, metadata)",
+        "getConversation(conversationId, userId)",
+        "updateConversation(conversationId, updates)",
+        "deleteConversation(conversationId, userId)",
+        "addParticipant(conversationId, userId, addedBy)",
+        "removeParticipant(conversationId, userId, removedBy)",
+        "leaveConversation(conversationId, userId)",
+        "muteConversation(conversationId, userId, duration)",
+        "archiveConversation(conversationId, userId)",
+        "getUnreadCount(conversationId, userId)",
+        "markAsRead(conversationId, userId, messageId)"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/conversations/conversation.service.ts",
+        "services/socket-service/src/conversations/participant.service.ts",
+        "services/socket-service/src/conversations/unread.service.ts"
+      ],
+      "caching_strategy": {
+        "cache_key_format": "conv:{tenant_id}:{conversation_id}",
+        "cache_ttl": 3600,
+        "cache_data": ["participants", "settings", "last_message", "unread_counts"],
+        "invalidation": "On conversation update, participant change, new message"
+      },
+      "validation": [
+        "Test conversation creation",
+        "Test participant add/remove",
+        "Test conversation settings update",
+        "Test unread count tracking",
+        "Test cache invalidation"
+      ]
+    },
+    {
+      "step": 3,
+      "name": "Add message business logic module",
+      "description": "Implement message operations and business rules",
+      "actions": [
+        "Create services/socket-service/src/messages/message.service.ts",
+        "Implement message CRUD operations",
+        "Add message editing with history tracking",
+        "Add message deletion (soft delete)",
+        "Add message forwarding with limits",
+        "Add message reactions",
+        "Implement message threading/replies"
+      ],
+      "message_operations": [
+        "createMessage(conversationId, userId, content, metadata)",
+        "editMessage(messageId, userId, newContent)",
+        "deleteMessage(messageId, userId, deleteType)",
+        "forwardMessage(messageId, targetConversationIds, userId)",
+        "addReaction(messageId, userId, emoji)",
+        "removeReaction(messageId, userId, emoji)",
+        "replyToMessage(parentMessageId, conversationId, userId, content)"
+      ],
+      "business_rules": {
+        "editing": [
+          "Only message owner can edit",
+          "Edit window: 15 minutes after send",
+          "Track edit history",
+          "Broadcast edit event to all participants"
+        ],
+        "deletion": [
+          "Soft delete: Mark as deleted, keep in DB",
+          "Hard delete: Admin only, remove from DB",
+          "Delete for me: Hide from user, keep for others",
+          "Delete for everyone: Mark deleted for all participants"
+        ],
+        "forwarding": [
+          "Max 5 target conversations per forward",
+          "Max 10 messages per forward batch",
+          "User must have read access to source",
+          "User must have send access to targets",
+          "Track forward chain"
+        ]
+      },
+      "files_to_create": [
+        "services/socket-service/src/messages/message.service.ts",
+        "services/socket-service/src/messages/edit.service.ts",
+        "services/socket-service/src/messages/delete.service.ts",
+        "services/socket-service/src/messages/forward.service.ts",
+        "services/socket-service/src/messages/reaction.service.ts"
+      ],
+      "validation": [
+        "Test message creation",
+        "Test message editing within window",
+        "Test edit fails after window",
+        "Test message deletion",
+        "Test message forwarding",
+        "Test reaction add/remove"
+      ]
+    },
+    {
+      "step": 4,
+      "name": "Implement optimistic acknowledgments",
+      "description": "Add two-phase acknowledgment system for better UX",
+      "actions": [
+        "Send immediate 'pending' ACK when message received",
+        "Perform fast validation (format, length, rate limit)",
+        "Publish to Kafka with temp_id",
+        "After Kafka persistence, send 'delivered' status",
+        "If validation fails, send 'rejected' status with reason",
+        "Client handles status updates and rollback if needed"
+      ],
+      "acknowledgment_flow": {
+        "phase_1_immediate": {
+          "trigger": "Message received from client",
+          "validation": ["Format check", "Length check", "Rate limit check"],
+          "response": {
+            "status": "pending",
+            "temp_id": "client_provided_temp_id",
+            "timestamp": "server_timestamp"
+          },
+          "timing": "< 10ms"
+        },
+        "phase_2_validated": {
+          "trigger": "After full validation and Kafka publish",
+          "validation": ["Conversation exists", "User is participant", "Not blocked", "Permissions OK"],
+          "response_success": {
+            "status": "delivered",
+            "temp_id": "client_temp_id",
+            "message_id": "server_generated_id",
+            "timestamp": "server_timestamp"
+          },
+          "response_failure": {
+            "status": "rejected",
+            "temp_id": "client_temp_id",
+            "reason": "blocked_user | invalid_conversation | permission_denied | rate_limited",
+            "timestamp": "server_timestamp"
+          },
+          "timing": "< 100ms"
+        }
+      },
+      "files_to_modify": [
+        "services/socket-service/src/messaging/message.handler.ts",
+        "services/socket-service/src/messaging/acknowledgment.service.ts (create)"
+      ],
+      "validation": [
+        "Test immediate pending ACK",
+        "Test delivered status after validation",
+        "Test rejected status on validation failure",
+        "Test client rollback on rejection"
+      ]
+    },
+    {
+      "step": 5,
+      "name": "Add Kafka producer integration",
+      "description": "Enhance Kafka integration for message persistence",
+      "actions": [
+        "Create services/socket-service/src/kafka/message.producer.ts",
+        "Publish message events to Kafka topics",
+        "Use proper message schema with all metadata",
+        "Implement idempotent producer (prevent duplicates)",
+        "Add transaction support for multi-message operations",
+        "Handle Kafka failures gracefully"
+      ],
+      "kafka_topics": {
+        "message.sent": {
+          "description": "New message created",
+          "schema": {
+            "message_id": "string",
+            "temp_id": "string",
+            "conversation_id": "string",
+            "user_id": "string",
+            "tenant_id": "string",
+            "content": "string",
+            "attachments": "array",
+            "metadata": "object",
+            "timestamp": "number"
+          },
+          "partitions": 3,
+          "replication": 3
+        },
+        "message.edited": {
+          "description": "Message content edited",
+          "schema": {
+            "message_id": "string",
+            "user_id": "string",
+            "tenant_id": "string",
+            "old_content": "string",
+            "new_content": "string",
+            "edit_timestamp": "number"
+          }
+        },
+        "message.deleted": {
+          "description": "Message deleted",
+          "schema": {
+            "message_id": "string",
+            "user_id": "string",
+            "tenant_id": "string",
+            "delete_type": "soft | hard | for_me | for_everyone",
+            "timestamp": "number"
+          }
+        },
+        "conversation.updated": {
+          "description": "Conversation metadata changed",
+          "schema": {
+            "conversation_id": "string",
+            "tenant_id": "string",
+            "update_type": "created | participant_added | participant_removed | settings_changed",
+            "metadata": "object",
+            "timestamp": "number"
+          }
+        }
+      },
+      "files_to_create": [
+        "services/socket-service/src/kafka/message.producer.ts",
+        "services/socket-service/src/kafka/conversation.producer.ts"
+      ],
+      "validation": [
+        "Test message published to Kafka",
+        "Test Kafka consumer receives message",
+        "Test idempotency (duplicate prevention)",
+        "Test transaction rollback on failure"
+      ]
+    },
+    {
+      "step": 6,
+      "name": "Add media service integration",
+      "description": "Direct integration with media service for file handling",
+      "actions": [
+        "Create services/socket-service/src/clients/media-client.ts",
+        "Implement file upload coordination",
+        "Generate signed URLs for file access",
+        "Validate file metadata before message send",
+        "Handle file upload failures gracefully"
+      ],
+      "media_operations": [
+        "requestUploadUrl(userId, tenantId, fileMetadata) → signedUrl",
+        "validateFileUpload(fileId, userId) → boolean",
+        "getFileMetadata(fileId) → metadata",
+        "deleteFile(fileId, userId) → boolean"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/clients/media-client.ts",
+        "services/socket-service/src/media/upload.handler.ts"
+      ],
+      "validation": [
+        "Test file upload URL generation",
+        "Test file validation before message send",
+        "Test message with attachments",
+        "Test file deletion on message delete"
+      ]
+    },
+    {
+      "step": 7,
+      "name": "Add search service integration",
+      "description": "Direct integration with search service for message indexing",
+      "actions": [
+        "Create services/socket-service/src/clients/search-client.ts",
+        "Trigger search indexing on message create/edit",
+        "Remove from index on message delete",
+        "Handle search service failures gracefully (async, non-blocking)"
+      ],
+      "search_operations": [
+        "indexMessage(message) → void (async)",
+        "updateMessageIndex(messageId, newContent) → void (async)",
+        "removeFromIndex(messageId) → void (async)"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/clients/search-client.ts",
+        "services/socket-service/src/search/indexing.service.ts"
+      ],
+      "validation": [
+        "Test message indexed on creation",
+        "Test index updated on edit",
+        "Test message removed from index on delete",
+        "Test search service failure doesn't block message send"
+      ]
+    },
+    {
+      "step": 8,
+      "name": "Add MongoDB direct access",
+      "description": "Add direct MongoDB operations for conversation and message data",
+      "actions": [
+        "Create services/socket-service/src/repositories/conversation.repository.ts",
+        "Create services/socket-service/src/repositories/message.repository.ts",
+        "Implement CRUD operations for conversations",
+        "Implement CRUD operations for messages",
+        "Use MongoDB transactions for consistency",
+        "Add proper indexes for performance"
+      ],
+      "mongodb_collections": {
+        "conversations": {
+          "indexes": [
+            "{ tenant_id: 1, conversation_id: 1 }",
+            "{ tenant_id: 1, participants: 1 }",
+            "{ tenant_id: 1, updated_at: -1 }"
+          ]
+        },
+        "messages": {
+          "indexes": [
+            "{ tenant_id: 1, conversation_id: 1, created_at: -1 }",
+            "{ tenant_id: 1, message_id: 1 }",
+            "{ tenant_id: 1, user_id: 1, created_at: -1 }"
+          ]
+        }
+      },
+      "files_to_create": [
+        "services/socket-service/src/repositories/conversation.repository.ts",
+        "services/socket-service/src/repositories/message.repository.ts"
+      ],
+      "validation": [
+        "Test conversation CRUD operations",
+        "Test message CRUD operations",
+        "Test MongoDB transactions",
+        "Test query performance with indexes"
+      ]
+    },
+    {
+      "step": 9,
+      "name": "Update socket event handlers",
+      "description": "Refactor socket event handlers to use new services",
+      "actions": [
+        "Update services/socket-service/src/messaging/message.handler.ts",
+        "Use new validation, business logic, and persistence services",
+        "Implement optimistic acknowledgments",
+        "Add proper error handling and logging",
+        "Maintain backward compatibility during transition"
+      ],
+      "socket_events": {
+        "message:send": "Create and send message",
+        "message:edit": "Edit existing message",
+        "message:delete": "Delete message",
+        "message:forward": "Forward message to other conversations",
+        "message:react": "Add reaction to message",
+        "conversation:create": "Create new conversation",
+        "conversation:update": "Update conversation settings",
+        "conversation:leave": "Leave conversation",
+        "typing:start": "User started typing",
+        "typing:stop": "User stopped typing"
+      },
+      "files_to_modify": [
+        "services/socket-service/src/messaging/message.handler.ts",
+        "services/socket-service/src/conversations/conversation.handler.ts"
+      ],
+      "validation": [
+        "Test all socket events work correctly",
+        "Test error handling",
+        "Test acknowledgments",
+        "Test real-time delivery"
+      ]
+    },
+    {
+      "step": 10,
+      "name": "Add comprehensive testing",
+      "description": "Test all new socket service functionality",
+      "actions": [
+        "Create unit tests for all new services",
+        "Create integration tests for message flow",
+        "Test validation rules",
+        "Test business logic",
+        "Test Kafka integration",
+        "Test Redis caching",
+        "Load test socket service with enhanced logic"
+      ],
+      "test_files_to_create": [
+        "services/socket-service/tests/unit/validation/message.validator.test.ts",
+        "services/socket-service/tests/unit/messages/message.service.test.ts",
+        "services/socket-service/tests/unit/conversations/conversation.service.test.ts",
+        "services/socket-service/tests/integration/message-flow.test.ts",
+        "services/socket-service/tests/integration/kafka-integration.test.ts",
+        "services/socket-service/tests/load/socket-performance.test.ts"
+      ],
+      "validation": [
+        "All unit tests pass",
+        "All integration tests pass",
+        "Load tests show acceptable performance",
+        "No memory leaks",
+        "Proper error handling"
+      ]
+    }
+  ],
+  "performance_considerations": {
+    "caching": "Use redis-shared for conversation metadata, redis-socket for real-time data",
+    "validation": "Fast validation first (< 10ms), deep validation async",
+    "kafka": "Batch messages when possible, use compression",
+    "mongodb": "Proper indexes, use projections to limit data transfer",
+    "connections": "Connection pooling for MongoDB, Redis, Kafka"
+  },
+  "testing_strategy": {
+    "unit_tests": "Test each service module independently",
+    "integration_tests": "Test full message flow from socket to DB",
+    "load_tests": "Test with 10k concurrent connections, 1k msg/sec",
+    "docker_tests": "Build and run in Docker, test all functionality"
+  },
+  "rollback_plan": {
+    "description": "If enhancement fails, revert to simple socket service",
+    "steps": [
+      "Restore original socket service code",
+      "Keep messaging-service running",
+      "Rebuild and restart socket service",
+      "Route messages through messaging-service again"
+    ]
+  },
+  "success_criteria": [
+    "Socket service handles all message validation",
+    "Socket service handles all business logic",
+    "Socket service publishes to Kafka correctly",
+    "Optimistic acknowledgments work",
+    "Media integration works",
+    "Search integration works",
+    "MongoDB operations work",
+    "All tests pass",
+    "Performance is acceptable",
+    "Ready for messaging-service removal"
+  ],
+  "notes": [
+    "This is the most critical task in Phase 4.5.z",
+    "Socket service becomes the core of the messaging system",
+    "Careful testing is essential before removing messaging-service",
+    "Consider gradual rollout with feature flags",
+    "Monitor performance closely during transition"
+  ]
+}

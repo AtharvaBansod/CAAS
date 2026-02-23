@@ -1,0 +1,146 @@
+{
+  "phase": "4.5.z",
+  "name": "Architecture Gap Fixes & Refactoring",
+  "description": "Major architectural refactoring to optimize the system: Move message service logic to socket service, implement package-based compliance client, remove crypto package, optimize Redis usage, and establish proper event-driven architecture with Kafka",
+  "priority": "critical",
+  "estimatedDuration": "4-6 weeks",
+  "dependencies": [
+    "phase-4.5.0-authService",
+    "phase-4.5.1-complianceService",
+    "phase-4.5.2-cryptoService",
+    "phase-4.5.3-integration",
+    "phase-4.5.4-storage"
+  ],
+  "objectives": [
+    "Eliminate messaging-service as standalone service",
+    "Move all message business logic to socket-service",
+    "Implement package-based compliance-client for all services",
+    "Remove crypto-client package (use inline implementation)",
+    "Optimize Redis architecture with dedicated instances",
+    "Establish proper Kafka event pipeline for persistence",
+    "Make socket-service the primary user interaction point",
+    "Reduce gateway responsibilities to auth/admin only",
+    "Implement end-to-end request tracking across services",
+    "Add proper acknowledgments and status updates for all operations"
+  ],
+  "architecture_changes": {
+    "before": {
+      "user_flow": "User → Gateway → Messaging Service → Kafka → DB",
+      "socket_role": "Real-time delivery only",
+      "messaging_service": "Business logic + persistence",
+      "gateway": "All REST operations",
+      "compliance": "Inline client in gateway only"
+    },
+    "after": {
+      "user_flow": "User → Socket Service → Kafka → DB",
+      "socket_role": "Business logic + validation + real-time",
+      "messaging_service": "REMOVED",
+      "gateway": "Auth + admin operations only",
+      "compliance": "Package-based client in all services"
+    }
+  },
+  "redis_architecture": {
+    "current": "Single Redis with multiple DBs",
+    "new": {
+      "redis-gateway": "Gateway session cache (DB 0)",
+      "redis-socket": "Socket connections, presence, metadata (DB 0-2)",
+      "redis-shared": "Shared cache for conversation metadata (DB 0)",
+      "redis-compliance": "Compliance service cache (DB 1)",
+      "redis-crypto": "Crypto service cache (DB 2)"
+    }
+  },
+  "kafka_architecture": {
+    "topics": [
+      "message.sent - Socket publishes, Kafka consumer persists",
+      "message.delivered - Confirmation back to socket",
+      "message.rejected - Validation failures",
+      "conversation.updated - Conversation metadata changes",
+      "user.action - All user actions (calls, groups, settings)",
+      "media.uploaded - Media operations",
+      "search.index - Search indexing requests",
+      "audit.log - Compliance audit events"
+    ]
+  },
+  "tasks": [
+    {
+      "id": "01",
+      "name": "Compliance Package Implementation",
+      "file": "01-compliance-package-implementation.json"
+    },
+    {
+      "id": "02",
+      "name": "Remove Crypto Package",
+      "file": "02-remove-crypto-package.json"
+    },
+    {
+      "id": "03",
+      "name": "Redis Architecture Refactoring",
+      "file": "03-redis-architecture-refactoring.json"
+    },
+    {
+      "id": "04",
+      "name": "Socket Service Enhancement",
+      "file": "04-socket-service-enhancement.json"
+    },
+    {
+      "id": "05",
+      "name": "Kafka Pipeline Optimization",
+      "file": "05-kafka-pipeline-optimization.json"
+    },
+    {
+      "id": "06",
+      "name": "Gateway Simplification",
+      "file": "06-gateway-simplification.json"
+    },
+    {
+      "id": "07",
+      "name": "Messaging Service Migration",
+      "file": "07-messaging-service-migration.json"
+    },
+    {
+      "id": "08",
+      "name": "End-to-End Request Tracking",
+      "file": "08-end-to-end-request-tracking.json"
+    },
+    {
+      "id": "09",
+      "name": "Media & Search Socket Integration",
+      "file": "09-media-search-socket-integration.json"
+    },
+    {
+      "id": "10",
+      "name": "Testing & Validation",
+      "file": "10-testing-validation.json"
+    }
+  ],
+  "success_criteria": [
+    "All user operations go through socket-service",
+    "Gateway only handles auth and admin operations",
+    "Messaging-service completely removed",
+    "All services use compliance-client package",
+    "Redis instances properly separated",
+    "Kafka handles all persistence operations",
+    "End-to-end request tracking working",
+    "All tests passing",
+    "Performance improved (lower latency)",
+    "System more maintainable"
+  ],
+  "risks": [
+    {
+      "risk": "Data loss during migration",
+      "mitigation": "Implement dual-write pattern during transition"
+    },
+    {
+      "risk": "Socket service becomes too complex",
+      "mitigation": "Proper modularization and separation of concerns"
+    },
+    {
+      "risk": "Performance degradation",
+      "mitigation": "Load testing at each step"
+    },
+    {
+      "risk": "Breaking existing clients",
+      "mitigation": "Maintain backward compatibility during transition"
+    }
+  ]
+}

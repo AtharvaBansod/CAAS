@@ -1,0 +1,163 @@
+{
+  "task_id": "05",
+  "phase": "4.5.z",
+  "name": "Kafka Pipeline Optimization",
+  "description": "Optimize Kafka pipeline for direct persistence from socket service. Create dedicated consumers for message persistence, implement bulk writes, and establish proper event-driven architecture.",
+  "priority": "high",
+  "estimated_hours": 24,
+  "dependencies": ["04"],
+  "objectives": [
+    "Create Kafka consumers for message persistence",
+    "Implement bulk write operations to MongoDB",
+    "Optimize Kafka topics and partitioning",
+    "Add proper error handling and DLQ",
+    "Implement exactly-once semantics",
+    "Monitor Kafka pipeline performance"
+  ],
+  "detailed_steps": [
+    {
+      "step": 1,
+      "name": "Create message persistence consumer",
+      "description": "Kafka consumer that reads message events and persists to MongoDB",
+      "actions": [
+        "Create services/kafka-service/src/consumers/message-persistence.consumer.ts",
+        "Subscribe to message.sent, message.edited, message.deleted topics",
+        "Implement bulk write operations (batch 100 messages)",
+        "Use MongoDB transactions for consistency",
+        "Handle duplicate messages (idempotency)",
+        "Send acknowledgment events back to Kafka"
+      ],
+      "consumer_config": {
+        "group_id": "message-persistence-group",
+        "topics": ["message.sent", "message.edited", "message.deleted"],
+        "batch_size": 100,
+        "batch_timeout_ms": 1000,
+        "auto_commit": false,
+        "isolation_level": "read_committed"
+      },
+      "files_to_create": [
+        "services/kafka-service/src/consumers/message-persistence.consumer.ts"
+      ]
+    },
+    {
+      "step": 2,
+      "name": "Create conversation persistence consumer",
+      "description": "Kafka consumer for conversation events",
+      "actions": [
+        "Create services/kafka-service/src/consumers/conversation-persistence.consumer.ts",
+        "Subscribe to conversation.updated topic",
+        "Persist conversation changes to MongoDB",
+        "Update conversation metadata cache in Redis",
+        "Handle participant changes"
+      ],
+      "files_to_create": [
+        "services/kafka-service/src/consumers/conversation-persistence.consumer.ts"
+      ]
+    },
+    {
+      "step": 3,
+      "name": "Implement bulk write operations",
+      "description": "Optimize MongoDB writes with bulk operations",
+      "actions": [
+        "Create services/kafka-service/src/persistence/bulk-writer.ts",
+        "Batch messages for bulk insert",
+        "Use MongoDB bulkWrite API",
+        "Handle partial failures",
+        "Retry failed writes"
+      ],
+      "bulk_write_config": {
+        "batch_size": 100,
+        "batch_timeout_ms": 1000,
+        "ordered": false,
+        "retry_attempts": 3
+      },
+      "files_to_create": [
+        "services/kafka-service/src/persistence/bulk-writer.ts"
+      ]
+    },
+    {
+      "step": 4,
+      "name": "Add acknowledgment producer",
+      "description": "Publish acknowledgment events after successful persistence",
+      "actions": [
+        "Create services/kafka-service/src/producers/acknowledgment.producer.ts",
+        "Publish to message.delivered topic after persistence",
+        "Include message_id, temp_id, timestamp",
+        "Socket service consumes and notifies client"
+      ],
+      "files_to_create": [
+        "services/kafka-service/src/producers/acknowledgment.producer.ts"
+      ]
+    },
+    {
+      "step": 5,
+      "name": "Optimize Kafka topics",
+      "description": "Configure Kafka topics for optimal performance",
+      "actions": [
+        "Update topic configurations",
+        "Set proper partition count (3-6 per topic)",
+        "Set replication factor (3)",
+        "Configure retention policies",
+        "Add compression (snappy or lz4)"
+      ],
+      "topic_configs": {
+        "message.sent": {
+          "partitions": 6,
+          "replication_factor": 3,
+          "retention_ms": 604800000,
+          "compression_type": "snappy"
+        },
+        "message.delivered": {
+          "partitions": 6,
+          "replication_factor": 3,
+          "retention_ms": 86400000,
+          "compression_type": "snappy"
+        }
+      }
+    },
+    {
+      "step": 6,
+      "name": "Implement DLQ and error handling",
+      "description": "Dead letter queue for failed messages",
+      "actions": [
+        "Create DLQ topics for each main topic",
+        "Route failed messages to DLQ",
+        "Add retry logic with exponential backoff",
+        "Monitor DLQ for issues"
+      ],
+      "files_to_create": [
+        "services/kafka-service/src/dlq/dlq-handler.ts"
+      ]
+    },
+    {
+      "step": 7,
+      "name": "Add monitoring and metrics",
+      "description": "Monitor Kafka pipeline performance",
+      "actions": [
+        "Add Prometheus metrics for consumers",
+        "Track message processing rate",
+        "Track lag per consumer group",
+        "Alert on high lag or errors"
+      ]
+    },
+    {
+      "step": 8,
+      "name": "Test Kafka pipeline",
+      "description": "Comprehensive testing of Kafka pipeline",
+      "actions": [
+        "Test message persistence flow",
+        "Test bulk writes",
+        "Test error handling",
+        "Load test with high message volume"
+      ]
+    }
+  ],
+  "success_criteria": [
+    "Kafka consumers persist messages to MongoDB",
+    "Bulk writes optimize performance",
+    "Acknowledgments sent back to socket service",
+    "DLQ handles failures",
+    "Monitoring shows healthy pipeline",
+    "Load tests pass"
+  ]
+}

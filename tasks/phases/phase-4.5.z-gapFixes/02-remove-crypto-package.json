@@ -1,0 +1,229 @@
+{
+  "task_id": "02",
+  "phase": "4.5.z",
+  "name": "Remove Crypto Package",
+  "description": "Remove packages/crypto-client package and ensure all services use inline crypto implementations. Crypto operations are service-specific and don't benefit from shared package approach.",
+  "priority": "medium",
+  "estimated_hours": 4,
+  "dependencies": [],
+  "objectives": [
+    "Verify no services are using @caas/crypto-client package",
+    "Remove packages/crypto-client directory",
+    "Ensure crypto-service has all necessary crypto logic inline",
+    "Document why crypto package was removed",
+    "Clean up any references in documentation"
+  ],
+  "detailed_steps": [
+    {
+      "step": 1,
+      "name": "Verify package is not used",
+      "description": "Search codebase to confirm no services import or depend on crypto-client package",
+      "actions": [
+        "Search for '@caas/crypto-client' in all package.json files",
+        "Search for 'crypto-client' imports in all TypeScript files",
+        "Search for 'packages/crypto-client' references in Dockerfiles",
+        "Verify no service has crypto-client as dependency",
+        "Document findings in verification report"
+      ],
+      "search_patterns": [
+        "@caas/crypto-client",
+        "from '@caas/crypto-client'",
+        "require('@caas/crypto-client')",
+        "../../packages/crypto-client"
+      ],
+      "files_to_check": [
+        "services/*/package.json",
+        "services/*/src/**/*.ts",
+        "services/*/Dockerfile"
+      ],
+      "validation": [
+        "Confirm zero matches for @caas/crypto-client in codebase",
+        "Verify no build errors when package is removed"
+      ]
+    },
+    {
+      "step": 2,
+      "name": "Verify crypto-service has inline implementation",
+      "description": "Ensure crypto-service has all necessary crypto logic and doesn't depend on external package",
+      "actions": [
+        "Review services/crypto-service/src/services/crypto.service.ts",
+        "Verify all crypto operations are implemented inline",
+        "Check for: key generation, encryption, decryption, signing, verification",
+        "Ensure crypto-service uses standard crypto libraries (crypto, libsodium, etc.)",
+        "Verify no external crypto-client dependency"
+      ],
+      "files_to_review": [
+        "services/crypto-service/src/services/crypto.service.ts",
+        "services/crypto-service/src/services/key.service.ts",
+        "services/crypto-service/package.json"
+      ],
+      "crypto_operations_to_verify": [
+        "Key generation (RSA, ECDSA, Ed25519)",
+        "Symmetric encryption (AES-256-GCM)",
+        "Asymmetric encryption (RSA-OAEP)",
+        "Digital signatures (ECDSA, Ed25519)",
+        "Key derivation (PBKDF2, Argon2)",
+        "Random number generation (crypto.randomBytes)"
+      ],
+      "validation": [
+        "Build crypto-service: docker compose build crypto-service",
+        "Start crypto-service: docker compose up -d crypto-service",
+        "Test key generation endpoint",
+        "Test encryption/decryption endpoints",
+        "Verify all crypto operations work"
+      ]
+    },
+    {
+      "step": 3,
+      "name": "Remove crypto-client package",
+      "description": "Delete packages/crypto-client directory and all its contents",
+      "actions": [
+        "Delete packages/crypto-client/ directory",
+        "Remove any references in root package.json (if exists)",
+        "Remove any references in workspace configuration",
+        "Update .gitignore if crypto-client was mentioned",
+        "Clean up any build artifacts"
+      ],
+      "files_to_delete": [
+        "packages/crypto-client/src/index.ts",
+        "packages/crypto-client/package.json",
+        "packages/crypto-client/tsconfig.json",
+        "packages/crypto-client/README.md (if exists)",
+        "packages/crypto-client/ (entire directory)"
+      ],
+      "validation": [
+        "Verify packages/crypto-client/ directory no longer exists",
+        "Run: docker compose build (should succeed)",
+        "Verify no build errors related to crypto-client"
+      ]
+    },
+    {
+      "step": 4,
+      "name": "Update documentation",
+      "description": "Update all documentation to reflect removal of crypto-client package",
+      "actions": [
+        "Update PACKAGES_ANALYSIS_AND_CODEBASE_STRUCTURE.md",
+        "Update SYSTEM_STATUS_AND_RECOMMENDATIONS.md",
+        "Update CURRENT_ARCHITECTURE_VISUAL.md",
+        "Add note explaining why crypto package was removed",
+        "Document that crypto operations are service-specific",
+        "Update any architecture diagrams"
+      ],
+      "files_to_modify": [
+        "PACKAGES_ANALYSIS_AND_CODEBASE_STRUCTURE.md",
+        "SYSTEM_STATUS_AND_RECOMMENDATIONS.md",
+        "CURRENT_ARCHITECTURE_VISUAL.md",
+        "docs/ARCHITECTURE_DIAGRAMS.md"
+      ],
+      "documentation_updates": [
+        "Remove crypto-client from packages list",
+        "Add explanation: 'Crypto operations are service-specific and implemented inline in crypto-service'",
+        "Update package strategy: 'Only compliance-client uses package approach'",
+        "Document inline approach for crypto: 'Crypto-service uses standard crypto libraries directly'"
+      ],
+      "validation": [
+        "Review updated documentation for accuracy",
+        "Ensure no broken links or references to crypto-client",
+        "Verify architecture diagrams are updated"
+      ]
+    },
+    {
+      "step": 5,
+      "name": "Create removal justification document",
+      "description": "Document the reasoning behind removing crypto-client package",
+      "actions": [
+        "Create docs/decisions/crypto-package-removal.md",
+        "Explain why crypto package was created initially",
+        "Explain why it's being removed now",
+        "Document benefits of inline approach for crypto",
+        "Provide comparison: package vs inline for crypto operations"
+      ],
+      "document_structure": {
+        "title": "Decision: Remove Crypto-Client Package",
+        "sections": [
+          "Background - Why crypto-client was created",
+          "Problem - Why package approach doesn't work for crypto",
+          "Decision - Remove package, use inline implementation",
+          "Rationale - Service-specific crypto needs, security isolation",
+          "Consequences - Simpler architecture, better security boundaries",
+          "Alternatives Considered - Keep package, shared crypto library"
+        ]
+      },
+      "key_points": [
+        "Crypto operations are highly service-specific",
+        "Security isolation is critical for crypto operations",
+        "No code reuse benefit (only crypto-service does crypto)",
+        "Inline approach is simpler and more secure",
+        "Package approach adds unnecessary complexity",
+        "Crypto-service is the single source of truth for crypto operations"
+      ],
+      "validation": [
+        "Review document with team",
+        "Ensure reasoning is clear and well-documented",
+        "Add to architecture decision records (ADR)"
+      ]
+    }
+  ],
+  "rationale": {
+    "why_remove": [
+      "Only crypto-service performs crypto operations (no code reuse)",
+      "Crypto operations are service-specific and context-dependent",
+      "Security isolation: crypto logic should be contained in crypto-service",
+      "Package approach adds unnecessary complexity for single-service use",
+      "Inline implementation is simpler and easier to maintain",
+      "No other service needs direct crypto operations (they call crypto-service API)"
+    ],
+    "benefits_of_inline": [
+      "Simpler architecture (no package dependency)",
+      "Better security boundaries (crypto logic isolated)",
+      "Easier to audit and review crypto code",
+      "Faster builds (no package compilation)",
+      "More flexible (can customize per service needs)",
+      "Clearer ownership (crypto-service owns all crypto logic)"
+    ],
+    "comparison_with_compliance": [
+      "Compliance: Used by ALL services (gateway, auth, crypto, socket, messaging, media, search) - Package makes sense",
+      "Crypto: Used by ONE service (crypto-service only) - Package doesn't make sense",
+      "Compliance: Same API for all services - Package provides consistency",
+      "Crypto: Service-specific operations - Inline provides flexibility"
+    ]
+  },
+  "testing_strategy": {
+    "verification_tests": [
+      "Search codebase for any crypto-client references",
+      "Build all services to ensure no dependency errors",
+      "Test crypto-service endpoints to verify functionality",
+      "Verify no broken imports or build errors"
+    ],
+    "docker_tests": [
+      "Build all services: docker compose build",
+      "Start all services: docker compose up -d",
+      "Health check all services: docker compose ps",
+      "Test crypto-service: generate key, encrypt, decrypt"
+    ]
+  },
+  "rollback_plan": {
+    "description": "If removal causes issues, restore from git history",
+    "steps": [
+      "Restore packages/crypto-client/ from git history",
+      "Restore any deleted references",
+      "Rebuild services",
+      "Investigate why removal caused issues"
+    ]
+  },
+  "success_criteria": [
+    "packages/crypto-client/ directory deleted",
+    "No references to @caas/crypto-client in codebase",
+    "All services build successfully",
+    "Crypto-service works correctly with inline implementation",
+    "Documentation updated to reflect removal",
+    "Removal justification documented"
+  ],
+  "notes": [
+    "This task simplifies the architecture by removing unused package",
+    "Crypto operations should remain isolated in crypto-service",
+    "Other services should call crypto-service API, not use crypto package",
+    "Package approach is only beneficial when multiple services need same code",
+    "Inline approach is preferred for service-specific logic"
+  ]
+}

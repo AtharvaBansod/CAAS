@@ -14,6 +14,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@caas/compliance-client": "file:../../packages/compliance-client",
     "@socket.io/redis-adapter": "^8.3.0",
     "dotenv": "^16.4.5",
     "express": "^4.18.3",
@@ -25,6 +26,7 @@
     "redis": "^4.6.13",
     "axios": "^1.6.5",
     "socket.io": "^4.7.4",
+    "uuid": "^9.0.1",
     "zod": "^3.22.4"
   },
   "devDependencies": {
@@ -32,6 +34,7 @@
     "@types/jsonwebtoken": "^9.0.0",
     "@types/node": "^20.11.24",
     "@types/redis": "^4.0.10",
+    "@types/uuid": "^9.0.7",
     "tsx": "^4.7.1",
     "typescript": "^5.3.3",
     "vitest": "^1.3.1"

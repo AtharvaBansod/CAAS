@@ -3,15 +3,15 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
-COPY tsconfig.json ./
+# Copy service files
+COPY services/compliance-service/package*.json ./
+COPY services/compliance-service/tsconfig.json ./
 
 # Install dependencies
 RUN npm install
 
 # Copy source code
-COPY src ./src
+COPY services/compliance-service/src ./src
 
 # Build TypeScript
 RUN npm run build
@@ -25,7 +25,7 @@ WORKDIR /app
 RUN apk add --no-cache dumb-init
 
 # Copy package files and install production dependencies
-COPY package*.json ./
+COPY services/compliance-service/package*.json ./
 RUN npm install --only=production
 
 # Copy built files from builder

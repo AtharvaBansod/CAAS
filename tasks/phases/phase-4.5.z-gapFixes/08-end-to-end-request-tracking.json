@@ -1,0 +1,220 @@
+{
+  "task_id": "08",
+  "phase": "4.5.z",
+  "name": "End-to-End Request Tracking",
+  "description": "Implement comprehensive request tracking across all services using correlation IDs. Every request gets a unique ID that flows through gateway, socket service, Kafka, and all downstream services for complete observability.",
+  "priority": "high",
+  "estimated_hours": 16,
+  "dependencies": ["01"],
+  "objectives": [
+    "Generate correlation IDs for all requests",
+    "Propagate IDs across all services",
+    "Log IDs in all service logs",
+    "Include IDs in Kafka messages",
+    "Add IDs to compliance audit logs",
+    "Enable request tracing in monitoring tools"
+  ],
+  "detailed_steps": [
+    {
+      "step": 1,
+      "name": "Define correlation ID standard",
+      "description": "Establish standard for correlation ID format and propagation",
+      "standard": {
+        "format": "UUID v4",
+        "header_name": "X-Correlation-ID",
+        "kafka_field": "correlation_id",
+        "log_field": "correlationId",
+        "generation": "Client provides or server generates",
+        "propagation": "All services must forward"
+      }
+    },
+    {
+      "step": 2,
+      "name": "Add correlation ID middleware to gateway",
+      "description": "Generate or extract correlation ID in gateway",
+      "actions": [
+        "Create services/gateway/src/middleware/correlation.middleware.ts",
+        "Extract X-Correlation-ID from request header",
+        "Generate new UUID if not provided",
+        "Add to request context",
+        "Include in response header",
+        "Log with every request"
+      ],
+      "files_to_create": [
+        "services/gateway/src/middleware/correlation.middleware.ts"
+      ],
+      "files_to_modify": [
+        "services/gateway/src/app.ts"
+      ]
+    },
+    {
+      "step": 3,
+      "name": "Add correlation ID to socket service",
+      "description": "Track correlation ID for socket connections and events",
+      "actions": [
+        "Extract correlation_id from socket handshake",
+        "Generate if not provided",
+        "Store in socket context",
+        "Include in all socket events",
+        "Log with every socket operation"
+      ],
+      "files_to_create": [
+        "services/socket-service/src/middleware/correlation.middleware.ts"
+      ],
+      "files_to_modify": [
+        "services/socket-service/src/server.ts"
+      ]
+    },
+    {
+      "step": 4,
+      "name": "Add correlation ID to Kafka messages",
+      "description": "Include correlation ID in all Kafka message headers",
+      "actions": [
+        "Add correlation_id to message schema",
+        "Include in Kafka message headers",
+        "Propagate through Kafka pipeline",
+        "Log in consumers"
+      ],
+      "kafka_message_format": {
+        "headers": {
+          "correlation_id": "uuid",
+          "timestamp": "number",
+          "source_service": "string"
+        },
+        "value": {
+          "...message_data": "..."
+        }
+      }
+    },
+    {
+      "step": 5,
+      "name": "Add correlation ID to all service logs",
+      "description": "Include correlation ID in structured logs",
+      "actions": [
+        "Update logger configuration in all services",
+        "Add correlationId field to log context",
+        "Ensure all log statements include it",
+        "Test log aggregation with correlation ID"
+      ],
+      "log_format": {
+        "timestamp": "ISO8601",
+        "level": "info|warn|error",
+        "service": "service-name",
+        "correlationId": "uuid",
+        "message": "log message",
+        "...additional_fields": "..."
+      }
+    },
+    {
+      "step": 6,
+      "name": "Add correlation ID to compliance logs",
+      "description": "Include in audit events for traceability",
+      "actions": [
+        "Update ComplianceClient to accept correlation_id",
+        "Include in audit event metadata",
+        "Enable audit log queries by correlation_id"
+      ],
+      "audit_event_format": {
+        "audit_id": "uuid",
+        "correlation_id": "uuid",
+        "tenant_id": "string",
+        "user_id": "string",
+        "action": "string",
+        "...other_fields": "..."
+      }
+    },
+    {
+      "step": 7,
+      "name": "Add correlation ID to auth service",
+      "description": "Track authentication requests",
+      "actions": [
+        "Add correlation middleware to auth service",
+        "Include in JWT claims (optional)",
+        "Log with auth operations"
+      ]
+    },
+    {
+      "step": 8,
+      "name": "Add correlation ID to crypto service",
+      "description": "Track crypto operations",
+      "actions": [
+        "Add correlation middleware to crypto service",
+        "Include in crypto operation logs",
+        "Track key operations by correlation ID"
+      ]
+    },
+    {
+      "step": 9,
+      "name": "Add correlation ID to media service",
+      "description": "Track file operations",
+      "actions": [
+        "Add correlation middleware to media service",
+        "Include in upload/download logs",
+        "Track file operations by correlation ID"
+      ]
+    },
+    {
+      "step": 10,
+      "name": "Add correlation ID to search service",
+      "description": "Track search operations",
+      "actions": [
+        "Add correlation middleware to search service",
+        "Include in search query logs",
+        "Track indexing operations by correlation ID"
+      ]
+    },
+    {
+      "step": 11,
+      "name": "Test end-to-end tracking",
+      "description": "Verify correlation ID flows through entire system",
+      "test_scenarios": [
+        "Send message: Track from client → gateway → socket → Kafka → DB",
+        "Upload file: Track from client → gateway → media → storage",
+        "Search: Track from client → gateway → search → elasticsearch",
+        "Auth: Track from client → gateway → auth → session creation",
+        "Verify same correlation_id in all logs",
+        "Query logs by correlation_id",
+        "Query audit logs by correlation_id"
+      ]
+    },
+    {
+      "step": 12,
+      "name": "Add monitoring and dashboards",
+      "description": "Create dashboards for request tracking",
+      "actions": [
+        "Create Grafana dashboard for request tracing",
+        "Add correlation ID search in log aggregation",
+        "Create alerts for failed requests by correlation ID",
+        "Document how to use correlation IDs for debugging"
+      ]
+    }
+  ],
+  "benefits": {
+    "debugging": "Trace entire request flow across all services",
+    "monitoring": "Track request latency end-to-end",
+    "compliance": "Link audit events to specific requests",
+    "troubleshooting": "Find all logs related to a single request",
+    "performance": "Identify bottlenecks in request flow"
+  },
+  "testing_strategy": {
+    "unit_tests": "Test correlation ID generation and propagation",
+    "integration_tests": "Test ID flows through multiple services",
+    "end_to_end_tests": "Test complete request flow with ID tracking"
+  },
+  "success_criteria": [
+    "All services generate/propagate correlation IDs",
+    "All logs include correlation ID",
+    "All Kafka messages include correlation ID",
+    "All audit events include correlation ID",
+    "Can trace complete request flow",
+    "Monitoring dashboards show request traces",
+    "Documentation complete"
+  ],
+  "notes": [
+    "Correlation IDs are essential for microservices observability",
+    "Must be propagated through ALL service boundaries",
+    "Include in async operations (Kafka, background jobs)",
+    "Use for debugging production issues",
+    "Integrate with distributed tracing tools (Jaeger) later"
+  ]
+}

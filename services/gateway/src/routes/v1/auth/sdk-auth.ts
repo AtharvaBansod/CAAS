@@ -45,11 +45,20 @@ const sdkAuthRoutes: FastifyPluginAsync = async (fastify) => {
 
     const refreshToken = tokenService.generateRefreshToken(userId);
 
+    // Phase 4.5.z Task 06: Add socket service URLs to auth response
+    const socketUrls = [
+      process.env.SOCKET_SERVICE_1_URL || 'ws://socket-service-1:3001',
+      process.env.SOCKET_SERVICE_2_URL || 'ws://socket-service-2:3001',
+    ];
+
     return {
       access_token: accessToken,
       refresh_token: refreshToken,
       expires_in: 900, // 15m
       token_type: 'Bearer',
+      // Phase 4.5.z Task 06: Socket service connection info
+      socket_urls: socketUrls,
+      socket_connection_guide: 'Connect to any socket URL with your access_token in the auth header',
     };
   });
 };

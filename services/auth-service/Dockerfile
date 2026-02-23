@@ -1,19 +1,37 @@
 # Auth Service Dockerfile
 # Phase 4.5.0 - Standalone Auth Service
+# Phase 4.5.z - Updated for compliance-client package
 
+FROM node:20-alpine AS package-builder
+
+WORKDIR /app/packages/compliance-client
+
+# Copy and build compliance-client package
+COPY packages/compliance-client/package*.json ./
+COPY packages/compliance-client/tsconfig.json ./
+COPY packages/compliance-client/src ./src
+
+RUN npm install && npm run build
+
+# Service builder stage
 FROM node:20-alpine AS builder
 
-WORKDIR /app
+# Create proper directory structure
+WORKDIR /
 
-# Copy package files
-COPY package*.json ./
-COPY tsconfig.json ./
+# Copy built compliance-client package to proper location
+COPY --from=package-builder /app/packages/compliance-client ./packages/compliance-client
 
-# Install dependencies
+# Copy service files
+WORKDIR /services/auth-service
+COPY services/auth-service/package*.json ./
+COPY services/auth-service/tsconfig.json ./
+
+# Install dependencies (now ../../packages/compliance-client will resolve correctly)
 RUN npm install
 
 # Copy source code
-COPY src ./src
+COPY services/auth-service/src ./src
 
 # Build TypeScript
 RUN npm run build
@@ -21,16 +39,21 @@ RUN npm run build
 # Production image
 FROM node:20-alpine
 
-WORKDIR /app
+# Create proper directory structure
+WORKDIR /
 
-# Copy package files
-COPY package*.json ./
+# Copy built compliance-client package
+COPY --from=package-builder /app/packages/compliance-client ./packages/compliance-client
+
+# Copy service files
+WORKDIR /services/auth-service
+COPY services/auth-service/package*.json ./
 
 # Install production dependencies only
 RUN npm install --only=production
 
 # Copy built files from builder
-COPY --from=builder /app/dist ./dist
+COPY --from=builder /services/auth-service/dist ./dist
 
 # Create keys directory
 RUN mkdir -p /app/keys

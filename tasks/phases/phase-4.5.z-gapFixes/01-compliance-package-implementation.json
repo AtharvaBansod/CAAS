@@ -1,0 +1,358 @@
+{
+  "task_id": "01",
+  "phase": "4.5.z",
+  "name": "Compliance Package Implementation",
+  "description": "Convert compliance client from inline implementation to package-based approach. All services (gateway, auth, crypto, socket, messaging, media, search) will use @caas/compliance-client package instead of inline HTTP clients.",
+  "priority": "high",
+  "estimated_hours": 16,
+  "dependencies": [],
+  "objectives": [
+    "Make packages/compliance-client a proper npm package with TypeScript support",
+    "Add package to all service package.json files",
+    "Replace inline compliance clients with package import",
+    "Ensure all services log audit events to compliance service",
+    "Maintain backward compatibility during transition",
+    "Test compliance logging from all services"
+  ],
+  "detailed_steps": [
+    {
+      "step": 1,
+      "name": "Prepare compliance-client package",
+      "description": "Configure the package for proper TypeScript compilation and npm linking",
+      "actions": [
+        "Update packages/compliance-client/package.json with proper name '@caas/compliance-client'",
+        "Add build script: 'tsc' to compile TypeScript to JavaScript",
+        "Add 'main', 'types', and 'files' fields to package.json",
+        "Ensure tsconfig.json outputs to 'dist' directory",
+        "Add README.md with usage examples",
+        "Fix TypeScript errors in packages/compliance-client/src/index.ts (add @types/node)"
+      ],
+      "files_to_modify": [
+        "packages/compliance-client/package.json",
+        "packages/compliance-client/tsconfig.json",
+        "packages/compliance-client/README.md"
+      ],
+      "validation": [
+        "Run 'npm run build' in packages/compliance-client",
+        "Verify dist/ directory is created with .js and .d.ts files",
+        "Check package.json exports are correct"
+      ]
+    },
+    {
+      "step": 2,
+      "name": "Link package to services",
+      "description": "Add @caas/compliance-client as dependency to all services",
+      "actions": [
+        "Add '@caas/compliance-client': 'file:../../packages/compliance-client' to each service's package.json",
+        "Services to update: gateway, auth-service, crypto-service, socket-service, messaging-service, media-service, search-service",
+        "Run 'npm install' in each service to link the package",
+        "Verify node_modules/@caas/compliance-client exists in each service"
+      ],
+      "files_to_modify": [
+        "services/gateway/package.json",
+        "services/auth-service/package.json",
+        "services/crypto-service/package.json",
+        "services/socket-service/package.json",
+        "services/messaging-service/package.json",
+        "services/media-service/package.json",
+        "services/search-service/package.json"
+      ],
+      "validation": [
+        "Check each service can import { ComplianceClient } from '@caas/compliance-client'",
+        "Verify TypeScript compilation works in each service"
+      ]
+    },
+    {
+      "step": 3,
+      "name": "Replace gateway inline client",
+      "description": "Remove SimpleComplianceClient from gateway and use package",
+      "actions": [
+        "Import { createComplianceClient } from '@caas/compliance-client' in gateway",
+        "Replace SimpleComplianceClient instantiation with createComplianceClient()",
+        "Update complianceMiddleware to use new client API",
+        "Remove SimpleComplianceClient class definition from services/gateway/src/middleware/compliance-middleware.ts",
+        "Keep the same batching and async logging behavior",
+        "Ensure graceful shutdown still works"
+      ],
+      "files_to_modify": [
+        "services/gateway/src/middleware/compliance-middleware.ts",
+        "services/gateway/src/app.ts"
+      ],
+      "validation": [
+        "Build gateway service: docker compose build gateway",
+        "Start gateway: docker compose up -d gateway",
+        "Check gateway logs for compliance client initialization",
+        "Make test API request and verify audit log in compliance service"
+      ]
+    },
+    {
+      "step": 4,
+      "name": "Add compliance to auth-service",
+      "description": "Integrate compliance logging into auth service for all authentication events",
+      "actions": [
+        "Create services/auth-service/src/middleware/compliance.middleware.ts",
+        "Initialize ComplianceClient in auth service startup",
+        "Log audit events for: login, logout, token refresh, MFA operations, session creation/deletion",
+        "Add compliance logging to critical auth operations",
+        "Use batching for performance (enabled: true, maxBatchSize: 100, flushInterval: 5000)",
+        "Add graceful shutdown to flush remaining events"
+      ],
+      "files_to_modify": [
+        "services/auth-service/src/middleware/compliance.middleware.ts (create)",
+        "services/auth-service/src/server.ts",
+        "services/auth-service/src/services/auth.service.ts"
+      ],
+      "audit_events_to_log": [
+        "USER_LOGIN - user_id, tenant_id, ip_address, user_agent",
+        "USER_LOGOUT - user_id, tenant_id, session_id",
+        "TOKEN_REFRESH - user_id, tenant_id, old_token_id, new_token_id",
+        "MFA_ENABLED - user_id, tenant_id, mfa_method",
+        "MFA_DISABLED - user_id, tenant_id",
+        "SESSION_CREATED - user_id, tenant_id, session_id, device_info",
+        "SESSION_REVOKED - user_id, tenant_id, session_id, reason"
+      ],
+      "validation": [
+        "Build auth service: docker compose build auth-service",
+        "Start auth service: docker compose up -d auth-service",
+        "Perform login via gateway",
+        "Query compliance service for USER_LOGIN audit event",
+        "Verify all auth events are logged"
+      ]
+    },
+    {
+      "step": 5,
+      "name": "Add compliance to crypto-service",
+      "description": "Integrate compliance logging into crypto service for key operations",
+      "actions": [
+        "Create services/crypto-service/src/middleware/compliance.middleware.ts",
+        "Initialize ComplianceClient in crypto service startup",
+        "Log audit events for: key generation, key rotation, encryption/decryption operations",
+        "Add compliance logging to all crypto operations",
+        "Use batching for high-volume operations",
+        "Ensure sensitive data (keys, plaintext) is NOT logged"
+      ],
+      "files_to_modify": [
+        "services/crypto-service/src/middleware/compliance.middleware.ts (create)",
+        "services/crypto-service/src/server.ts",
+        "services/crypto-service/src/services/crypto.service.ts"
+      ],
+      "audit_events_to_log": [
+        "KEY_GENERATED - user_id, tenant_id, key_type, key_id",
+        "KEY_ROTATED - user_id, tenant_id, old_key_id, new_key_id",
+        "ENCRYPTION_PERFORMED - user_id, tenant_id, resource_type, resource_id",
+        "DECRYPTION_PERFORMED - user_id, tenant_id, resource_type, resource_id",
+        "KEY_ACCESSED - user_id, tenant_id, key_id, operation"
+      ],
+      "validation": [
+        "Build crypto service: docker compose build crypto-service",
+        "Start crypto service: docker compose up -d crypto-service",
+        "Perform key generation operation",
+        "Query compliance service for KEY_GENERATED audit event"
+      ]
+    },
+    {
+      "step": 6,
+      "name": "Add compliance to socket-service",
+      "description": "Integrate compliance logging into socket service for real-time events",
+      "actions": [
+        "Create services/socket-service/src/middleware/compliance.middleware.ts",
+        "Initialize ComplianceClient in socket service startup",
+        "Log audit events for: socket connections, disconnections, message sends, room joins/leaves",
+        "Add compliance logging to socket event handlers",
+        "Use batching for high-volume socket events",
+        "Log WebRTC call events (call started, ended, participants)"
+      ],
+      "files_to_modify": [
+        "services/socket-service/src/middleware/compliance.middleware.ts (create)",
+        "services/socket-service/src/server.ts",
+        "services/socket-service/src/messaging/message.handler.ts",
+        "services/socket-service/src/webrtc/call.handler.ts"
+      ],
+      "audit_events_to_log": [
+        "SOCKET_CONNECTED - user_id, tenant_id, socket_id, ip_address",
+        "SOCKET_DISCONNECTED - user_id, tenant_id, socket_id, duration",
+        "MESSAGE_SENT - user_id, tenant_id, conversation_id, message_id",
+        "ROOM_JOINED - user_id, tenant_id, room_id",
+        "ROOM_LEFT - user_id, tenant_id, room_id",
+        "CALL_STARTED - user_id, tenant_id, call_id, participants",
+        "CALL_ENDED - user_id, tenant_id, call_id, duration"
+      ],
+      "validation": [
+        "Build socket service: docker compose build socket-service-1",
+        "Start socket service: docker compose up -d socket-service-1",
+        "Connect via socket client",
+        "Query compliance service for SOCKET_CONNECTED audit event"
+      ]
+    },
+    {
+      "step": 7,
+      "name": "Add compliance to messaging-service",
+      "description": "Integrate compliance logging into messaging service for message operations",
+      "actions": [
+        "Create services/messaging-service/src/middleware/compliance.middleware.ts",
+        "Initialize ComplianceClient in messaging service startup",
+        "Log audit events for: message creation, editing, deletion, forwarding",
+        "Add compliance logging to message business logic",
+        "Log conversation operations (created, archived, deleted)",
+        "Use batching for message operations"
+      ],
+      "files_to_modify": [
+        "services/messaging-service/src/middleware/compliance.middleware.ts (create)",
+        "services/messaging-service/src/server.ts",
+        "services/messaging-service/src/services/message.service.ts",
+        "services/messaging-service/src/services/conversation.service.ts"
+      ],
+      "audit_events_to_log": [
+        "MESSAGE_CREATED - user_id, tenant_id, conversation_id, message_id",
+        "MESSAGE_EDITED - user_id, tenant_id, message_id, edit_timestamp",
+        "MESSAGE_DELETED - user_id, tenant_id, message_id, delete_type",
+        "MESSAGE_FORWARDED - user_id, tenant_id, source_message_id, target_conversation_ids",
+        "CONVERSATION_CREATED - user_id, tenant_id, conversation_id, participants",
+        "CONVERSATION_ARCHIVED - user_id, tenant_id, conversation_id",
+        "CONVERSATION_DELETED - user_id, tenant_id, conversation_id"
+      ],
+      "validation": [
+        "Build messaging service: docker compose build messaging-service",
+        "Start messaging service: docker compose up -d messaging-service",
+        "Send message via gateway",
+        "Query compliance service for MESSAGE_CREATED audit event"
+      ]
+    },
+    {
+      "step": 8,
+      "name": "Add compliance to media-service",
+      "description": "Integrate compliance logging into media service for file operations",
+      "actions": [
+        "Create services/media-service/src/middleware/compliance.middleware.ts",
+        "Initialize ComplianceClient in media service startup",
+        "Log audit events for: file uploads, downloads, deletions",
+        "Add compliance logging to media operations",
+        "Log metadata: file size, type, user, tenant",
+        "Use batching for media operations"
+      ],
+      "files_to_modify": [
+        "services/media-service/src/middleware/compliance.middleware.ts (create)",
+        "services/media-service/src/server.ts",
+        "services/media-service/src/services/media.service.ts"
+      ],
+      "audit_events_to_log": [
+        "MEDIA_UPLOADED - user_id, tenant_id, media_id, file_type, file_size",
+        "MEDIA_DOWNLOADED - user_id, tenant_id, media_id",
+        "MEDIA_DELETED - user_id, tenant_id, media_id",
+        "MEDIA_ACCESSED - user_id, tenant_id, media_id, access_type"
+      ],
+      "validation": [
+        "Build media service: docker compose build media-service",
+        "Start media service: docker compose up -d media-service",
+        "Upload file via gateway",
+        "Query compliance service for MEDIA_UPLOADED audit event"
+      ]
+    },
+    {
+      "step": 9,
+      "name": "Add compliance to search-service",
+      "description": "Integrate compliance logging into search service for search operations",
+      "actions": [
+        "Create services/search-service/src/middleware/compliance.middleware.ts",
+        "Initialize ComplianceClient in search service startup",
+        "Log audit events for: search queries, index operations",
+        "Add compliance logging to search operations",
+        "Log search terms (if not sensitive), results count, user",
+        "Use batching for search operations"
+      ],
+      "files_to_modify": [
+        "services/search-service/src/middleware/compliance.middleware.ts (create)",
+        "services/search-service/src/server.ts",
+        "services/search-service/src/services/search.service.ts"
+      ],
+      "audit_events_to_log": [
+        "SEARCH_PERFORMED - user_id, tenant_id, search_query, results_count",
+        "INDEX_CREATED - tenant_id, index_name, document_count",
+        "INDEX_UPDATED - tenant_id, index_name, document_id",
+        "INDEX_DELETED - tenant_id, index_name, document_id"
+      ],
+      "validation": [
+        "Build search service: docker compose build search-service",
+        "Start search service: docker compose up -d search-service",
+        "Perform search via gateway",
+        "Query compliance service for SEARCH_PERFORMED audit event"
+      ]
+    },
+    {
+      "step": 10,
+      "name": "Update Docker builds and test",
+      "description": "Ensure all services build correctly with package dependency",
+      "actions": [
+        "Update Dockerfiles to copy packages/ directory if needed",
+        "Ensure npm install in Docker builds the compliance-client package",
+        "Test full system build: docker compose build",
+        "Test full system startup: docker compose up -d",
+        "Verify all services are healthy",
+        "Test compliance logging from each service",
+        "Query compliance service to verify audit logs from all services"
+      ],
+      "files_to_modify": [
+        "services/gateway/Dockerfile",
+        "services/auth-service/Dockerfile",
+        "services/crypto-service/Dockerfile",
+        "services/socket-service/Dockerfile",
+        "services/messaging-service/Dockerfile",
+        "services/media-service/Dockerfile",
+        "services/search-service/Dockerfile"
+      ],
+      "validation": [
+        "Run: docker compose build",
+        "Run: docker compose up -d",
+        "Check all services are healthy: docker compose ps",
+        "Test each service endpoint",
+        "Query compliance service: GET /api/v1/audit/query?tenant_id=test",
+        "Verify audit logs from all 7 services exist"
+      ]
+    }
+  ],
+  "testing_strategy": {
+    "unit_tests": [
+      "Test ComplianceClient initialization in each service",
+      "Test audit event creation with correct metadata",
+      "Test batching behavior (buffer fills and flushes)",
+      "Test circuit breaker behavior on compliance service failure"
+    ],
+    "integration_tests": [
+      "Test end-to-end audit logging from gateway to compliance service",
+      "Test audit logging from each service independently",
+      "Test compliance service receives events from all services",
+      "Test audit log query returns events from all services"
+    ],
+    "docker_tests": [
+      "Build all services: docker compose build",
+      "Start all services: docker compose up -d",
+      "Health check all services: docker compose ps",
+      "Test compliance logging: perform operations and query audit logs"
+    ]
+  },
+  "rollback_plan": {
+    "description": "If package approach fails, revert to inline clients",
+    "steps": [
+      "Keep backup of inline client implementations",
+      "Remove @caas/compliance-client from package.json files",
+      "Restore inline SimpleComplianceClient in each service",
+      "Rebuild and restart services"
+    ]
+  },
+  "success_criteria": [
+    "All services use @caas/compliance-client package",
+    "No inline compliance client code remains",
+    "All services successfully log audit events",
+    "Compliance service receives events from all 7 services",
+    "All Docker builds succeed",
+    "All services pass health checks",
+    "Audit log queries return events from all services"
+  ],
+  "notes": [
+    "This task establishes the foundation for centralized compliance logging",
+    "Package approach ensures consistency across all services",
+    "Batching is critical for performance with high-volume events",
+    "Circuit breaker prevents cascading failures if compliance service is down",
+    "Audit events should NOT contain sensitive data (passwords, keys, plaintext)"
+  ]
+}

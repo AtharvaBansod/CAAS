@@ -1,0 +1,465 @@
+{
+  "task_id": "10",
+  "phase": "4.5.z",
+  "name": "Testing & Validation",
+  "description": "Comprehensive testing and validation of all Phase 4.5.z changes. Ensure the refactored architecture works correctly, performs well, and is production-ready.",
+  "priority": "critical",
+  "estimated_hours": 32,
+  "dependencies": ["01", "02", "03", "04", "05", "06", "07", "08", "09"],
+  "objectives": [
+    "Test all individual components",
+    "Test integration between services",
+    "Test end-to-end user flows",
+    "Performance testing and optimization",
+    "Load testing",
+    "Security testing",
+    "Documentation validation",
+    "Production readiness checklist"
+  ],
+  "detailed_steps": [
+    {
+      "step": 1,
+      "name": "Unit testing",
+      "description": "Test all new modules and services",
+      "test_areas": [
+        "Compliance client package",
+        "Socket service validation modules",
+        "Socket service business logic",
+        "Kafka consumers",
+        "Redis clients",
+        "Message handlers",
+        "Conversation handlers"
+      ],
+      "actions": [
+        "Run unit tests in all services",
+        "Ensure > 80% code coverage",
+        "Fix any failing tests",
+        "Add missing tests"
+      ],
+      "commands": [
+        "cd services/socket-service && npm test",
+        "cd services/gateway && npm test",
+        "cd services/kafka-service && npm test",
+        "cd packages/compliance-client && npm test"
+      ]
+    },
+    {
+      "step": 2,
+      "name": "Integration testing",
+      "description": "Test service-to-service interactions",
+      "test_scenarios": [
+        {
+          "name": "Message flow",
+          "steps": [
+            "User connects to socket service",
+            "User sends message",
+            "Socket validates and publishes to Kafka",
+            "Kafka consumer persists to MongoDB",
+            "Acknowledgment sent back to socket",
+            "Socket notifies user of delivery",
+            "Message appears in recipient's socket"
+          ]
+        },
+        {
+          "name": "Compliance logging",
+          "steps": [
+            "User performs action in any service",
+            "Service logs to compliance via package",
+            "Compliance service receives audit event",
+            "Audit event stored in MongoDB",
+            "Audit event queryable via API"
+          ]
+        },
+        {
+          "name": "Redis isolation",
+          "steps": [
+            "Gateway stores session in redis-gateway",
+            "Socket stores presence in redis-socket",
+            "Both access shared cache in redis-shared",
+            "Data properly isolated",
+            "No cross-contamination"
+          ]
+        },
+        {
+          "name": "Media upload",
+          "steps": [
+            "User requests upload URL via socket",
+            "Socket calls media service",
+            "User uploads file to signed URL",
+            "User notifies socket of completion",
+            "Socket validates upload",
+            "File attached to message"
+          ]
+        },
+        {
+          "name": "Search operation",
+          "steps": [
+            "User sends search query via socket",
+            "Socket calls search service",
+            "Search service queries Elasticsearch",
+            "Results returned to socket",
+            "Socket sends results to user",
+            "Results cached in Redis"
+          ]
+        }
+      ],
+      "files_to_create": [
+        "tests/integration/phase-4.5.z-message-flow.test.ts",
+        "tests/integration/phase-4.5.z-compliance.test.ts",
+        "tests/integration/phase-4.5.z-redis.test.ts",
+        "tests/integration/phase-4.5.z-media.test.ts",
+        "tests/integration/phase-4.5.z-search.test.ts"
+      ]
+    },
+    {
+      "step": 3,
+      "name": "End-to-end testing",
+      "description": "Test complete user journeys",
+      "user_journeys": [
+        {
+          "name": "New user onboarding",
+          "steps": [
+            "User registers via gateway",
+            "User logs in via gateway",
+            "User receives JWT and socket URLs",
+            "User connects to socket service",
+            "User creates first conversation",
+            "User sends first message",
+            "User uploads profile picture",
+            "User searches for other users"
+          ]
+        },
+        {
+          "name": "Active messaging",
+          "steps": [
+            "User sends 100 messages",
+            "User edits messages",
+            "User deletes messages",
+            "User forwards messages",
+            "User reacts to messages",
+            "User uploads files",
+            "User searches messages",
+            "All operations work correctly"
+          ]
+        },
+        {
+          "name": "Multi-user conversation",
+          "steps": [
+            "User A creates group conversation",
+            "User A adds User B and C",
+            "All users send messages",
+            "Messages delivered to all",
+            "Unread counts updated",
+            "Typing indicators work",
+            "Presence updates work"
+          ]
+        }
+      ],
+      "files_to_create": [
+        "tests/e2e/phase-4.5.z-user-onboarding.test.ts",
+        "tests/e2e/phase-4.5.z-active-messaging.test.ts",
+        "tests/e2e/phase-4.5.z-multi-user.test.ts"
+      ]
+    },
+    {
+      "step": 4,
+      "name": "Performance testing",
+      "description": "Measure and optimize performance",
+      "metrics_to_measure": [
+        "Message send latency (target: < 50ms)",
+        "Message delivery latency (target: < 100ms)",
+        "Socket connection time (target: < 500ms)",
+        "Search query time (target: < 200ms)",
+        "File upload initiation (target: < 100ms)",
+        "Redis cache hit rate (target: > 90%)",
+        "Kafka throughput (target: > 10k msg/sec)",
+        "MongoDB write latency (target: < 50ms)"
+      ],
+      "actions": [
+        "Run performance tests",
+        "Identify bottlenecks",
+        "Optimize slow operations",
+        "Add caching where needed",
+        "Tune database indexes",
+        "Optimize Kafka configuration"
+      ],
+      "files_to_create": [
+        "tests/performance/phase-4.5.z-latency.test.ts",
+        "tests/performance/phase-4.5.z-throughput.test.ts"
+      ]
+    },
+    {
+      "step": 5,
+      "name": "Load testing",
+      "description": "Test system under high load",
+      "load_scenarios": [
+        {
+          "name": "Concurrent connections",
+          "target": "10,000 concurrent socket connections",
+          "duration": "30 minutes",
+          "success_criteria": "All connections stable, no disconnects"
+        },
+        {
+          "name": "Message throughput",
+          "target": "1,000 messages per second",
+          "duration": "10 minutes",
+          "success_criteria": "All messages delivered, latency < 100ms"
+        },
+        {
+          "name": "Burst traffic",
+          "target": "5,000 messages in 10 seconds",
+          "duration": "Multiple bursts",
+          "success_criteria": "System handles bursts, no failures"
+        },
+        {
+          "name": "File uploads",
+          "target": "100 concurrent uploads",
+          "duration": "5 minutes",
+          "success_criteria": "All uploads succeed"
+        }
+      ],
+      "tools": [
+        "Artillery for load generation",
+        "k6 for performance testing",
+        "Custom socket.io load test scripts"
+      ],
+      "files_to_create": [
+        "tests/load/phase-4.5.z-connections.artillery.yml",
+        "tests/load/phase-4.5.z-messages.artillery.yml",
+        "tests/load/phase-4.5.z-burst.k6.js"
+      ]
+    },
+    {
+      "step": 6,
+      "name": "Security testing",
+      "description": "Verify security controls",
+      "security_tests": [
+        {
+          "area": "Authentication",
+          "tests": [
+            "Invalid JWT rejected",
+            "Expired JWT rejected",
+            "Missing JWT rejected",
+            "JWT from wrong issuer rejected"
+          ]
+        },
+        {
+          "area": "Authorization",
+          "tests": [
+            "User cannot access other user's messages",
+            "User cannot join conversations they're not in",
+            "User cannot delete other user's messages",
+            "User cannot access other tenant's data"
+          ]
+        },
+        {
+          "area": "Input validation",
+          "tests": [
+            "XSS attempts blocked",
+            "SQL injection attempts blocked",
+            "Oversized messages rejected",
+            "Invalid data formats rejected"
+          ]
+        },
+        {
+          "area": "Rate limiting",
+          "tests": [
+            "Excessive requests rate limited",
+            "Rate limits per user enforced",
+            "Rate limits per IP enforced"
+          ]
+        }
+      ],
+      "files_to_create": [
+        "tests/security/phase-4.5.z-auth.test.ts",
+        "tests/security/phase-4.5.z-authz.test.ts",
+        "tests/security/phase-4.5.z-validation.test.ts"
+      ]
+    },
+    {
+      "step": 7,
+      "name": "Failure testing",
+      "description": "Test system resilience",
+      "failure_scenarios": [
+        {
+          "name": "Redis failure",
+          "action": "Stop redis-socket",
+          "expected": "Socket service degrades gracefully, no crashes"
+        },
+        {
+          "name": "MongoDB failure",
+          "action": "Stop mongodb-primary",
+          "expected": "Failover to secondary, minimal downtime"
+        },
+        {
+          "name": "Kafka failure",
+          "action": "Stop kafka-1",
+          "expected": "Producers reconnect to kafka-2, no message loss"
+        },
+        {
+          "name": "Service failure",
+          "action": "Stop socket-service-1",
+          "expected": "Clients reconnect to socket-service-2"
+        },
+        {
+          "name": "Network partition",
+          "action": "Simulate network issues",
+          "expected": "Services retry and recover"
+        }
+      ]
+    },
+    {
+      "step": 8,
+      "name": "Docker testing",
+      "description": "Test complete Docker deployment",
+      "actions": [
+        "Clean environment: docker compose down -v",
+        "Build all services: docker compose build",
+        "Start all services: docker compose up -d",
+        "Wait for all health checks",
+        "Run integration tests",
+        "Run end-to-end tests",
+        "Check logs for errors",
+        "Verify all services healthy"
+      ],
+      "commands": [
+        ".\\stop.ps1",
+        "docker compose build",
+        ".\\start.ps1",
+        "docker compose ps",
+        "npm run test:integration",
+        "npm run test:e2e"
+      ]
+    },
+    {
+      "step": 9,
+      "name": "Documentation validation",
+      "description": "Ensure all documentation is accurate",
+      "documentation_checklist": [
+        "Architecture diagrams updated",
+        "API documentation updated",
+        "Service list updated",
+        "Deployment guide updated",
+        "Configuration guide updated",
+        "Troubleshooting guide updated",
+        "Migration guide created",
+        "Release notes created"
+      ],
+      "files_to_review": [
+        "README.md",
+        "docs/SYSTEM_OVERVIEW.md",
+        "docs/ARCHITECTURE_DIAGRAMS.md",
+        "docs/API_REFERENCE.md",
+        "docs/SETUP_GUIDE.md",
+        "CURRENT_ARCHITECTURE_VISUAL.md"
+      ]
+    },
+    {
+      "step": 10,
+      "name": "Production readiness checklist",
+      "description": "Final validation before production",
+      "checklist": [
+        {
+          "category": "Functionality",
+          "items": [
+            "All features work correctly",
+            "No critical bugs",
+            "All tests pass",
+            "Error handling works",
+            "Logging is comprehensive"
+          ]
+        },
+        {
+          "category": "Performance",
+          "items": [
+            "Latency targets met",
+            "Throughput targets met",
+            "Load tests pass",
+            "No memory leaks",
+            "Resource usage acceptable"
+          ]
+        },
+        {
+          "category": "Security",
+          "items": [
+            "Authentication works",
+            "Authorization enforced",
+            "Input validation works",
+            "Rate limiting works",
+            "Secrets properly managed"
+          ]
+        },
+        {
+          "category": "Reliability",
+          "items": [
+            "Services auto-restart on failure",
+            "Graceful shutdown works",
+            "Data persistence works",
+            "Backup strategy in place",
+            "Monitoring configured"
+          ]
+        },
+        {
+          "category": "Observability",
+          "items": [
+            "Logging works",
+            "Metrics collected",
+            "Correlation IDs work",
+            "Compliance logging works",
+            "Alerts configured"
+          ]
+        },
+        {
+          "category": "Documentation",
+          "items": [
+            "Architecture documented",
+            "APIs documented",
+            "Deployment documented",
+            "Troubleshooting guide exists",
+            "Runbooks created"
+          ]
+        }
+      ]
+    }
+  ],
+  "test_execution_plan": {
+    "phase_1": "Unit tests (all services)",
+    "phase_2": "Integration tests (service pairs)",
+    "phase_3": "End-to-end tests (user journeys)",
+    "phase_4": "Performance tests (latency, throughput)",
+    "phase_5": "Load tests (high volume)",
+    "phase_6": "Security tests (auth, authz, validation)",
+    "phase_7": "Failure tests (resilience)",
+    "phase_8": "Docker tests (full deployment)",
+    "phase_9": "Documentation review",
+    "phase_10": "Production readiness sign-off"
+  },
+  "success_criteria": [
+    "All unit tests pass (> 80% coverage)",
+    "All integration tests pass",
+    "All end-to-end tests pass",
+    "Performance targets met",
+    "Load tests pass",
+    "Security tests pass",
+    "Failure tests show resilience",
+    "Docker deployment works",
+    "Documentation complete and accurate",
+    "Production readiness checklist complete"
+  ],
+  "deliverables": [
+    "Test reports for all test phases",
+    "Performance benchmark results",
+    "Load test results",
+    "Security test results",
+    "Updated documentation",
+    "Production readiness sign-off",
+    "Migration guide for existing deployments"
+  ],
+  "notes": [
+    "This is the final validation before Phase 4.5.z completion",
+    "All previous tasks must be complete",
+    "Testing should be thorough and comprehensive",
+    "Any issues found must be fixed before sign-off",
+    "Production deployment should only proceed after all tests pass"
+  ]
+}

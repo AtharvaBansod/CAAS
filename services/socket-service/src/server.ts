@@ -1,6 +1,7 @@
 import { Server } from 'socket.io';
 import { createAdapter } from '@socket.io/redis-adapter';
 import { createClient, RedisClientType } from 'redis';
+import { MongoClient } from 'mongodb';
 import { config } from './config';
 import http from 'http';
 import { socketAuthMiddleware, AuthenticatedSocket } from './middleware/auth-middleware';
@@ -83,8 +84,39 @@ export async function createSocketServer(httpServer: http.Server): Promise<Serve
   io.use(socketAuthMiddleware(authClient));
   logger.info('Socket authentication middleware applied.');
 
+  // Apply correlation middleware
+  const { correlationSocketMiddleware } = await import('./middleware/correlation.middleware');
+  io.use(correlationSocketMiddleware);
+  logger.info('Socket correlation middleware applied.');
+
   // Initialize SessionManager
   const sessionManager = new SessionManager(pubClient as RedisClientType);
+
+  // Initialize MongoDB client for media and search authorization
+  const mongoClient = new MongoClient(config.mongodb.uri);
+  mongoClient.connect().then(() => {
+    logger.info('MongoDB connected for media and search authorization');
+  }).catch((err: any) => {
+    logger.error('Failed to connect MongoDB for socket service', err);
+  });
+
+  // Initialize media and search handlers
+  const { MediaHandler } = await import('./media/media.handler');
+  const { SearchHandler } = await import('./search/search.handler');
+
+  const mediaHandler = new MediaHandler(
+    process.env.MEDIA_SERVICE_URL || 'http://media-service:3005',
+    pubClient as RedisClientType,
+    mongoClient
+  );
+
+  const searchHandler = new SearchHandler(
+    process.env.SEARCH_SERVICE_URL || 'http://search-service:3006',
+    pubClient as RedisClientType,
+    mongoClient
+  );
+
+  logger.info('Media and search handlers initialized');
 
   io.on('connection', (socket: AuthenticatedSocket) => {
     const userId = socket.user?.user_id || socket.user?.sub;
@@ -104,6 +136,10 @@ export async function createSocketServer(httpServer: http.Server): Promise<Serve
         connected_at: new Date(),
       });
 
+      // Register media and search handlers for this socket
+      mediaHandler.registerHandlers(io, socket, userId, tenantId);
+      searchHandler.registerHandlers(io, socket, userId, tenantId);
+
       logger.info(`Socket ${socket.id} connected and bound to user ${userId}`);
     } else {
       logger.warn(`Authenticated socket ${socket.id} connected without a user ID.`);
@@ -122,6 +158,13 @@ export async function createSocketServer(httpServer: http.Server): Promise<Serve
       }
     });
   });
+
+  // Graceful shutdown
+  const cleanup = async () => {
+    await mongoClient.close().catch(() => {});
+  };
+  process.on('SIGTERM', cleanup);
+  process.on('SIGINT', cleanup);
 
   return io;
 }

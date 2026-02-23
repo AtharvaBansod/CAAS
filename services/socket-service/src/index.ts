@@ -6,10 +6,16 @@ import { registerPresenceNamespace } from './namespaces/presence';
 import { registerWebRTCNamespace } from './namespaces/webrtc';
 import { config } from './config';
 import { socketMetrics } from './metrics/socket-metrics';
+import { initializeComplianceClient } from './middleware/compliance.middleware';
 
 async function bootstrap() {
   const app = express();
   const httpServer = http.createServer(app);
+
+  // Initialize compliance client
+  const complianceUrl = process.env.COMPLIANCE_SERVICE_URL || 'http://compliance-service:3008';
+  initializeComplianceClient(complianceUrl);
+  console.log('Compliance client initialized');
 
   // Health check endpoint
   app.get('/health', async (req, res) => {

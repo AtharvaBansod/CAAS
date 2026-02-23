@@ -26,6 +26,7 @@ interface MessageEnvelope {
     socket_id: string;
     client_version?: string;
     device_type?: string;
+    correlation_id?: string;
   };
 }
 
@@ -133,6 +134,8 @@ export class SocketMessageProducer extends EventEmitter {
               conversation_id: message.conversation_id,
               sender_id: message.sender_id,
               timestamp: message.timestamp.toISOString(),
+              correlation_id: message.metadata?.correlation_id || '',
+              source_service: 'socket-service',
             },
           },
         ],
@@ -145,6 +148,7 @@ export class SocketMessageProducer extends EventEmitter {
 
       this.emit('message:published', {
         message_id: message.message_id,
+        correlation_id: message.metadata?.correlation_id,
         latency,
         metadata,
       });
@@ -156,6 +160,7 @@ export class SocketMessageProducer extends EventEmitter {
       
       this.emit('message:publish_failed', {
         message_id: message.message_id,
+        correlation_id: message.metadata?.correlation_id,
         error,
       });
 

@@ -1,0 +1,107 @@
+{
+  "task_id": "06",
+  "phase": "4.5.z",
+  "name": "Gateway Simplification",
+  "description": "Simplify gateway by removing messaging routes and focusing on auth/admin operations only. Users connect to gateway for authentication, then connect directly to socket service for all messaging operations.",
+  "priority": "high",
+  "estimated_hours": 12,
+  "dependencies": ["04"],
+  "objectives": [
+    "Remove messaging routes from gateway",
+    "Keep only auth and admin routes",
+    "Update documentation to reflect new flow",
+    "Add socket service connection info to auth response",
+    "Simplify gateway codebase"
+  ],
+  "detailed_steps": [
+    {
+      "step": 1,
+      "name": "Remove messaging routes",
+      "description": "Delete all message-related routes from gateway",
+      "actions": [
+        "Remove services/gateway/src/routes/messages.routes.ts",
+        "Remove services/gateway/src/routes/conversations.routes.ts",
+        "Remove messaging client from gateway",
+        "Update gateway app.ts to not register messaging routes"
+      ],
+      "files_to_delete": [
+        "services/gateway/src/routes/messages.routes.ts",
+        "services/gateway/src/routes/conversations.routes.ts",
+        "services/gateway/src/clients/messaging-client.ts"
+      ],
+      "files_to_modify": [
+        "services/gateway/src/app.ts"
+      ]
+    },
+    {
+      "step": 2,
+      "name": "Keep auth and admin routes",
+      "description": "Ensure auth and admin routes remain functional",
+      "routes_to_keep": [
+        "POST /api/v1/auth/login",
+        "POST /api/v1/auth/logout",
+        "POST /api/v1/auth/refresh",
+        "GET /api/v1/admin/users",
+        "POST /api/v1/admin/tenants",
+        "GET /health",
+        "GET /metrics"
+      ]
+    },
+    {
+      "step": 3,
+      "name": "Add socket connection info to auth response",
+      "description": "Return socket service URLs in login response",
+      "actions": [
+        "Update auth response to include socket_urls",
+        "Provide list of available socket service instances",
+        "Include WebSocket connection instructions"
+      ],
+      "auth_response_example": {
+        "access_token": "jwt_token",
+        "refresh_token": "refresh_token",
+        "user": {},
+        "socket_urls": [
+          "ws://socket-service-1:3001",
+          "ws://socket-service-2:3001"
+        ],
+        "socket_connection_guide": "Connect to any socket URL with your access_token"
+      }
+    },
+    {
+      "step": 4,
+      "name": "Update documentation",
+      "description": "Document new user flow",
+      "actions": [
+        "Update API documentation",
+        "Create user flow diagram",
+        "Update client integration guide"
+      ],
+      "new_flow": [
+        "1. User calls POST /api/v1/auth/login on gateway",
+        "2. Gateway returns JWT + socket URLs",
+        "3. User connects to socket service with JWT",
+        "4. All messaging operations via socket service",
+        "5. Admin operations still via gateway"
+      ]
+    },
+    {
+      "step": 5,
+      "name": "Test gateway simplification",
+      "description": "Verify gateway works with reduced scope",
+      "actions": [
+        "Test auth endpoints",
+        "Test admin endpoints",
+        "Verify messaging routes are gone",
+        "Test socket connection after auth"
+      ]
+    }
+  ],
+  "success_criteria": [
+    "Messaging routes removed from gateway",
+    "Auth routes work correctly",
+    "Admin routes work correctly",
+    "Socket URLs returned in auth response",
+    "Documentation updated",
+    "Gateway codebase simplified"
+  ]
+}

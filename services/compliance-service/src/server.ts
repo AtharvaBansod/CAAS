@@ -63,6 +63,10 @@ async function start() {
       timeWindow: config.rateLimit.timeWindow,
     });
 
+    // Correlation ID middleware (must be first)
+    const { correlationMiddleware } = await import('./middleware/correlation.middleware');
+    fastify.addHook('onRequest', correlationMiddleware);
+
     // Register routes
     await fastify.register(healthRoutes);
     const { auditRoutes } = await import('./routes/audit.routes');
