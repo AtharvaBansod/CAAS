@@ -89,7 +89,17 @@ export class TokenService {
       });
 
       return payload;
-    } catch (error) {
+    } catch (error: any) {
+      if (config.jwt.allowExternalIssuer) {
+        try {
+          // Compatibility mode: accept tokens signed by trusted keypair even if issuer differs
+          return jwt.verify(token, this.publicKey, {
+            algorithms: [config.jwt.algorithm],
+          });
+        } catch {
+        }
+      }
+
       throw new Error('Invalid token');
     }
   }

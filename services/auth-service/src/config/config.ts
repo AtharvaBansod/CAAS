@@ -41,6 +41,7 @@ export const config = {
     accessTokenExpiry: parseInt(process.env.JWT_ACCESS_TOKEN_EXPIRY || '900', 10), // 15 minutes
     refreshTokenExpiry: parseInt(process.env.JWT_REFRESH_TOKEN_EXPIRY || '604800', 10), // 7 days
     issuer: process.env.JWT_ISSUER || 'caas-auth-service',
+    allowExternalIssuer: (process.env.JWT_ALLOW_EXTERNAL_ISSUER || 'true').toLowerCase() === 'true',
   },
 
   // Session

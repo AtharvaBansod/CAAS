@@ -80,6 +80,9 @@ export async function createSocketServer(httpServer: http.Server): Promise<Serve
     baseURL: process.env.AUTH_SERVICE_URL || 'http://auth-service:3001',
   });
 
+  // Share auth client for namespace-level middleware
+  (io as any).authClient = authClient;
+
   // Apply authentication middleware with auth client
   io.use(socketAuthMiddleware(authClient));
   logger.info('Socket authentication middleware applied.');

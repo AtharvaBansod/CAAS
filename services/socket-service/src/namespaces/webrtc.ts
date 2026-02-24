@@ -1,5 +1,6 @@
 import { Server } from 'socket.io';
 import { AuthenticatedSocket } from '../middleware/auth-middleware';
+import { socketAuthMiddleware } from '../middleware/auth-middleware';
 import { SignalingHandler } from '../webrtc/signaling-handler';
 import { SignalingRelay } from '../webrtc/signaling-relay';
 import { IceServerProvider } from '../webrtc/ice-server-provider';
@@ -15,6 +16,14 @@ const logger = getLogger('WebRTCNamespace');
 
 export function registerWebRTCNamespace(io: Server) {
     const webrtcNamespace = io.of('/webrtc');
+
+    // Apply explicit auth middleware for webrtc namespace
+    const authClient = (io as any).authClient;
+    if (authClient) {
+        webrtcNamespace.use(socketAuthMiddleware(authClient));
+    } else {
+        logger.warn('Auth client not available in WebRTC namespace; relying on upstream auth context');
+    }
 
     // Get Redis client
     const redisClient = (io as any).redisClient;
@@ -46,13 +55,24 @@ export function registerWebRTCNamespace(io: Server) {
         }
 
         // Get ICE servers
-        socket.on('webrtc:get-ice-servers', async (callback: (response: any) => void) => {
+        socket.on('webrtc:get-ice-servers', async (
+            payloadOrCallback?: Record<string, any> | ((response: any) => void),
+            maybeCallback?: (response: any) => void
+        ) => {
+            const callback = typeof payloadOrCallback === 'function'
+                ? payloadOrCallback
+                : maybeCallback;
+
             try {
                 const iceServers = await iceServerProvider.getIceServers(userId!, tenantId!);
-                callback({ status: 'ok', ice_servers: iceServers });
+                if (callback) {
+                    callback({ status: 'ok', ice_servers: iceServers });
+                }
             } catch (error: any) {
                 logger.error(`Failed to get ICE servers for user ${userId}`, error);
-                callback({ status: 'error', message: 'Failed to get ICE servers' });
+                if (callback) {
+                    callback({ status: 'error', message: 'Failed to get ICE servers' });
+                }
             }
         });
 

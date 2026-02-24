@@ -25,6 +25,9 @@ export class PresenceStore {
     if (presence && presence.last_seen) {
       presence.last_seen = new Date(presence.last_seen);
     }
+    if (!Array.isArray(presence.devices)) {
+      presence.devices = [];
+    }
     presence.devices.forEach(device => {
       if (device.last_active) {
         device.last_active = new Date(device.last_active);

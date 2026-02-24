@@ -1,6 +1,7 @@
 import { Server } from 'socket.io';
 import { MongoClient } from 'mongodb';
 import { AuthenticatedSocket } from '../middleware/auth-middleware';
+import { socketAuthMiddleware } from '../middleware/auth-middleware';
 import { getLogger } from '../utils/logger';
 import { TypingHandler } from '../typing/typing-handler';
 import { TypingStateStore } from '../typing/typing-state-store';
@@ -24,6 +25,14 @@ const getConversationRoomName = (tenantId: string, conversationId: string) =>
 
 export function registerChatNamespace(io: Server) {
   const chat = io.of('/chat');
+
+  // Apply explicit auth middleware for chat namespace
+  const authClient = (io as any).authClient;
+  if (authClient) {
+    chat.use(socketAuthMiddleware(authClient));
+  } else {
+    logger.warn('Auth client not available in chat namespace; relying on upstream auth context');
+  }
 
   // Get shared Redis client from server
   const redisClient = (io as any).redisClient;
@@ -533,7 +542,14 @@ export function registerChatNamespace(io: Server) {
     });
 
     // Query unread counts
-    socket.on('unread_query', async (callback: (response: any) => void) => {
+    socket.on('unread_query', async (
+      payloadOrCallback?: Record<string, any> | ((response: any) => void),
+      maybeCallback?: (response: any) => void
+    ) => {
+      const callback = typeof payloadOrCallback === 'function'
+        ? payloadOrCallback
+        : maybeCallback;
+
       try {
         const allUnread = await unreadCounter.getAllUnreadCounts(userId);
         const totalUnread = await unreadCounter.getTotalUnread(userId);
@@ -543,14 +559,18 @@ export function registerChatNamespace(io: Server) {
           unreadMap[conversationId] = count;
         }
 
-        callback({
-          status: 'ok',
-          unread: unreadMap,
-          total: totalUnread,
-        });
+        if (callback) {
+          callback({
+            status: 'ok',
+            unread: unreadMap,
+            total: totalUnread,
+          });
+        }
       } catch (error: any) {
         logger.error(`[Chat] Failed to query unread counts: ${error.message}`);
-        callback({ status: 'error', message: 'Failed to query unread counts' });
+        if (callback) {
+          callback({ status: 'error', message: 'Failed to query unread counts' });
+        }
       }
     });
 

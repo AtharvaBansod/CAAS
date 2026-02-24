@@ -142,6 +142,28 @@ export class AuthController {
       // Validate token
       const payload = await this.tokenService.validateToken(token);
 
+      // External/access compatibility: token may not carry session metadata
+      // (e.g., gateway SDK-issued token signed by shared platform keys).
+      if (!payload.session_id) {
+        const normalizedPayload = {
+          ...payload,
+          user_id: payload.user_id || payload.sub,
+        };
+
+        if (!normalizedPayload.user_id || !normalizedPayload.tenant_id) {
+          return reply.status(401).send({
+            valid: false,
+            error: 'Invalid token payload',
+          });
+        }
+
+        return reply.send({
+          valid: true,
+          payload: normalizedPayload,
+          session: null,
+        });
+      }
+
       // Check if token is revoked
       const isRevoked = await this.revocationService.isRevoked(payload.jti);
 

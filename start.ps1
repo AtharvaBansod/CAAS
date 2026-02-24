@@ -20,7 +20,26 @@ $privPath = Join-Path $keysDir "private.pem"
 $pubPath = Join-Path $keysDir "public.pem"
 if (-not (Test-Path $privPath)) {
     Write-Host "Generating JWT keys for development..." -ForegroundColor Yellow
-    node .\scripts\generate-jwt-keys.js 2>&1 | Out-Null
+    $generated = $false
+
+    # Prefer local node if available
+    $nodeCmd = Get-Command node -ErrorAction SilentlyContinue
+    if ($nodeCmd) {
+        node .\scripts\generate-jwt-keys.js 2>&1 | Out-Null
+        if (Test-Path $privPath) {
+            $generated = $true
+        }
+    }
+
+    # Fallback: generate keys using Dockerized node runtime (docker-only friendly)
+    if (-not $generated) {
+        Write-Host "  Local Node not available, generating keys via Docker..." -ForegroundColor Gray
+        docker run --rm -v "${PWD}:/work" -w /work node:20-alpine node ./scripts/generate-jwt-keys.js 2>&1 | Out-Null
+        if (Test-Path $privPath) {
+            $generated = $true
+        }
+    }
+
     if (Test-Path $privPath) {
         Write-Host "  JWT keys generated in $keysDir" -ForegroundColor Green
     } else {
@@ -73,7 +92,16 @@ Write-Host ""
 try {
     # Start infrastructure services first
     Write-Host "  Starting infrastructure services..." -ForegroundColor Gray
-    docker compose up -d mongodb-primary mongodb-secondary-1 mongodb-secondary-2 redis zookeeper 2>&1 | Out-Null
+    docker compose up -d `
+        mongodb-primary `
+        mongodb-secondary-1 `
+        mongodb-secondary-2 `
+        redis-gateway `
+        redis-socket `
+        redis-shared `
+        redis-compliance `
+        redis-crypto `
+        zookeeper 2>&1 | Out-Null
     
     if ($LASTEXITCODE -ne 0) {
         Write-Host "Error: Failed to start infrastructure services!" -ForegroundColor Red
@@ -186,9 +214,9 @@ try {
     # Create Kafka topics using service script
     Write-Host "  Creating Kafka topics..." -ForegroundColor Gray
     
-    # Copy script to container and run (avoids CRLF/encoding issues)
+    # Copy script to container and run
     docker cp .\services\kafka-service\create-topics.sh caas-kafka-1:/tmp/create-topics.sh 2>&1 | Out-Null
-    $kafkaResult = docker exec caas-kafka-1 bash -c "sed -i 's/\r$//' /tmp/create-topics.sh; chmod +x /tmp/create-topics.sh; /tmp/create-topics.sh" 2>&1 | Out-String
+    $kafkaResult = docker exec caas-kafka-1 bash /tmp/create-topics.sh 2>&1 | Out-String
     
     if ($kafkaResult -match "Error" -and $kafkaResult -notmatch "already exists") {
         Write-Host "  Warning during Kafka initialization: $kafkaResult" -ForegroundColor Yellow
