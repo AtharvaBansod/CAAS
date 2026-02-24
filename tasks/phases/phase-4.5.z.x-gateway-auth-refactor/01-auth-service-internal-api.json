@@ -1,0 +1,380 @@
+{
+  "task_id": "phase-4.5.z.x-01",
+  "title": "Auth Service - Internal API Enhancement",
+  "phase": "4.5.z.x",
+  "category": "auth-service",
+  "priority": "critical",
+  "estimated_hours": 8,
+  "dependencies": [],
+  "description": "Enhance auth service with internal APIs for gateway and other services to use for centralized authentication",
+  "objectives": [
+    "Add internal token validation endpoint",
+    "Add SAAS client registration endpoint",
+    "Add API key generation and management",
+    "Add SDK session creation endpoint",
+    "Ensure all token generation is centralized"
+  ],
+  "subtasks": [
+    {
+      "id": "01.1",
+      "title": "Create Internal Validation Endpoint",
+      "description": "Add POST /api/v1/auth/internal/validate for gateway to validate tokens",
+      "files_to_modify": [
+        "services/auth-service/src/routes/internal.routes.ts",
+        "services/auth-service/src/controllers/internal.controller.ts"
+      ],
+      "implementation_details": {
+        "endpoint": "POST /api/v1/auth/internal/validate",
+        "request": {
+          "token": "string (JWT token to validate)"
+        },
+        "response": {
+          "valid": "boolean",
+          "payload": {
+            "user_id": "string",
+            "tenant_id": "string",
+            "permissions": "string[]",
+            "session_id": "string",
+            "exp": "number"
+          },
+          "error": "string (if invalid)"
+        },
+        "logic": [
+          "Verify JWT signature using secret",
+          "Check expiration",
+          "Check if token is blacklisted in Redis",
+          "Return decoded payload if valid"
+        ]
+      }
+    },
+    {
+      "id": "01.2",
+      "title": "Create Client Registration Endpoint",
+      "description": "Add POST /api/v1/auth/client/register for SAAS client onboarding",
+      "files_to_modify": [
+        "services/auth-service/src/routes/client.routes.ts",
+        "services/auth-service/src/controllers/client.controller.ts",
+        "services/auth-service/src/repositories/client.repository.ts"
+      ],
+      "implementation_details": {
+        "endpoint": "POST /api/v1/auth/client/register",
+        "request": {
+          "company_name": "string",
+          "email": "string",
+          "password": "string",
+          "plan": "free | business | enterprise"
+        },
+        "response": {
+          "client_id": "string (UUID)",
+          "tenant_id": "string (UUID)",
+          "api_key": "string (caas_prod_xxx)",
+          "api_secret": "string (for verification)"
+        },
+        "logic": [
+          "Validate email format and uniqueness",
+          "Hash password with bcrypt",
+          "Generate tenant_id (UUID)",
+          "Generate client_id (UUID)",
+          "Generate API key pair (primary + secondary)",
+          "Store in MongoDB clients collection",
+          "Return credentials (only time plaintext is available)"
+        ],
+        "database_schema": {
+          "collection": "clients",
+          "fields": {
+            "client_id": "string (UUID, indexed)",
+            "tenant_id": "string (UUID, indexed)",
+            "company_name": "string",
+            "email": "string (unique, indexed)",
+            "password_hash": "string",
+            "plan": "string",
+            "api_keys": {
+              "primary": {
+                "key_hash": "string (SHA-256)",
+                "created_at": "Date",
+                "last_used": "Date"
+              },
+              "secondary": {
+                "key_hash": "string (SHA-256)",
+                "created_at": "Date",
+                "last_used": "Date"
+              }
+            },
+            "ip_whitelist": "string[] (CIDR notation)",
+            "origin_whitelist": "string[] (domains)",
+            "status": "active | suspended | deleted",
+            "created_at": "Date",
+            "updated_at": "Date"
+          }
+        }
+      }
+    },
+    {
+      "id": "01.3",
+      "title": "Create API Key Validation Endpoint",
+      "description": "Add POST /api/v1/auth/internal/validate-api-key for gateway",
+      "files_to_modify": [
+        "services/auth-service/src/routes/internal.routes.ts",
+        "services/auth-service/src/controllers/internal.controller.ts",
+        "services/auth-service/src/services/api-key.service.ts"
+      ],
+      "implementation_details": {
+        "endpoint": "POST /api/v1/auth/internal/validate-api-key",
+        "request": {
+          "api_key": "string",
+          "ip_address": "string (for whitelist check)"
+        },
+        "response": {
+          "valid": "boolean",
+          "client": {
+            "client_id": "string",
+            "tenant_id": "string",
+            "plan": "string",
+            "permissions": "string[]",
+            "rate_limit_tier": "string"
+          },
+          "error": "string (if invalid)"
+        },
+        "logic": [
+          "Hash API key with SHA-256",
+          "Lookup in Redis cache first (key: apikey:{hash})",
+          "If not cached, lookup in MongoDB",
+          "Check if key is revoked",
+          "Validate IP against whitelist",
+          "Cache result in Redis (TTL: 5 minutes)",
+          "Update last_used timestamp",
+          "Return client context"
+        ]
+      }
+    },
+    {
+      "id": "01.4",
+      "title": "Create SDK Session Creation Endpoint",
+      "description": "Add POST /api/v1/auth/sdk/session for SAAS backend to create end-user sessions",
+      "files_to_modify": [
+        "services/auth-service/src/routes/sdk.routes.ts",
+        "services/auth-service/src/controllers/sdk.controller.ts",
+        "services/auth-service/src/services/session.service.ts"
+      ],
+      "implementation_details": {
+        "endpoint": "POST /api/v1/auth/sdk/session",
+        "authentication": "API Key (X-API-Key header)",
+        "request": {
+          "user_external_id": "string (SAAS user ID)",
+          "user_data": {
+            "name": "string",
+            "email": "string",
+            "avatar": "string (URL)",
+            "metadata": "object (custom data)"
+          },
+          "device_info": {
+            "device_id": "string",
+            "device_type": "web | mobile | desktop",
+            "user_agent": "string"
+          }
+        },
+        "response": {
+          "access_token": "string (JWT, 15min)",
+          "refresh_token": "string (opaque, 7 days)",
+          "expires_in": "number (900 seconds)",
+          "token_type": "Bearer",
+          "user": {
+            "user_id": "string (internal UUID)",
+            "external_id": "string",
+            "tenant_id": "string"
+          },
+          "socket_urls": "string[] (for WebSocket connection)"
+        },
+        "logic": [
+          "Validate API key (already done by middleware)",
+          "Check if user exists by external_id + tenant_id",
+          "If not exists, create user in MongoDB",
+          "If exists, update user_data",
+          "Generate JWT access token with payload:",
+          "  - sub: user_id (internal UUID)",
+          "  - tenant_id: tenant_id",
+          "  - external_id: user_external_id",
+          "  - permissions: [] (default)",
+          "  - exp: 15 minutes",
+          "Generate refresh token (random 64 chars)",
+          "Store session in MongoDB sessions collection",
+          "Store refresh token in Redis (TTL: 7 days)",
+          "Return tokens and socket URLs"
+        ],
+        "jwt_payload": {
+          "sub": "string (user_id)",
+          "tenant_id": "string",
+          "external_id": "string",
+          "permissions": "string[]",
+          "session_id": "string",
+          "iat": "number",
+          "exp": "number"
+        }
+      }
+    },
+    {
+      "id": "01.5",
+      "title": "Add API Key Management Endpoints",
+      "description": "Add endpoints for rotating and revoking API keys",
+      "files_to_modify": [
+        "services/auth-service/src/routes/client.routes.ts",
+        "services/auth-service/src/controllers/client.controller.ts",
+        "services/auth-service/src/services/api-key.service.ts"
+      ],
+      "implementation_details": {
+        "endpoints": [
+          {
+            "method": "POST",
+            "path": "/api/v1/auth/client/api-keys/rotate",
+            "description": "Rotate API keys (generate new secondary)",
+            "request": {
+              "client_id": "string"
+            },
+            "response": {
+              "secondary_key": "string (new key, plaintext)",
+              "message": "New secondary key generated. Update your application and then promote it."
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/v1/auth/client/api-keys/promote",
+            "description": "Promote secondary key to primary",
+            "request": {
+              "client_id": "string"
+            },
+            "response": {
+              "message": "Secondary key promoted to primary. Old primary key revoked."
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/v1/auth/client/api-keys/revoke",
+            "description": "Revoke specific API key",
+            "request": {
+              "client_id": "string",
+              "key_type": "primary | secondary"
+            },
+            "response": {
+              "message": "API key revoked successfully"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "01.6",
+      "title": "Add IP Whitelist Management",
+      "description": "Add endpoints for managing IP whitelists",
+      "files_to_modify": [
+        "services/auth-service/src/routes/client.routes.ts",
+        "services/auth-service/src/controllers/client.controller.ts",
+        "services/auth-service/src/services/ip-whitelist.service.ts"
+      ],
+      "implementation_details": {
+        "endpoints": [
+          {
+            "method": "GET",
+            "path": "/api/v1/auth/client/ip-whitelist",
+            "description": "Get IP whitelist for client",
+            "response": {
+              "ips": "string[] (CIDR notation)"
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/v1/auth/client/ip-whitelist",
+            "description": "Add IP to whitelist",
+            "request": {
+              "ip": "string (IP or CIDR)"
+            },
+            "response": {
+              "message": "IP added to whitelist"
+            }
+          },
+          {
+            "method": "DELETE",
+            "path": "/api/v1/auth/client/ip-whitelist/:ip",
+            "description": "Remove IP from whitelist",
+            "response": {
+              "message": "IP removed from whitelist"
+            }
+          }
+        ],
+        "validation": [
+          "Validate IP format (IPv4/IPv6)",
+          "Validate CIDR notation",
+          "Check for duplicates",
+          "Invalidate Redis cache on changes"
+        ]
+      }
+    },
+    {
+      "id": "01.7",
+      "title": "Add Origin Whitelist Management",
+      "description": "Add endpoints for managing origin whitelists (for CORS)",
+      "files_to_modify": [
+        "services/auth-service/src/routes/client.routes.ts",
+        "services/auth-service/src/controllers/client.controller.ts"
+      ],
+      "implementation_details": {
+        "endpoints": [
+          {
+            "method": "GET",
+            "path": "/api/v1/auth/client/origin-whitelist",
+            "description": "Get origin whitelist for client",
+            "response": {
+              "origins": "string[] (domains)"
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/v1/auth/client/origin-whitelist",
+            "description": "Add origin to whitelist",
+            "request": {
+              "origin": "string (https://example.com)"
+            },
+            "response": {
+              "message": "Origin added to whitelist"
+            }
+          },
+          {
+            "method": "DELETE",
+            "path": "/api/v1/auth/client/origin-whitelist/:origin",
+            "description": "Remove origin from whitelist",
+            "response": {
+              "message": "Origin removed from whitelist"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "testing_requirements": [
+    "Unit tests for all new endpoints",
+    "Test API key generation and validation",
+    "Test JWT token generation and validation",
+    "Test IP whitelist validation",
+    "Test origin whitelist validation",
+    "Test session creation flow",
+    "Test token refresh flow",
+    "Test Redis caching",
+    "Integration test for complete SDK auth flow"
+  ],
+  "acceptance_criteria": [
+    "All endpoints return correct responses",
+    "API keys are generated securely",
+    "JWT tokens are signed correctly",
+    "IP whitelist validation works",
+    "Origin whitelist validation works",
+    "Redis caching improves performance",
+    "All tests passing",
+    "Documentation updated"
+  ],
+  "notes": [
+    "This task establishes auth service as single source of truth",
+    "All token generation must happen here",
+    "Gateway will call these endpoints for validation",
+    "Use Redis for caching to reduce database load",
+    "Ensure proper error handling and logging"
+  ]
+}

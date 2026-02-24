@@ -16,50 +16,27 @@ const sdkAuthRoutes: FastifyPluginAsync = async (fastify) => {
       },
     },
   }, async (request, reply) => {
-    const { app_id, app_secret, user_external_id } = request.body as SdkAuthInput;
-
-    // 1. Verify App Credentials
-    // Mock: app_secret must match "secret" for the app_id
-    // In real world: lookup app in DB, verify hash
-    if (app_secret !== 'secret') { // TODO: Real verification
-      throw new UnauthorizedError('Invalid application credentials');
+    // Delegate to Auth Service
+    const authClient = (request.server as any).authClient;
+    if (!authClient) {
+      throw new Error('AuthServiceClient not available');
     }
 
-    // 2. Resolve Tenant
-    // Assuming app_id maps to tenant
-    const tenant = await tenantService.getTenant(app_id); // using app_id as tenant_id lookup for mock
-    // Or maybe getTenantByAppId(app_id)
-    
-    // For now, let's assume valid
-    const tenantId = tenant ? tenant.tenant_id : 'default-tenant';
+    const { app_id, app_secret, user_external_id } = request.body as SdkAuthInput;
 
-    // 3. Resolve User
-    const userId = user_external_id ? `ext:${user_external_id}` : `anon:${crypto.randomUUID()}`;
+    try {
+      // Step 1: Create session in Auth Service
+      const authResponse = await authClient.createSdkSession({
+        user_external_id,
+        // user_data is not in SdkAuthInput, but we can pass empty for now
+        // or map from other headers/body if needed
+      }, app_secret);
 
-    // 4. Generate Tokens
-    const accessToken = tokenService.generateAccessToken({
-      sub: userId,
-      tenant_id: tenantId,
-      app_id,
-    });
-
-    const refreshToken = tokenService.generateRefreshToken(userId);
-
-    // Phase 4.5.z Task 06: Add socket service URLs to auth response
-    const socketUrls = [
-      process.env.SOCKET_SERVICE_1_URL || 'ws://socket-service-1:3001',
-      process.env.SOCKET_SERVICE_2_URL || 'ws://socket-service-2:3001',
-    ];
-
-    return {
-      access_token: accessToken,
-      refresh_token: refreshToken,
-      expires_in: 900, // 15m
-      token_type: 'Bearer',
-      // Phase 4.5.z Task 06: Socket service connection info
-      socket_urls: socketUrls,
-      socket_connection_guide: 'Connect to any socket URL with your access_token in the auth header',
-    };
+      return authResponse;
+    } catch (err: any) {
+      request.log.error({ err }, 'Failed to create SDK session via Auth Service');
+      throw new UnauthorizedError(err.message || 'Invalid application credentials');
+    }
   });
 };
 

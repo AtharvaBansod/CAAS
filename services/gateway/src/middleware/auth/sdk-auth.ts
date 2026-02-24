@@ -1,7 +1,14 @@
+/**
+ * SDK Auth Strategy
+ * Phase 4.5.z.x - Task 02: Gateway Route Restructuring
+ * 
+ * SDK auth uses API key validation via the Auth Service
+ * This is essentially the same as API key auth but with SDK-specific context
+ */
+
 import { FastifyRequest } from 'fastify';
 import { AuthStrategy } from './strategies';
 import { AuthContext } from './auth-context';
-import { tenantService } from '../../services/tenant-service';
 
 export class SdkAuthStrategy extends AuthStrategy {
   name = 'sdk';
@@ -14,23 +21,36 @@ export class SdkAuthStrategy extends AuthStrategy {
       return null;
     }
 
-    // In a real app, we would look up the app credentials in DB
-    // For now, we'll verify against a hardcoded secret or mock
-    // TODO: Implement actual App verification against TenantService or AppService
+    try {
+      // Delegate to auth service for SDK app validation
+      const authClient = (request.server as any).authClient;
+      if (!authClient) {
+        request.log.error('AuthServiceClient not available on server instance');
+        return null;
+      }
 
-    if (appId === 'app-tenant-123' && appSecret === 'secret-123') {
-       const tenant = await tenantService.getTenant('tenant-123');
-       if (tenant) {
-         return {
-           tenant_id: tenant.tenant_id,
-           auth_type: 'sdk',
-           permissions: ['*'],
-           rate_limit_tier: tenant.plan,
-           metadata: { app_id: appId }
-         };
-       }
+      // Use API key validation for SDK apps
+      const result = await authClient.validateApiKey(appSecret, request.ip);
+
+      if (!result.valid || !result.client) {
+        request.log.warn({ error: result.error }, 'SDK auth validation failed');
+        return null;
+      }
+
+      return {
+        tenant_id: result.client.tenant_id,
+        auth_type: 'sdk',
+        permissions: result.client.permissions || ['*'],
+        rate_limit_tier: result.client.rate_limit_tier || 'business',
+        metadata: {
+          app_id: appId,
+          client_id: result.client.client_id,
+          plan: result.client.plan,
+        },
+      };
+    } catch (err: any) {
+      request.log.error({ error: err.message }, 'SDK auth strategy error');
+      return null;
     }
-
-    return null;
   }
 }

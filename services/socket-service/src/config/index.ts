@@ -24,6 +24,9 @@ const envSchema = z.object({
   JWT_CLOCK_TOLERANCE_SECONDS: z.string().transform(Number).default('30'),
   PRESENCE_IDLE_TIMEOUT_SECONDS: z.string().transform(Number).default('300'),
   INSTANCE_ID: z.string().default('socket-1'),
+  // Phase 4.5.z.x: Auth Service integration
+  AUTH_SERVICE_URL: z.string().default('http://auth-service:3001'),
+  SERVICE_SECRET: z.string().default('dev-service-secret'),
 });
 
 const env = envSchema.parse(process.env);
@@ -62,5 +65,10 @@ export const config = {
   } as JWTConfig,
   presence: {
     idleTimeoutSeconds: env.PRESENCE_IDLE_TIMEOUT_SECONDS,
+  },
+  // Phase 4.5.z.x: Auth Service integration
+  authService: {
+    url: env.AUTH_SERVICE_URL,
+    serviceSecret: env.SERVICE_SECRET,
   },
 };

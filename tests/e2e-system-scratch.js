@@ -1,21 +1,37 @@
+/**
+ * CAAS Platform - Full E2E System Test
+ * Phase 4.5.z.x - Post Auth Refactor
+ *
+ * Tests the complete system top-to-bottom:
+ *  1) Infrastructure health checks
+ *  2) Client registration (SAAS tenant onboarding)
+ *  3) API key management (rotate, whitelists)
+ *  4) SDK session creation (end-user tokens)
+ *  5) Token validation (internal endpoint)
+ *  6) Multi-user socket connections + real-time events
+ *  7) Cross-service flows (compliance, crypto, search, media)
+ *  8) Negative / security tests
+ *  9) Swagger discovery
+ * 10) DB + Kafka spot-checks via auth-service proxies
+ */
+
 const fs = require('fs');
 const path = require('path');
 const { io } = require('socket.io-client');
 
+/* ─── CLI args ─── */
 function parseArgs() {
   const args = process.argv.slice(2);
   const parsed = {};
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index];
-    if (!arg.startsWith('--')) continue;
-    const key = arg.slice(2);
-    const value = args[index + 1] && !args[index + 1].startsWith('--') ? args[index + 1] : 'true';
-    parsed[key] = value;
-    if (value !== 'true') index += 1;
+  for (let i = 0; i < args.length; i++) {
+    if (!args[i].startsWith('--')) continue;
+    const key = args[i].slice(2);
+    const val = args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : 'true';
+    parsed[key] = val;
+    if (val !== 'true') i++;
   }
   return parsed;
 }
-
 const args = parseArgs();
 
 const config = {
@@ -30,656 +46,724 @@ const config = {
     args.socket2Url || process.env.SOCKET2_URL || 'http://socket-service-2:3001',
   ],
   outPath: args.out || process.env.OUT_PATH || null,
-  timeoutMs: Number(args.timeoutMs || process.env.TIMEOUT_MS || 12000),
-  socketAckTimeoutMs: Number(args.socketAckTimeoutMs || process.env.SOCKET_ACK_TIMEOUT_MS || 1500),
+  timeoutMs: Number(args.timeoutMs || 12000),
+  socketAckTimeoutMs: Number(args.socketAckTimeoutMs || 3000),
+  serviceSecret: args.serviceSecret || process.env.SERVICE_SECRET || 'dev-service-secret-change-in-production',
 };
 
+/* ─── Report ─── */
 const report = {
   generatedAt: new Date().toISOString(),
   metadata: config,
-  summary: {
-    total: 0,
-    passed: 0,
-    failed: 0,
-    warnings: 0,
-  },
-  context: {
-    token: null,
-    apiKey: null,
-    createdApiKeyId: null,
-  },
+  summary: { total: 0, passed: 0, failed: 0, warnings: 0 },
+  context: {},
+  sections: {},
   cases: [],
 };
 
-function truncate(value, maxLen = 2000) {
-  if (value === null || value === undefined) return value;
+function truncate(value, maxLen = 4000) {
+  if (value == null) return value;
   const text = typeof value === 'string' ? value : JSON.stringify(value);
-  if (text.length <= maxLen) return text;
-  return `${text.slice(0, maxLen)}... [truncated ${text.length - maxLen} chars]`;
+  return text.length <= maxLen ? text : `${text.slice(0, maxLen)}... [truncated ${text.length - maxLen} chars]`;
 }
+
+let currentSection = 'general';
+function setSection(name) { currentSection = name; }
 
 function recordCase(entry) {
+  entry.section = currentSection;
   report.cases.push(entry);
-  report.summary.total += 1;
-  if (entry.outcome === 'passed') report.summary.passed += 1;
-  else if (entry.outcome === 'warning') report.summary.warnings += 1;
-  else report.summary.failed += 1;
+  report.summary.total++;
+  if (entry.outcome === 'passed') report.summary.passed++;
+  else if (entry.outcome === 'warning') report.summary.warnings++;
+  else report.summary.failed++;
 }
 
-function isAcceptableStatus(status, acceptable) {
+function isOk(status, acceptable) {
   if (acceptable === 'any') return status >= 100 && status < 600;
   if (Array.isArray(acceptable)) return acceptable.includes(status);
   return status === acceptable;
 }
 
-async function fetchWithTimeout(url, options = {}, timeoutMs = config.timeoutMs) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(url, { ...options, signal: controller.signal });
-  } finally {
-    clearTimeout(timer);
-  }
+async function fetchT(url, opts = {}, ms = config.timeoutMs) {
+  const ac = new AbortController();
+  const t = setTimeout(() => ac.abort(), ms);
+  try { return await fetch(url, { ...opts, signal: ac.signal }); }
+  finally { clearTimeout(t); }
 }
 
-async function runHttpCase({ name, method, url, headers = {}, body = null, acceptableStatus = 200, tags = [] }) {
+/* ─── HTTP runner ─── */
+async function http({ name, method, url, headers = {}, body = null, acceptableStatus = 200, tags = [] }) {
   const startedAt = new Date().toISOString();
-  let status = -1;
-  let responseHeaders = {};
-  let responseBody = '';
-  let error = null;
-
+  let status = -1, resHeaders = {}, resBody = '', error = null;
   try {
-    const options = { method, headers: { ...headers } };
-    if (body !== null && body !== undefined) {
-      options.headers['content-type'] = options.headers['content-type'] || 'application/json';
-      options.body = typeof body === 'string' ? body : JSON.stringify(body);
+    const opts = { method, headers: { ...headers } };
+    if (body != null) {
+      opts.headers['content-type'] = opts.headers['content-type'] || 'application/json';
+      opts.body = typeof body === 'string' ? body : JSON.stringify(body);
     }
-
-    const res = await fetchWithTimeout(url, options);
+    const res = await fetchT(url, opts);
     status = res.status;
-    for (const [key, value] of res.headers.entries()) {
-      responseHeaders[key] = value;
-    }
-    responseBody = await res.text();
-  } catch (err) {
-    error = err && err.message ? err.message : String(err);
-  }
+    for (const [k, v] of res.headers.entries()) resHeaders[k] = v;
+    resBody = await res.text();
+  } catch (e) { error = e?.message || String(e); }
 
   const endedAt = new Date().toISOString();
-  const success = error ? false : isAcceptableStatus(status, acceptableStatus);
-  const outcome = success ? 'passed' : error ? 'failed' : status >= 500 ? 'failed' : 'warning';
+  const ok = error ? false : isOk(status, acceptableStatus);
+  const outcome = ok ? 'passed' : error ? 'failed' : status >= 500 ? 'failed' : 'warning';
 
   recordCase({
-    type: 'http',
-    name,
-    tags,
-    startedAt,
-    endedAt,
-    request: {
-      method,
-      url,
-      headers,
-      body,
-      acceptableStatus,
-    },
-    response: {
-      status,
-      headers: responseHeaders,
-      body: truncate(responseBody, 8000),
-      error,
-    },
+    type: 'http', name, tags, startedAt, endedAt,
+    request: { method, url, headers, body, acceptableStatus },
+    response: { status, headers: resHeaders, body: truncate(resBody, 6000), error },
     outcome,
   });
-
-  return { status, body: responseBody, error };
+  return { status, body: resBody, error };
 }
 
-function replacePathParams(routePath, replacements) {
-  return routePath.replace(/\{([^}]+)\}/g, (_, key) => replacements[key] || `sample-${key.toLowerCase()}`);
+/* ─── Socket helpers ─── */
+function connectSocket(url, namespace, token) {
+  return new Promise(resolve => {
+    const socket = io(`${url}${namespace}`, {
+      path: '/socket.io', transports: ['websocket', 'polling'],
+      auth: token ? { token } : {}, timeout: 10000, reconnection: false,
+    });
+    let done = false;
+    const finish = r => { if (done) return; done = true; resolve(r); };
+    socket.on('connect', () => finish({ ok: true, socket }));
+    socket.on('connect_error', e => finish({ ok: false, error: e.message, socket }));
+    setTimeout(() => finish({ ok: false, error: 'connect timeout', socket }), 12000);
+  });
 }
 
-function sampleFromSchema(schema, depth = 0) {
-  if (!schema || depth > 4) return null;
-
-  if (schema.example !== undefined) return schema.example;
-  if (Array.isArray(schema.examples) && schema.examples.length > 0) return schema.examples[0];
-
-  const schemaType = schema.type;
-  if (schema.enum && schema.enum.length > 0) return schema.enum[0];
-
-  if (schemaType === 'object' || schema.properties) {
-    const obj = {};
-    const props = schema.properties || {};
-    for (const [key, value] of Object.entries(props)) {
-      obj[key] = sampleFromSchema(value, depth + 1);
+function emitAck(socket, event, payload, ms = config.socketAckTimeoutMs) {
+  return new Promise(resolve => {
+    let done = false;
+    const timer = setTimeout(() => { if (!done) { done = true; resolve({ timeout: true, data: null }); } }, ms);
+    const onDC = r => { if (!done) { done = true; clearTimeout(timer); resolve({ disconnected: true, reason: r, data: null }); } };
+    socket.once('disconnect', onDC);
+    try {
+      socket.emit(event, payload, data => {
+        if (!done) { done = true; clearTimeout(timer); socket.off('disconnect', onDC); resolve({ timeout: false, data }); }
+      });
+    } catch (e) {
+      if (!done) { done = true; clearTimeout(timer); resolve({ data: { error: e.message } }); }
     }
-    if (schema.required && Array.isArray(schema.required)) {
-      for (const req of schema.required) {
-        if (obj[req] === undefined) {
-          obj[req] = 'sample';
-        }
+  });
+}
+
+async function socketCase({ socketUrl, namespace, event, payload, token, expectConnect, tags = [] }) {
+  const startedAt = new Date().toISOString();
+  const conn = await connectSocket(socketUrl, namespace, token);
+  let outcome = 'failed', response = {};
+  if (!conn.ok) {
+    response = { connectError: conn.error };
+    outcome = expectConnect ? 'failed' : 'passed';
+  } else {
+    const r = await emitAck(conn.socket, event, payload, config.socketAckTimeoutMs);
+    response = r;
+    if (r.timeout || r.disconnected) outcome = 'warning';
+    else {
+      const hasErr = r.data && (r.data.error || r.data.success === false);
+      outcome = hasErr ? 'warning' : 'passed';
+    }
+    conn.socket.disconnect();
+  }
+  recordCase({
+    type: 'socket', name: `Socket ${namespace} ${event} @ ${socketUrl}`, tags,
+    startedAt, endedAt: new Date().toISOString(),
+    request: { socketUrl, namespace, event, payload, withToken: !!token, expectConnect },
+    response, outcome,
+  });
+  return { ok: conn.ok, response };
+}
+
+/* ─── Helpers ─── */
+function tryJson(text) { try { return JSON.parse(text); } catch { return null; } }
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+/* ─── Swagger discovery ─── */
+async function runSwaggerDiscovery(token) {
+  const res = await http({
+    name: 'Gateway OpenAPI Spec', method: 'GET',
+    url: `${config.gatewayUrl}/documentation/json`, acceptableStatus: [200], tags: ['discovery']
+  });
+  if (res.error || res.status !== 200) return;
+  const spec = tryJson(res.body);
+  if (!spec || !spec.paths) return;
+
+  const replacements = { id: 'sample-id', userId: 'sample-user', tenantId: 'default-tenant', sessionId: 'sample-session' };
+  const skip = ['/documentation', '/internal'];
+
+  for (const [p, methods] of Object.entries(spec.paths)) {
+    if (skip.some(s => p.startsWith(s))) continue;
+    for (const [m, op] of Object.entries(methods)) {
+      const method = m.toUpperCase();
+      if (!['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) continue;
+      const urlPath = p.replace(/\{([^}]+)\}/g, (_, k) => replacements[k] || `sample-${k}`);
+      const url = `${config.gatewayUrl}${urlPath}`;
+      const headers = {};
+      if (token) headers.authorization = `Bearer ${token}`;
+      let body = null;
+      if (op.requestBody?.content?.['application/json']?.schema) {
+        body = sampleSchema(op.requestBody.content['application/json'].schema);
       }
+      await http({
+        name: `Discover ${method} ${urlPath}`, method, url, headers, body,
+        acceptableStatus: 'any', tags: ['discovery', 'gateway']
+      });
     }
-    return obj;
   }
+}
 
-  if (schemaType === 'array') {
-    return [sampleFromSchema(schema.items || {}, depth + 1)];
+function sampleSchema(s, d = 0) {
+  if (!s || d > 4) return null;
+  if (s.example !== undefined) return s.example;
+  if (s.enum?.length) return s.enum[0];
+  if (s.type === 'object' || s.properties) {
+    const o = {};
+    for (const [k, v] of Object.entries(s.properties || {})) o[k] = sampleSchema(v, d + 1);
+    (s.required || []).forEach(r => { if (o[r] === undefined) o[r] = 'sample'; });
+    return o;
   }
-
-  if (schemaType === 'integer' || schemaType === 'number') return 1;
-  if (schemaType === 'boolean') return true;
-  if (schema.format === 'date-time') return new Date().toISOString();
-  if (schema.format === 'email') return 'e2e@example.com';
-  if (schema.format === 'uuid') return '11111111-1111-1111-1111-111111111111';
+  if (s.type === 'array') return [sampleSchema(s.items || {}, d + 1)];
+  if (s.type === 'integer' || s.type === 'number') return 1;
+  if (s.type === 'boolean') return true;
+  if (s.format === 'email') return 'e2e@example.com';
+  if (s.format === 'uuid') return '11111111-1111-1111-1111-111111111111';
   return 'sample';
 }
 
-async function runSwaggerDiscovery(authToken, apiKey) {
-  const specResult = await runHttpCase({
-    name: 'Gateway OpenAPI Spec',
-    method: 'GET',
-    url: `${config.gatewayUrl}/documentation/json`,
-    acceptableStatus: [200],
-    tags: ['discovery'],
-  });
-
-  if (specResult.error || specResult.status !== 200) return;
-
-  let spec;
-  try {
-    spec = JSON.parse(specResult.body);
-  } catch {
-    return;
-  }
-
-  const paths = spec.paths || {};
-  const replacements = {
-    id: report.context.createdApiKeyId || 'sample-id',
-    userId: 'sample-user',
-    tenantId: 'default-tenant',
-    sessionId: 'sample-session',
-  };
-
-  const skipPrefixes = ['/documentation', '/internal'];
-
-  for (const [routePath, methods] of Object.entries(paths)) {
-    if (skipPrefixes.some((prefix) => routePath.startsWith(prefix))) continue;
-
-    for (const [methodRaw, operation] of Object.entries(methods)) {
-      const method = methodRaw.toUpperCase();
-      if (!['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) continue;
-
-      const urlPath = replacePathParams(routePath, replacements);
-      const url = `${config.gatewayUrl}${urlPath}`;
-
-      const headers = {};
-      const operationSecurity = operation.security || spec.security || [];
-      if (operationSecurity.length > 0 && authToken) {
-        headers.authorization = `Bearer ${authToken}`;
-      }
-      if (urlPath.includes('/api-keys') && authToken) {
-        headers.authorization = `Bearer ${authToken}`;
-      }
-      if (urlPath.includes('/tenant') && apiKey) {
-        headers['x-api-key'] = apiKey;
-      }
-
-      let body = null;
-      const requestBody = operation.requestBody;
-      if (requestBody && requestBody.content) {
-        const jsonContent = requestBody.content['application/json'];
-        if (jsonContent && jsonContent.schema) {
-          body = sampleFromSchema(jsonContent.schema);
-        }
-      }
-
-      await runHttpCase({
-        name: `Gateway Discover ${method} ${urlPath}`,
-        method,
-        url,
-        headers,
-        body,
-        acceptableStatus: 'any',
-        tags: ['discovery', 'gateway'],
-      });
-    }
-  }
-}
-
-async function connectSocket(url, namespace, token) {
-  return new Promise((resolve) => {
-    const socket = io(`${url}${namespace}`, {
-      path: '/socket.io',
-      transports: ['websocket', 'polling'],
-      auth: token ? { token } : {},
-      timeout: 10000,
-      reconnection: false,
-    });
-
-    let finished = false;
-
-    const complete = (result) => {
-      if (finished) return;
-      finished = true;
-      resolve(result);
-    };
-
-    socket.on('connect', () => complete({ ok: true, socket }));
-    socket.on('connect_error', (error) => complete({ ok: false, error: error.message, socket }));
-
-    setTimeout(() => complete({ ok: false, error: 'Socket connect timeout', socket }), 12000);
-  });
-}
-
-async function emitWithAck(socket, event, payload, timeoutMs = 7000) {
-  return new Promise((resolve) => {
-    let done = false;
-    const cleanup = () => {
-      socket.off('disconnect', onDisconnect);
-      socket.off('connect_error', onConnectError);
-    };
-
-    const onDisconnect = (reason) => {
-      if (done) return;
-      done = true;
-      clearTimeout(timer);
-      cleanup();
-      resolve({ timeout: false, disconnected: true, reason, data: null });
-    };
-
-    const onConnectError = (error) => {
-      if (done) return;
-      done = true;
-      clearTimeout(timer);
-      cleanup();
-      resolve({ timeout: false, connectError: error && error.message ? error.message : String(error), data: null });
-    };
-
-    const timer = setTimeout(() => {
-      if (done) return;
-      done = true;
-      cleanup();
-      resolve({ timeout: true, data: null });
-    }, timeoutMs);
-
-    socket.once('disconnect', onDisconnect);
-    socket.once('connect_error', onConnectError);
-
-    try {
-      socket.emit(event, payload, (data) => {
-        if (done) return;
-        done = true;
-        clearTimeout(timer);
-        cleanup();
-        resolve({ timeout: false, data });
-      });
-    } catch (error) {
-      if (done) return;
-      done = true;
-      clearTimeout(timer);
-      cleanup();
-      resolve({ timeout: false, data: { error: error.message || String(error) } });
-    }
-  });
-}
-
-async function runSocketEventCase({ socketUrl, namespace, event, payload, token, expectConnectSuccess, tags = [] }) {
-  const startedAt = new Date().toISOString();
-  const connection = await connectSocket(socketUrl, namespace, token);
-
-  let outcome = 'failed';
-  let response = {};
-
-  if (!connection.ok) {
-    response = { connectError: connection.error };
-    outcome = expectConnectSuccess ? 'failed' : 'passed';
-  } else {
-    const result = await emitWithAck(connection.socket, event, payload, config.socketAckTimeoutMs);
-    response = result;
-
-    if (result.timeout || result.disconnected || result.connectError) {
-      outcome = 'warning';
-    } else {
-      const hasError = result.data && (result.data.error || result.data.success === false);
-      outcome = hasError ? 'warning' : 'passed';
-    }
-
-    connection.socket.disconnect();
-  }
-
-  const endedAt = new Date().toISOString();
-
-  recordCase({
-    type: 'socket',
-    name: `Socket ${namespace} ${event} @ ${socketUrl}`,
-    tags,
-    startedAt,
-    endedAt,
-    request: {
-      socketUrl,
-      namespace,
-      event,
-      payload,
-      withAuthToken: Boolean(token),
-      expectConnectSuccess,
-    },
-    response,
-    outcome,
-  });
-}
-
+/* ═══════════════════════════════════════════════════
+   MAIN TEST FLOW
+   ═══════════════════════════════════════════════════ */
 async function main() {
-  await runHttpCase({ name: 'Gateway Health', method: 'GET', url: `${config.gatewayUrl}/health`, acceptableStatus: [200], tags: ['health'] });
-  await runHttpCase({ name: 'Gateway Internal Health', method: 'GET', url: `${config.gatewayUrl}/internal/health`, acceptableStatus: 'any', tags: ['health'] });
-  await runHttpCase({ name: 'Gateway Internal Ready', method: 'GET', url: `${config.gatewayUrl}/internal/ready`, acceptableStatus: 'any', tags: ['health'] });
 
-  await runHttpCase({ name: 'Auth Service Health', method: 'GET', url: `${config.authServiceUrl}/health`, acceptableStatus: [200], tags: ['health'] });
-  await runHttpCase({ name: 'Compliance Service Health', method: 'GET', url: `${config.complianceServiceUrl}/health`, acceptableStatus: 'any', tags: ['health'] });
-  await runHttpCase({ name: 'Crypto Service Health', method: 'GET', url: `${config.cryptoServiceUrl}/health`, acceptableStatus: [200], tags: ['health'] });
-  await runHttpCase({ name: 'Search Service Health', method: 'GET', url: `${config.searchServiceUrl}/health`, acceptableStatus: [200], tags: ['health'] });
-  await runHttpCase({ name: 'Media Service Health', method: 'GET', url: `${config.mediaServiceUrl}/health`, acceptableStatus: [200], tags: ['health'] });
-  await runHttpCase({ name: 'Socket Service 1 Health', method: 'GET', url: `${config.socketUrls[0]}/health`, acceptableStatus: [200], tags: ['health'] });
-  await runHttpCase({ name: 'Socket Service 2 Health', method: 'GET', url: `${config.socketUrls[1]}/health`, acceptableStatus: [200], tags: ['health'] });
+  /* ─── S1: Health Checks ─── */
+  setSection('health');
+  console.log('[S1] Health checks...');
 
-  const sdkTokenRes = await runHttpCase({
-    name: 'Gateway SDK Token (valid)',
-    method: 'POST',
-    url: `${config.gatewayUrl}/v1/auth/sdk/token`,
-    body: {
-      app_id: 'default-tenant',
-      app_secret: 'secret',
-      user_external_id: `e2e-${Date.now()}`,
-    },
-    acceptableStatus: [200],
-    tags: ['auth', 'gateway'],
+  await http({ name: 'Gateway Health', method: 'GET', url: `${config.gatewayUrl}/health`, acceptableStatus: [200], tags: ['health'] });
+  await http({ name: 'Gateway Internal', method: 'GET', url: `${config.gatewayUrl}/internal/health`, acceptableStatus: 'any', tags: ['health'] });
+  await http({ name: 'Gateway Ready', method: 'GET', url: `${config.gatewayUrl}/internal/ready`, acceptableStatus: 'any', tags: ['health'] });
+  await http({ name: 'Auth Service', method: 'GET', url: `${config.authServiceUrl}/health`, acceptableStatus: [200], tags: ['health'] });
+  await http({ name: 'Compliance Service', method: 'GET', url: `${config.complianceServiceUrl}/health`, acceptableStatus: 'any', tags: ['health'] });
+  await http({ name: 'Crypto Service', method: 'GET', url: `${config.cryptoServiceUrl}/health`, acceptableStatus: [200], tags: ['health'] });
+  await http({ name: 'Search Service', method: 'GET', url: `${config.searchServiceUrl}/health`, acceptableStatus: [200], tags: ['health'] });
+  await http({ name: 'Media Service', method: 'GET', url: `${config.mediaServiceUrl}/health`, acceptableStatus: [200], tags: ['health'] });
+  await http({ name: 'Socket Service 1', method: 'GET', url: `${config.socketUrls[0]}/health`, acceptableStatus: [200], tags: ['health'] });
+  await http({ name: 'Socket Service 2', method: 'GET', url: `${config.socketUrls[1]}/health`, acceptableStatus: [200], tags: ['health'] });
+  await http({ name: 'Gateway Ping', method: 'GET', url: `${config.gatewayUrl}/v1/ping`, acceptableStatus: [200], tags: ['health', 'gateway'] });
+
+  /* ─── S2: Client (SAAS Tenant) Registration ─── */
+  setSection('client-registration');
+  console.log('[S2] Client registration...');
+  const ts = Date.now();
+
+  const regRes = await http({
+    name: 'Register SAAS Client (Tenant A)', method: 'POST',
+    url: `${config.authServiceUrl}/api/v1/auth/client/register`,
+    body: { company_name: `E2E Corp ${ts}`, email: `admin-${ts}@e2etest.com`, password: 'Test1234!@#$', plan: 'business' },
+    acceptableStatus: [200, 201], tags: ['auth', 'client'],
+  });
+  const regData = tryJson(regRes.body);
+  report.context.clientA = regData;
+  const clientId = regData?.client_id || regData?.clientId || regData?.id;
+  let apiKey = regData?.api_key || regData?.apiKey;
+  report.context.clientId = clientId;
+  report.context.apiKey = apiKey;
+
+  // Register a second client for isolation testing
+  const regRes2 = await http({
+    name: 'Register SAAS Client (Tenant B)', method: 'POST',
+    url: `${config.authServiceUrl}/api/v1/auth/client/register`,
+    body: { company_name: `E2E Corp B ${ts}`, email: `admin-b-${ts}@e2etest.com`, password: 'Test1234!@#$', plan: 'free' },
+    acceptableStatus: [200, 201], tags: ['auth', 'client'],
+  });
+  const regDataB = tryJson(regRes2.body);
+  report.context.clientB = regDataB;
+  const apiKeyB = regDataB?.api_key || regDataB?.apiKey;
+
+  // Negative: duplicate registration
+  await http({
+    name: 'Register SAAS Client (Duplicate)', method: 'POST',
+    url: `${config.authServiceUrl}/api/v1/auth/client/register`,
+    body: { company_name: `E2E Corp ${ts}`, email: `admin-${ts}@e2etest.com`, password: 'Test1234!@#$' },
+    acceptableStatus: [400, 409, 422], tags: ['auth', 'client', 'negative'],
   });
 
-  await runHttpCase({
-    name: 'Gateway SDK Token (invalid secret)',
-    method: 'POST',
-    url: `${config.gatewayUrl}/v1/auth/sdk/token`,
-    body: {
-      app_id: 'default-tenant',
-      app_secret: 'wrong-secret',
-      user_external_id: `e2e-${Date.now()}`,
-    },
-    acceptableStatus: [401, 400],
-    tags: ['auth', 'negative'],
-  });
+  /* ─── S3: API Key Management ─── */
+  setSection('api-key-management');
+  console.log('[S3] API key management...');
 
-  let accessToken = null;
-  if (sdkTokenRes.status === 200 && sdkTokenRes.body) {
-    try {
-      accessToken = JSON.parse(sdkTokenRes.body).access_token;
-      report.context.token = accessToken;
-    } catch {
-      accessToken = null;
-    }
-  }
+  if (clientId) {
+    const rotRes = await http({
+      name: 'Rotate API Key', method: 'POST',
+      url: `${config.authServiceUrl}/api/v1/auth/client/api-keys/rotate`,
+      headers: { 'x-service-secret': config.serviceSecret },
+      body: { client_id: clientId },
+      acceptableStatus: 'any', tags: ['auth', 'apikey'],
+    });
+    const rotData = tryJson(rotRes.body);
+    const newKey = rotData?.secondary_key;
 
-  const authHeaders = accessToken ? { authorization: `Bearer ${accessToken}` } : {};
-
-  let socketAuthToken = accessToken;
-  if (accessToken) {
-    const validation = await runHttpCase({
-      name: 'Auth Service Validate Gateway Token',
-      method: 'POST',
-      url: `${config.authServiceUrl}/api/v1/auth/validate`,
-      body: { token: accessToken },
-      acceptableStatus: 'any',
-      tags: ['auth', 'socket-preflight'],
+    await http({
+      name: 'Promote API Key', method: 'POST',
+      url: `${config.authServiceUrl}/api/v1/auth/client/api-keys/promote`,
+      headers: { 'x-service-secret': config.serviceSecret },
+      body: { client_id: clientId },
+      acceptableStatus: 'any', tags: ['auth', 'apikey'],
     });
 
-    if (validation.status !== 200) {
-      socketAuthToken = null;
-      recordCase({
-        type: 'analysis',
-        name: 'Socket Auth Token Compatibility',
-        tags: ['socket-preflight'],
-        startedAt: new Date().toISOString(),
-        endedAt: new Date().toISOString(),
-        request: { source: 'gateway-sdk-token', authValidateEndpoint: `${config.authServiceUrl}/api/v1/auth/validate` },
-        response: {
-          status: validation.status,
-          note: 'Gateway SDK token is not accepted by auth-service validate endpoint; socket authenticated flows may be rejected.',
-        },
-        outcome: 'warning',
-      });
+    if (newKey) {
+      apiKey = newKey;
+      report.context.apiKey = newKey;
     }
   }
 
-  await runHttpCase({ name: 'Gateway Ping', method: 'GET', url: `${config.gatewayUrl}/v1/ping`, acceptableStatus: [200], tags: ['gateway'] });
-  await runHttpCase({ name: 'Gateway Tenant Unauthorized', method: 'GET', url: `${config.gatewayUrl}/v1/tenant`, acceptableStatus: [401, 403], tags: ['negative', 'gateway'] });
-  await runHttpCase({ name: 'Gateway Tenant Authorized', method: 'GET', url: `${config.gatewayUrl}/v1/tenant`, headers: authHeaders, acceptableStatus: 'any', tags: ['gateway'] });
-  await runHttpCase({ name: 'Gateway Tenant Usage', method: 'GET', url: `${config.gatewayUrl}/v1/tenant/usage`, headers: authHeaders, acceptableStatus: 'any', tags: ['gateway'] });
-  await runHttpCase({
-    name: 'Gateway Tenant Settings Update',
-    method: 'PUT',
+  /* ─── S4: API Key Validation (Internal) ─── */
+  setSection('internal-validation');
+  console.log('[S4] Internal validation...');
+
+  if (apiKey) {
+    const valRes = await http({
+      name: 'Validate API Key (Internal)', method: 'POST',
+      url: `${config.authServiceUrl}/api/v1/auth/internal/validate-api-key`,
+      headers: { 'x-service-secret': config.serviceSecret },
+      body: { api_key: apiKey, ip_address: '127.0.0.1' },
+      acceptableStatus: [200], tags: ['auth', 'internal'],
+    });
+    const valData = tryJson(valRes.body);
+    report.context.apiKeyValidation = valData;
+  }
+
+  // Negative: invalid API key
+  await http({
+    name: 'Validate API Key (Invalid)', method: 'POST',
+    url: `${config.authServiceUrl}/api/v1/auth/internal/validate-api-key`,
+    headers: { 'x-service-secret': config.serviceSecret },
+    body: { api_key: 'caas_invalid_key_12345', ip_address: '127.0.0.1' },
+    acceptableStatus: [401, 403, 404], tags: ['auth', 'internal', 'negative'],
+  });
+
+  /* ─── S5: SDK Session Creation ─── */
+  setSection('sdk-sessions');
+  console.log('[S5] SDK sessions...');
+
+  let userAToken = null, userARefresh = null;
+  let userBToken = null, userBRefresh = null;
+
+  if (apiKey) {
+    // User A session
+    const sessA = await http({
+      name: 'Create SDK Session (User A)', method: 'POST',
+      url: `${config.authServiceUrl}/api/v1/auth/sdk/session`,
+      headers: { 'x-api-key': apiKey },
+      body: { user_external_id: `user-a-${ts}`, user_data: { name: 'Alice Tester', email: `alice-${ts}@e2etest.com` }, device_info: { device_type: 'web' } },
+      acceptableStatus: [200, 201], tags: ['auth', 'sdk'],
+    });
+    const sessAData = tryJson(sessA.body);
+    userAToken = sessAData?.access_token || sessAData?.token;
+    userARefresh = sessAData?.refresh_token;
+    report.context.userA = { token: userAToken ? `${userAToken.slice(0, 30)}...` : null, external_id: `user-a-${ts}` };
+
+    // User B session (same tenant)
+    const sessB = await http({
+      name: 'Create SDK Session (User B)', method: 'POST',
+      url: `${config.authServiceUrl}/api/v1/auth/sdk/session`,
+      headers: { 'x-api-key': apiKey },
+      body: { user_external_id: `user-b-${ts}`, user_data: { name: 'Bob Tester', email: `bob-${ts}@e2etest.com` }, device_info: { device_type: 'mobile' } },
+      acceptableStatus: [200, 201], tags: ['auth', 'sdk'],
+    });
+    const sessBData = tryJson(sessB.body);
+    userBToken = sessBData?.access_token || sessBData?.token;
+    userBRefresh = sessBData?.refresh_token;
+    report.context.userB = { token: userBToken ? `${userBToken.slice(0, 30)}...` : null, external_id: `user-b-${ts}` };
+  }
+
+  // Negative: session without API key
+  await http({
+    name: 'Create SDK Session (No API Key)', method: 'POST',
+    url: `${config.authServiceUrl}/api/v1/auth/sdk/session`,
+    body: { user_external_id: 'should-fail' },
+    acceptableStatus: [401, 403], tags: ['auth', 'sdk', 'negative'],
+  });
+
+  /* ─── S6: Token Validation ─── */
+  setSection('token-validation');
+  console.log('[S6] Token validation...');
+
+  if (userAToken) {
+    await http({
+      name: 'Validate Token (User A - Valid)', method: 'POST',
+      url: `${config.authServiceUrl}/api/v1/auth/internal/validate`,
+      headers: { 'x-service-secret': config.serviceSecret },
+      body: { token: userAToken },
+      acceptableStatus: [200], tags: ['auth', 'internal'],
+    });
+
+    // Also validate via the public endpoint
+    await http({
+      name: 'Validate Token (Auth /validate)', method: 'POST',
+      url: `${config.authServiceUrl}/api/v1/auth/validate`,
+      body: { token: userAToken },
+      acceptableStatus: [200], tags: ['auth'],
+    });
+  }
+
+  // Negative: invalid token
+  await http({
+    name: 'Validate Token (Invalid)', method: 'POST',
+    url: `${config.authServiceUrl}/api/v1/auth/internal/validate`,
+    headers: { 'x-service-secret': config.serviceSecret },
+    body: { token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.invalid.payload' },
+    acceptableStatus: [401, 403], tags: ['auth', 'internal', 'negative'],
+  });
+
+  /* ─── S7: Token Refresh ─── */
+  setSection('token-refresh');
+  console.log('[S7] Token refresh...');
+
+  if (userARefresh) {
+    const refreshRes = await http({
+      name: 'Refresh Token (User A)', method: 'POST',
+      url: `${config.authServiceUrl}/api/v1/auth/sdk/refresh`,
+      body: { refresh_token: userARefresh },
+      acceptableStatus: [200], tags: ['auth', 'sdk'],
+    });
+    const refreshData = tryJson(refreshRes.body);
+    if (refreshData?.access_token) {
+      userAToken = refreshData.access_token;
+      report.context.userA.tokenRefreshed = true;
+    }
+  }
+
+  /* ─── S8: Gateway Authenticated Routes ─── */
+  setSection('gateway-auth-routes');
+  console.log('[S8] Gateway authenticated routes...');
+
+  const authHeadersA = userAToken ? { authorization: `Bearer ${userAToken}` } : {};
+
+  // Tenant routes
+  await http({ name: 'Tenant Info (Unauthorized)', method: 'GET', url: `${config.gatewayUrl}/v1/tenant`, acceptableStatus: [401, 403], tags: ['gateway', 'negative'] });
+  await http({ name: 'Tenant Info (Authorized)', method: 'GET', url: `${config.gatewayUrl}/v1/tenant`, headers: authHeadersA, acceptableStatus: 'any', tags: ['gateway'] });
+  await http({ name: 'Tenant Usage', method: 'GET', url: `${config.gatewayUrl}/v1/tenant/usage`, headers: authHeadersA, acceptableStatus: 'any', tags: ['gateway'] });
+  await http({
+    name: 'Tenant Settings Update', method: 'PUT',
     url: `${config.gatewayUrl}/v1/tenant/settings`,
-    headers: authHeaders,
-    body: { settings: { locale: 'en', timezone: 'UTC' } },
-    acceptableStatus: 'any',
-    tags: ['gateway'],
+    headers: authHeadersA, body: { settings: { locale: 'en', timezone: 'UTC' } },
+    acceptableStatus: 'any', tags: ['gateway'],
   });
 
-  const createApiKey = await runHttpCase({
-    name: 'Gateway Create API Key',
-    method: 'POST',
+  // API keys via gateway
+  const createKey = await http({
+    name: 'Gateway Create API Key', method: 'POST',
     url: `${config.gatewayUrl}/v1/auth/api-keys`,
-    headers: authHeaders,
-    body: { name: 'e2e-key', scopes: ['read'] },
-    acceptableStatus: 'any',
-    tags: ['gateway', 'auth'],
+    headers: authHeadersA, body: { name: 'e2e-gateway-key', scopes: ['read'] },
+    acceptableStatus: 'any', tags: ['gateway', 'auth'],
+  });
+  let gwKeyId = null;
+  const keyData = tryJson(createKey.body);
+  if (createKey.status === 201) {
+    gwKeyId = keyData?.id;
+    report.context.gatewayApiKey = keyData?.key;
+  }
+
+  await http({ name: 'Gateway List API Keys', method: 'GET', url: `${config.gatewayUrl}/v1/auth/api-keys`, headers: authHeadersA, acceptableStatus: 'any', tags: ['gateway', 'auth'] });
+  if (gwKeyId) {
+    await http({ name: 'Gateway Delete API Key', method: 'DELETE', url: `${config.gatewayUrl}/v1/auth/api-keys/${gwKeyId}`, headers: authHeadersA, acceptableStatus: 'any', tags: ['gateway', 'auth'] });
+  }
+
+  // Sessions
+  await http({ name: 'Gateway Sessions List', method: 'GET', url: `${config.gatewayUrl}/v1/sessions`, headers: authHeadersA, acceptableStatus: 'any', tags: ['gateway', 'sessions'] });
+
+  /* ─── S9: Gateway SDK Token (Legacy Route) ─── */
+  setSection('gateway-sdk-token');
+  console.log('[S9] Gateway SDK token (legacy)...');
+
+  const sdkTokenRes = await http({
+    name: 'Gateway SDK Token (valid)', method: 'POST',
+    url: `${config.gatewayUrl}/v1/auth/sdk/token`,
+    body: { app_id: 'default-tenant', app_secret: 'secret', user_external_id: `sdk-${ts}` },
+    acceptableStatus: 'any', tags: ['auth', 'gateway', 'sdk'],
+  });
+  const sdkData = tryJson(sdkTokenRes.body);
+  const legacyToken = sdkData?.access_token;
+
+  await http({
+    name: 'Gateway SDK Token (invalid secret)', method: 'POST',
+    url: `${config.gatewayUrl}/v1/auth/sdk/token`,
+    body: { app_id: 'default-tenant', app_secret: 'wrong-secret', user_external_id: `sdk-bad-${ts}` },
+    acceptableStatus: [400, 401], tags: ['auth', 'gateway', 'negative'],
   });
 
-  let createdApiKeyId = null;
-  if (createApiKey.status === 201 && createApiKey.body) {
-    try {
-      const parsed = JSON.parse(createApiKey.body);
-      report.context.apiKey = parsed.key;
-      createdApiKeyId = parsed.id;
-      report.context.createdApiKeyId = createdApiKeyId;
-    } catch {
-      createdApiKeyId = null;
-    }
-  }
+  /* ─── S10: Cross-Service Flows ─── */
+  setSection('cross-service');
+  console.log('[S10] Cross-service flows...');
 
-  await runHttpCase({ name: 'Gateway List API Keys', method: 'GET', url: `${config.gatewayUrl}/v1/auth/api-keys`, headers: authHeaders, acceptableStatus: 'any', tags: ['gateway', 'auth'] });
-  if (createdApiKeyId) {
-    await runHttpCase({ name: 'Gateway Delete API Key', method: 'DELETE', url: `${config.gatewayUrl}/v1/auth/api-keys/${createdApiKeyId}`, headers: authHeaders, acceptableStatus: 'any', tags: ['gateway', 'auth'] });
-  }
-
-  await runHttpCase({ name: 'Gateway Sessions List', method: 'GET', url: `${config.gatewayUrl}/v1/sessions`, headers: authHeaders, acceptableStatus: 'any', tags: ['gateway', 'sessions'] });
-  await runHttpCase({ name: 'Gateway Sessions Others', method: 'DELETE', url: `${config.gatewayUrl}/v1/sessions/others`, headers: authHeaders, acceptableStatus: 'any', tags: ['gateway', 'sessions'] });
-
-  await runHttpCase({
-    name: 'Compliance Audit Log Valid',
-    method: 'POST',
+  // Compliance: audit log
+  await http({
+    name: 'Compliance Audit Log', method: 'POST',
     url: `${config.complianceServiceUrl}/api/v1/audit/log`,
-    body: {
-      tenant_id: 'default-tenant',
-      user_id: 'e2e-user',
-      action: 'e2e_test',
-      resource_type: 'system',
-    },
-    acceptableStatus: 'any',
-    tags: ['compliance'],
+    body: { tenant_id: clientId || 'e2e-tenant', user_id: `user-a-${ts}`, action: 'e2e_test', resource_type: 'system' },
+    acceptableStatus: 'any', tags: ['compliance'],
   });
-
-  await runHttpCase({
-    name: 'Compliance Audit Log Invalid',
-    method: 'POST',
+  await http({
+    name: 'Compliance Audit Log (Invalid)', method: 'POST',
     url: `${config.complianceServiceUrl}/api/v1/audit/log`,
     body: { tenant_id: '', action: '' },
-    acceptableStatus: 'any',
-    tags: ['compliance', 'negative'],
+    acceptableStatus: 'any', tags: ['compliance', 'negative'],
   });
 
-  const keyCreate = await runHttpCase({
-    name: 'Crypto Key Generate',
-    method: 'POST',
+  // Crypto: key + encrypt/decrypt roundtrip
+  const keyCreate = await http({
+    name: 'Crypto Key Generate', method: 'POST',
     url: `${config.cryptoServiceUrl}/api/v1/keys/generate`,
-    body: { tenant_id: 'default-tenant', key_type: 'data' },
-    acceptableStatus: 'any',
-    tags: ['crypto'],
+    body: { tenant_id: clientId || 'e2e-tenant', key_type: 'data' },
+    acceptableStatus: 'any', tags: ['crypto'],
   });
+  const keyId = tryJson(keyCreate.body)?.key_id;
 
-  let keyId = null;
-  if (keyCreate.status >= 200 && keyCreate.status < 300 && keyCreate.body) {
-    try {
-      keyId = JSON.parse(keyCreate.body).key_id;
-    } catch {
-      keyId = null;
-    }
-  }
-
-  let encryptedData = null;
+  let encData = null;
   if (keyId) {
-    const encrypt = await runHttpCase({
-      name: 'Crypto Encrypt',
-      method: 'POST',
+    const enc = await http({
+      name: 'Crypto Encrypt', method: 'POST',
       url: `${config.cryptoServiceUrl}/api/v1/encrypt`,
-      body: { key_id: keyId, plaintext: 'end-to-end' },
-      acceptableStatus: 'any',
-      tags: ['crypto'],
+      body: { key_id: keyId, plaintext: 'hello end-to-end' },
+      acceptableStatus: 'any', tags: ['crypto'],
     });
+    encData = tryJson(enc.body);
 
-    if (encrypt.status >= 200 && encrypt.status < 300 && encrypt.body) {
-      try {
-        encryptedData = JSON.parse(encrypt.body);
-      } catch {
-        encryptedData = null;
-      }
+    if (encData?.ciphertext) {
+      await http({
+        name: 'Crypto Decrypt (Valid)', method: 'POST',
+        url: `${config.cryptoServiceUrl}/api/v1/decrypt`,
+        body: { key_id: keyId, ciphertext: encData.ciphertext, iv: encData.iv, authTag: encData.authTag },
+        acceptableStatus: 'any', tags: ['crypto'],
+      });
     }
-  }
 
-  if (keyId && encryptedData) {
-    await runHttpCase({
-      name: 'Crypto Decrypt Valid',
-      method: 'POST',
+    await http({
+      name: 'Crypto Decrypt (Invalid Key)', method: 'POST',
       url: `${config.cryptoServiceUrl}/api/v1/decrypt`,
-      body: {
-        key_id: keyId,
-        ciphertext: encryptedData.ciphertext,
-        iv: encryptedData.iv,
-        authTag: encryptedData.authTag,
-      },
-      acceptableStatus: 'any',
-      tags: ['crypto'],
-    });
-
-    await runHttpCase({
-      name: 'Crypto Decrypt Invalid Key',
-      method: 'POST',
-      url: `${config.cryptoServiceUrl}/api/v1/decrypt`,
-      body: {
-        key_id: 'invalid-key',
-        ciphertext: encryptedData.ciphertext,
-        iv: encryptedData.iv,
-        authTag: encryptedData.authTag,
-      },
-      acceptableStatus: 'any',
-      tags: ['crypto', 'negative'],
+      body: { key_id: 'invalid-key', ciphertext: encData?.ciphertext || 'x', iv: encData?.iv || 'x', authTag: encData?.authTag || 'x' },
+      acceptableStatus: 'any', tags: ['crypto', 'negative'],
     });
   }
 
-  await runHttpCase({
-    name: 'Search Empty Query',
-    method: 'POST',
+  // Search
+  await http({
+    name: 'Search Empty Query', method: 'POST',
     url: `${config.searchServiceUrl}/api/v1/search/messages`,
     body: { query: '' },
-    acceptableStatus: 'any',
-    tags: ['search', 'negative'],
+    acceptableStatus: 'any', tags: ['search', 'negative'],
   });
 
-  await runHttpCase({
-    name: 'Media Quota Unauthorized',
-    method: 'GET',
+  // Media
+  await http({
+    name: 'Media Quota (No Auth)', method: 'GET',
     url: `${config.mediaServiceUrl}/api/v1/media/quota`,
-    acceptableStatus: 'any',
-    tags: ['media', 'negative'],
+    acceptableStatus: 'any', tags: ['media', 'negative'],
   });
 
-  await runSwaggerDiscovery(accessToken, report.context.apiKey);
+  /* ─── S11: Socket - Real-Time Multi-User Tests ─── */
+  setSection('socket-realtime');
+  console.log('[S11] Socket real-time multi-user...');
 
-  const socketEvents = [
-    { namespace: '/chat', event: 'joinRoom', payload: { conversationId: 'conv-e2e' } },
-    { namespace: '/chat', event: 'leaveRoom', payload: { conversationId: 'conv-e2e' } },
-    { namespace: '/chat', event: 'sendMessage', payload: { conversationId: 'conv-e2e', messageContent: 'hello from e2e' } },
-    { namespace: '/chat', event: 'typing_start', payload: { conversationId: 'conv-e2e' } },
-    { namespace: '/chat', event: 'typing_stop', payload: { conversationId: 'conv-e2e' } },
-    { namespace: '/chat', event: 'typing_query', payload: { conversationId: 'conv-e2e' } },
-    { namespace: '/chat', event: 'message_delivered', payload: { messageId: 'msg-e2e', conversationId: 'conv-e2e' } },
-    { namespace: '/chat', event: 'messages_delivered', payload: { messageIds: ['msg-a', 'msg-b'], conversationId: 'conv-e2e' } },
-    { namespace: '/chat', event: 'delivery_status', payload: { messageId: 'msg-e2e' } },
-    { namespace: '/chat', event: 'message_read', payload: { messageId: 'msg-e2e', conversationId: 'conv-e2e' } },
-    { namespace: '/chat', event: 'messages_read', payload: { messageIds: ['msg-a', 'msg-b'], conversationId: 'conv-e2e' } },
-    { namespace: '/chat', event: 'conversation_read', payload: { conversationId: 'conv-e2e', upToMessageId: 'msg-b' } },
-    { namespace: '/chat', event: 'unread_query', payload: {} },
-    { namespace: '/chat', event: 'moderate:kick', payload: { conversationId: 'conv-e2e', userId: 'user-bad' } },
-    { namespace: '/chat', event: 'moderate:ban', payload: { conversationId: 'conv-e2e', userId: 'user-bad' } },
-    { namespace: '/chat', event: 'moderate:unban', payload: { conversationId: 'conv-e2e', userId: 'user-bad' } },
-    { namespace: '/chat', event: 'moderate:mute', payload: { conversationId: 'conv-e2e', userId: 'user-bad', durationMs: 30000 } },
-    { namespace: '/chat', event: 'moderate:unmute', payload: { conversationId: 'conv-e2e', userId: 'user-bad' } },
-    { namespace: '/presence', event: 'presence_update', payload: { status: 'online', custom_status: 'e2e' } },
-    { namespace: '/presence', event: 'presence_subscribe', payload: { user_ids: ['user-a', 'user-b'] } },
-    { namespace: '/presence', event: 'presence_unsubscribe', payload: { user_ids: ['user-a'] } },
-    { namespace: '/presence', event: 'presence_subscriptions_query', payload: {} },
-    { namespace: '/webrtc', event: 'webrtc:get-ice-servers', payload: {} },
-    { namespace: '/webrtc', event: 'webrtc:offer', payload: { callId: 'call-e2e', targetUserId: 'user-b', sdp: 'offer-sdp' } },
-    { namespace: '/webrtc', event: 'webrtc:answer', payload: { callId: 'call-e2e', targetUserId: 'user-b', sdp: 'answer-sdp' } },
-    { namespace: '/webrtc', event: 'webrtc:ice-candidate', payload: { callId: 'call-e2e', targetUserId: 'user-b', candidate: 'candidate' } },
-    { namespace: '/webrtc', event: 'call:initiate', payload: { targetUserId: 'user-b', callType: 'video' } },
-    { namespace: '/webrtc', event: 'call:answer', payload: { callId: 'call-e2e', accepted: true } },
-    { namespace: '/webrtc', event: 'call:reject', payload: { callId: 'call-e2e', reason: 'busy' } },
-    { namespace: '/webrtc', event: 'call:hangup', payload: { callId: 'call-e2e' } },
-    { namespace: '/webrtc', event: 'screen:start', payload: { callId: 'call-e2e' } },
-    { namespace: '/webrtc', event: 'screen:stop', payload: { callId: 'call-e2e' } },
-    { namespace: '/webrtc', event: 'screen:offer', payload: { callId: 'call-e2e', targetUserId: 'user-b', sdp: 'offer' } },
-    { namespace: '/webrtc', event: 'screen:answer', payload: { callId: 'call-e2e', targetUserId: 'user-b', sdp: 'answer' } },
+  // Decide which token to use for sockets
+  const socketTokenA = userAToken || legacyToken;
+  const socketTokenB = userBToken;
+
+  // Test socket without auth (should fail)
+  for (const sUrl of config.socketUrls) {
+    await socketCase({
+      socketUrl: sUrl, namespace: '/chat', event: 'joinRoom', payload: { conversationId: 'conv-e2e' },
+      token: null, expectConnect: false, tags: ['socket', 'negative'],
+    });
+  }
+
+  // Test socket with auth for User A and User B
+  const chatEvents = [
+    { event: 'joinRoom', payload: { conversationId: 'conv-e2e-room' } },
+    { event: 'sendMessage', payload: { conversationId: 'conv-e2e-room', messageContent: 'Hello from User A' } },
+    { event: 'typing_start', payload: { conversationId: 'conv-e2e-room' } },
+    { event: 'typing_stop', payload: { conversationId: 'conv-e2e-room' } },
+    { event: 'message_delivered', payload: { messageId: 'msg-e2e-1', conversationId: 'conv-e2e-room' } },
+    { event: 'message_read', payload: { messageId: 'msg-e2e-1', conversationId: 'conv-e2e-room' } },
+    { event: 'unread_query', payload: {} },
+    { event: 'leaveRoom', payload: { conversationId: 'conv-e2e-room' } },
   ];
 
-  for (const socketUrl of config.socketUrls) {
-    for (const item of socketEvents) {
-      await runSocketEventCase({
-        socketUrl,
-        namespace: item.namespace,
-        event: item.event,
-        payload: item.payload,
-        token: socketAuthToken,
-        expectConnectSuccess: Boolean(socketAuthToken),
-        tags: ['socket', 'auth'],
-      });
+  const presenceEvents = [
+    { event: 'presence_update', payload: { status: 'online', custom_status: 'e2e testing' } },
+    { event: 'presence_subscribe', payload: { user_ids: [`user-a-${ts}`, `user-b-${ts}`] } },
+    { event: 'presence_subscriptions_query', payload: {} },
+    { event: 'presence_unsubscribe', payload: { user_ids: [`user-a-${ts}`] } },
+  ];
 
-      await runSocketEventCase({
-        socketUrl,
-        namespace: item.namespace,
-        event: item.event,
-        payload: item.payload,
-        token: null,
-        expectConnectSuccess: false,
-        tags: ['socket', 'negative'],
+  const webrtcEvents = [
+    { event: 'webrtc:get-ice-servers', payload: {} },
+    { event: 'call:initiate', payload: { targetUserId: `user-b-${ts}`, callType: 'video' } },
+    { event: 'call:hangup', payload: { callId: 'call-e2e' } },
+  ];
+
+  const moderationEvents = [
+    { event: 'moderate:mute', payload: { conversationId: 'conv-e2e-room', userId: `user-b-${ts}`, durationMs: 30000 } },
+    { event: 'moderate:unmute', payload: { conversationId: 'conv-e2e-room', userId: `user-b-${ts}` } },
+  ];
+
+  // User A
+  if (socketTokenA) {
+    for (const ev of chatEvents) {
+      await socketCase({
+        socketUrl: config.socketUrls[0], namespace: '/chat', ...ev,
+        token: socketTokenA, expectConnect: true, tags: ['socket', 'userA', 'chat'],
+      });
+    }
+    for (const ev of presenceEvents) {
+      await socketCase({
+        socketUrl: config.socketUrls[0], namespace: '/presence', ...ev,
+        token: socketTokenA, expectConnect: true, tags: ['socket', 'userA', 'presence'],
+      });
+    }
+    for (const ev of webrtcEvents) {
+      await socketCase({
+        socketUrl: config.socketUrls[0], namespace: '/webrtc', ...ev,
+        token: socketTokenA, expectConnect: true, tags: ['socket', 'userA', 'webrtc'],
+      });
+    }
+    for (const ev of moderationEvents) {
+      await socketCase({
+        socketUrl: config.socketUrls[0], namespace: '/chat', ...ev,
+        token: socketTokenA, expectConnect: true, tags: ['socket', 'userA', 'moderation'],
       });
     }
   }
 
+  // User B on the other socket instance
+  if (socketTokenB) {
+    for (const ev of chatEvents.slice(0, 4)) { // join, send, typing_start, typing_stop
+      await socketCase({
+        socketUrl: config.socketUrls[1], namespace: '/chat', ...ev,
+        token: socketTokenB, expectConnect: true, tags: ['socket', 'userB', 'chat'],
+      });
+    }
+    await socketCase({
+      socketUrl: config.socketUrls[1], namespace: '/presence',
+      event: 'presence_update', payload: { status: 'online', custom_status: 'User B online' },
+      token: socketTokenB, expectConnect: true, tags: ['socket', 'userB', 'presence'],
+    });
+  }
+
+  /* ─── S12: IP / Origin Whitelist ─── */
+  setSection('whitelist');
+  console.log('[S12] IP / Origin whitelists...');
+
+  if (clientId) {
+    await http({
+      name: 'Get IP Whitelist', method: 'GET',
+      url: `${config.authServiceUrl}/api/v1/auth/client/ip-whitelist?client_id=${clientId}`,
+      acceptableStatus: 'any', tags: ['auth', 'whitelist'],
+    });
+    await http({
+      name: 'Add IP to Whitelist', method: 'POST',
+      url: `${config.authServiceUrl}/api/v1/auth/client/ip-whitelist`,
+      body: { client_id: clientId, ip: '10.0.0.1' },
+      acceptableStatus: 'any', tags: ['auth', 'whitelist'],
+    });
+    await http({
+      name: 'Get Origin Whitelist', method: 'GET',
+      url: `${config.authServiceUrl}/api/v1/auth/client/origin-whitelist?client_id=${clientId}`,
+      acceptableStatus: 'any', tags: ['auth', 'whitelist'],
+    });
+    await http({
+      name: 'Add Origin to Whitelist', method: 'POST',
+      url: `${config.authServiceUrl}/api/v1/auth/client/origin-whitelist`,
+      body: { client_id: clientId, origin: 'https://e2etest.com' },
+      acceptableStatus: 'any', tags: ['auth', 'whitelist'],
+    });
+  }
+
+  /* ─── S13: User Profile ─── */
+  setSection('user-profile');
+  console.log('[S13] User profile...');
+
+  if (userAToken) {
+    await http({
+      name: 'Get User Profile', method: 'GET',
+      url: `${config.authServiceUrl}/api/v1/users/profile`,
+      headers: { authorization: `Bearer ${userAToken}` },
+      acceptableStatus: 'any', tags: ['auth', 'user'],
+    });
+    await http({
+      name: 'Update User Profile', method: 'PUT',
+      url: `${config.authServiceUrl}/api/v1/users/profile`,
+      headers: { authorization: `Bearer ${userAToken}` },
+      body: { name: 'Alice Updated', preferences: { theme: 'dark' } },
+      acceptableStatus: 'any', tags: ['auth', 'user'],
+    });
+  }
+
+  /* ─── S14: Session Management ─── */
+  setSection('session-management');
+  console.log('[S14] Session management...');
+
+  if (userAToken) {
+    await http({
+      name: 'List Sessions', method: 'GET',
+      url: `${config.authServiceUrl}/api/v1/sessions`,
+      headers: { authorization: `Bearer ${userAToken}` },
+      acceptableStatus: 'any', tags: ['auth', 'sessions'],
+    });
+  }
+
+  /* ─── S15: Swagger Discovery ─── */
+  setSection('swagger-discovery');
+  console.log('[S15] Swagger discovery...');
+  await runSwaggerDiscovery(userAToken || legacyToken);
+
+  /* ─── S16: Logout ─── */
+  setSection('logout');
+  console.log('[S16] Logout...');
+
+  if (userBToken) {
+    await http({
+      name: 'SDK Logout (User B)', method: 'POST',
+      url: `${config.authServiceUrl}/api/v1/auth/sdk/logout`,
+      headers: { authorization: `Bearer ${userBToken}` },
+      acceptableStatus: 'any', tags: ['auth', 'sdk'],
+    });
+
+    // Verify token is invalidated
+    await http({
+      name: 'Validate Revoked Token (User B)', method: 'POST',
+      url: `${config.authServiceUrl}/api/v1/auth/validate`,
+      body: { token: userBToken },
+      acceptableStatus: [401, 403], tags: ['auth', 'negative'],
+    });
+  }
+
+  /* ─── Finalize ─── */
   report.completedAt = new Date().toISOString();
+
+  // Compute section summaries
+  for (const c of report.cases) {
+    if (!report.sections[c.section]) report.sections[c.section] = { total: 0, passed: 0, failed: 0, warnings: 0 };
+    report.sections[c.section].total++;
+    if (c.outcome === 'passed') report.sections[c.section].passed++;
+    else if (c.outcome === 'warning') report.sections[c.section].warnings++;
+    else report.sections[c.section].failed++;
+  }
 
   const outPath = config.outPath || path.join(__dirname, 'reports', `e2e-system-raw-${Date.now()}.json`);
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
   fs.writeFileSync(outPath, JSON.stringify(report, null, 2), 'utf-8');
 
-  console.log(`E2E raw report written: ${outPath}`);
+  console.log(`\nE2E raw report written: ${outPath}`);
   console.log(`Summary: total=${report.summary.total} passed=${report.summary.passed} warning=${report.summary.warnings} failed=${report.summary.failed}`);
 
-  if (report.summary.failed > 0) {
-    process.exitCode = 2;
-  }
+  if (report.summary.failed > 0) process.exitCode = 2;
 }
 
-main().catch((error) => {
-  console.error('E2E runner fatal error:', error);
-  process.exit(1);
-});
+main().catch(e => { console.error('E2E runner fatal error:', e); process.exit(1); });

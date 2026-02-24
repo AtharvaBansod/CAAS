@@ -33,16 +33,17 @@ export const config = {
     db: parseInt(process.env.REDIS_DB || '0', 10),
   },
 
-  // JWT
+  // JWT - Phase 4.5.z.x: Using HMAC (HS256) with JWT_SECRET instead of RSA key files
   jwt: {
-    privateKeyPath: process.env.JWT_PRIVATE_KEY_PATH || './keys/private.pem',
-    publicKeyPath: process.env.JWT_PUBLIC_KEY_PATH || './keys/public.pem',
-    algorithm: (process.env.JWT_ALGORITHM || 'RS256') as 'RS256' | 'ES256',
+    secret: process.env.JWT_SECRET || 'dev-jwt-secret-change-in-production',
     accessTokenExpiry: parseInt(process.env.JWT_ACCESS_TOKEN_EXPIRY || '900', 10), // 15 minutes
     refreshTokenExpiry: parseInt(process.env.JWT_REFRESH_TOKEN_EXPIRY || '604800', 10), // 7 days
     issuer: process.env.JWT_ISSUER || 'caas-auth-service',
     allowExternalIssuer: (process.env.JWT_ALLOW_EXTERNAL_ISSUER || 'true').toLowerCase() === 'true',
   },
+
+  // Inter-service authentication
+  serviceSecret: process.env.SERVICE_SECRET || 'dev-service-secret',
 
   // Session
   session: {

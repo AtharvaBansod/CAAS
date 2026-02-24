@@ -1,46 +1,58 @@
+/**
+ * JWT Auth Strategy
+ * Phase 4.5.z.x - Task 02: Gateway Route Restructuring
+ * 
+ * Delegates JWT validation to the Auth Service instead of local verification
+ */
+
 import { FastifyRequest } from 'fastify';
 import { AuthStrategy } from './strategies';
 import { AuthContext } from './auth-context';
-import { UnauthorizedError } from '../../errors';
 
 export class JwtAuthStrategy extends AuthStrategy {
   name = 'jwt';
 
   async authenticate(request: FastifyRequest): Promise<AuthContext | null> {
+    const authHeader = request.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return null;
+    }
+
+    const token = authHeader.substring(7);
+
     try {
-      // Fastify JWT plugin attaches verification to request
-      // We need to handle the case where it might throw or return null
-      // But since we are inside a custom middleware, we might need to invoke it manually 
-      // or rely on previous decoration.
-      
-      // Let's assume request.jwtVerify() has been called or we call it here.
-      // However, request.jwtVerify() throws if invalid.
-      
-      // Check for Authorization header
-      if (!request.headers.authorization) {
+      // Delegate token validation to the auth service via the client
+      const authClient = (request.server as any).authClient;
+      if (!authClient) {
+        request.log.error('AuthServiceClient not available on server instance');
         return null;
       }
 
-      const decoded = await request.jwtVerify<{
-        sub: string;
-        tenantId: string;
-        permissions: string[];
-        roles: string[];
-      }>();
+      const result = await authClient.validateToken(token);
+
+      if (!result.valid || !result.payload) {
+        request.log.warn({ error: result.error }, 'JWT validation failed');
+        return null;
+      }
+
+      const payload = result.payload;
 
       return {
-        tenant_id: decoded.tenantId,
-        user_id: decoded.sub,
+        tenant_id: payload.tenant_id,
+        user_id: payload.user_id,
         auth_type: 'jwt',
-        permissions: decoded.permissions || [],
-        rate_limit_tier: 'business', // Should come from tenant details
-        metadata: { roles: decoded.roles },
+        permissions: payload.permissions || [],
+        rate_limit_tier: 'business', // Determined by tenant plan
+        metadata: {
+          email: payload.email,
+          session_id: payload.session_id,
+          external_id: payload.external_id,
+          exp: payload.exp,
+          token, // Store for context header propagation
+        },
       };
-    } catch (err) {
-      // Token present but invalid -> we might want to throw or return null
-      // If we return null, other strategies might try. 
-      // If we throw, it stops.
-      // Usually if Bearer token is present but invalid, it should fail immediately.
+    } catch (err: any) {
+      request.log.error({ error: err.message }, 'JWT auth strategy error');
       return null;
     }
   }

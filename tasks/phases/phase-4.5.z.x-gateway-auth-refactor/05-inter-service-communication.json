@@ -1,0 +1,303 @@
+{
+  "task_id": "phase-4.5.z.x-05",
+  "title": "Inter-Service Communication Optimization",
+  "phase": "4.5.z.x",
+  "category": "architecture",
+  "priority": "medium",
+  "estimated_hours": 4,
+  "dependencies": ["phase-4.5.z.x-02"],
+  "description": "Optimize inter-service communication so that once gateway validates a request, downstream services trust the context without re-validating tokens.",
+  "objectives": [
+    "Define trusted service communication pattern",
+    "Pass validated context via headers",
+    "Remove redundant auth checks in downstream services",
+    "Implement service-to-service authentication",
+    "Add request tracing for debugging"
+  ],
+  "subtasks": [
+    {
+      "id": "05.1",
+      "title": "Define Service Context Headers",
+      "description": "Define standard headers for passing validated context between services",
+      "implementation_details": {
+        "context_headers": {
+          "X-User-Id": "Internal user ID (UUID)",
+          "X-Tenant-Id": "Tenant ID (UUID)",
+          "X-External-Id": "External user ID from SAAS",
+          "X-Session-Id": "Session ID",
+          "X-Permissions": "Comma-separated permissions",
+          "X-Auth-Type": "api_key | jwt",
+          "X-Request-Id": "Correlation ID for tracing",
+          "X-Source-Service": "Name of calling service (gateway, socket, etc.)"
+        },
+        "security_headers": {
+          "X-Internal-Request": "true (marks as internal)",
+          "X-Service-Token": "Shared secret for service-to-service auth"
+        },
+        "usage": [
+          "Gateway validates token via auth service",
+          "Gateway extracts context from validation response",
+          "Gateway adds context headers to downstream requests",
+          "Downstream services trust these headers",
+          "No re-validation needed"
+        ]
+      }
+    },
+    {
+      "id": "05.2",
+      "title": "Implement Service Token Authentication",
+      "description": "Add shared secret authentication for service-to-service calls",
+      "files_to_create": [
+        "services/gateway/src/middleware/service-auth.ts",
+        "services/media-service/src/middleware/service-auth.ts",
+        "services/search-service/src/middleware/service-auth.ts"
+      ],
+      "implementation_details": {
+        "service_token": {
+          "generation": "Random 64-character string",
+          "storage": "Environment variable: SERVICE_SECRET",
+          "same_across_services": true,
+          "rotation": "Manual (update env and restart)"
+        },
+        "middleware_logic": [
+          "Check if request has X-Internal-Request: true header",
+          "If yes, validate X-Service-Token header",
+          "Compare with SERVICE_SECRET",
+          "If valid, extract context from headers",
+          "If invalid, reject with 401",
+          "If no internal header, treat as external request"
+        ],
+        "context_extraction": {
+          "user_id": "X-User-Id header",
+          "tenant_id": "X-Tenant-Id header",
+          "external_id": "X-External-Id header",
+          "session_id": "X-Session-Id header",
+          "permissions": "X-Permissions header (split by comma)",
+          "auth_type": "X-Auth-Type header"
+        }
+      }
+    },
+    {
+      "id": "05.3",
+      "title": "Update Gateway to Pass Context Headers",
+      "description": "Modify gateway to add context headers when forwarding to downstream services",
+      "files_to_modify": [
+        "services/gateway/src/services/media-client.ts",
+        "services/gateway/src/services/search-client.ts",
+        "services/gateway/src/services/messaging-client.ts"
+      ],
+      "implementation_details": {
+        "client_updates": [
+          "After auth validation, extract user context",
+          "Add context headers to all downstream requests",
+          "Add X-Internal-Request: true",
+          "Add X-Service-Token: SERVICE_SECRET",
+          "Add X-Request-Id for tracing",
+          "Add X-Source-Service: gateway"
+        ],
+        "example_code": {
+          "before": "await axios.post(url, data)",
+          "after": "await axios.post(url, data, { headers: { ...contextHeaders, 'X-Internal-Request': 'true', 'X-Service-Token': SERVICE_SECRET } })"
+        }
+      }
+    },
+    {
+      "id": "05.4",
+      "title": "Update Downstream Services to Trust Context",
+      "description": "Modify downstream services to trust context headers instead of validating tokens",
+      "files_to_modify": [
+        "services/media-service/src/middleware/auth.ts",
+        "services/search-service/src/middleware/auth.ts"
+      ],
+      "implementation_details": {
+        "auth_middleware_logic": [
+          "Check if X-Internal-Request header is present",
+          "If yes, validate X-Service-Token",
+          "If valid, extract context from headers",
+          "Attach context to request object",
+          "Skip token validation",
+          "If no internal header, validate token normally (for direct calls)"
+        ],
+        "dual_mode_support": {
+          "internal_calls": "Trust context headers (from gateway)",
+          "external_calls": "Validate token via auth service (direct API calls)",
+          "decision": "Based on X-Internal-Request header presence"
+        }
+      }
+    },
+    {
+      "id": "05.5",
+      "title": "Add Request Tracing",
+      "description": "Implement distributed tracing for debugging inter-service calls",
+      "files_to_modify": [
+        "services/gateway/src/middleware/correlation.middleware.ts",
+        "services/media-service/src/middleware/correlation.middleware.ts",
+        "services/search-service/src/middleware/correlation.middleware.ts",
+        "services/socket-service/src/middleware/correlation.middleware.ts"
+      ],
+      "implementation_details": {
+        "correlation_id": {
+          "generation": "UUID v4 at gateway entry point",
+          "propagation": "Via X-Request-Id header",
+          "logging": "Include in all log messages",
+          "response": "Return in X-Request-Id response header"
+        },
+        "trace_context": {
+          "request_id": "UUID",
+          "user_id": "string",
+          "tenant_id": "string",
+          "service_chain": "gateway -> media -> storage",
+          "timestamps": "Entry and exit times per service"
+        },
+        "logging_format": {
+          "level": "info",
+          "message": "Request processed",
+          "request_id": "uuid",
+          "user_id": "uuid",
+          "tenant_id": "uuid",
+          "service": "gateway",
+          "method": "POST",
+          "path": "/v1/media/upload",
+          "duration_ms": 150,
+          "status": 200
+        }
+      }
+    },
+    {
+      "id": "05.6",
+      "title": "Implement Service Health Checks",
+      "description": "Add health check endpoints that verify service-to-service connectivity",
+      "files_to_modify": [
+        "services/gateway/src/routes/internal/health.ts",
+        "services/media-service/src/routes/health.ts",
+        "services/search-service/src/routes/health.ts"
+      ],
+      "implementation_details": {
+        "health_check_endpoint": {
+          "path": "/health/dependencies",
+          "method": "GET",
+          "response": {
+            "status": "healthy | degraded | unhealthy",
+            "dependencies": {
+              "auth_service": {
+                "status": "healthy",
+                "latency_ms": 5,
+                "last_check": "2026-02-24T10:00:00Z"
+              },
+              "mongodb": {
+                "status": "healthy",
+                "latency_ms": 2
+              },
+              "redis": {
+                "status": "healthy",
+                "latency_ms": 1
+              }
+            }
+          }
+        },
+        "checks": [
+          "Auth service connectivity",
+          "Database connectivity",
+          "Redis connectivity",
+          "Downstream service connectivity"
+        ]
+      }
+    },
+    {
+      "id": "05.7",
+      "title": "Add Circuit Breaker for Service Calls",
+      "description": "Implement circuit breaker pattern for inter-service calls",
+      "files_to_modify": [
+        "services/gateway/src/utils/circuit-breaker.ts",
+        "services/gateway/src/services/media-client.ts",
+        "services/gateway/src/services/search-client.ts"
+      ],
+      "implementation_details": {
+        "circuit_breaker_config": {
+          "failure_threshold": "50% failure rate",
+          "reset_timeout": "30 seconds",
+          "monitoring_period": "10 seconds",
+          "half_open_requests": "3 (test requests before fully closing)"
+        },
+        "states": {
+          "closed": "Normal operation, requests pass through",
+          "open": "Too many failures, reject immediately",
+          "half_open": "Testing if service recovered"
+        },
+        "fallback_strategies": {
+          "media_service": "Return cached data or error",
+          "search_service": "Return empty results",
+          "auth_service": "Reject request (critical service)"
+        }
+      }
+    },
+    {
+      "id": "05.8",
+      "title": "Document Service Communication Patterns",
+      "description": "Create documentation for inter-service communication",
+      "files_to_create": [
+        "docs/architecture/inter-service-communication.md"
+      ],
+      "implementation_details": {
+        "documentation_sections": [
+          "Service communication overview",
+          "Context header specification",
+          "Service token authentication",
+          "Request tracing",
+          "Circuit breaker usage",
+          "Error handling patterns",
+          "Security considerations",
+          "Performance optimization tips"
+        ],
+        "diagrams": [
+          "Request flow: Client -> Gateway -> Service",
+          "Context propagation diagram",
+          "Circuit breaker state machine",
+          "Tracing flow across services"
+        ]
+      }
+    }
+  ],
+  "testing_requirements": [
+    "Unit tests for service auth middleware",
+    "Unit tests for context header extraction",
+    "Integration test for gateway -> media service call",
+    "Integration test for gateway -> search service call",
+    "Test service token validation",
+    "Test invalid service token rejection",
+    "Test request tracing across services",
+    "Test circuit breaker behavior",
+    "Load test for inter-service calls"
+  ],
+  "acceptance_criteria": [
+    "Gateway passes validated context to downstream services",
+    "Downstream services trust context headers",
+    "No redundant token validation",
+    "Service token authentication works",
+    "Request tracing works across services",
+    "Circuit breaker prevents cascading failures",
+    "All tests passing",
+    "Documentation complete"
+  ],
+  "performance_improvements": {
+    "before": "Each service validates token independently (3-5ms per service)",
+    "after": "Gateway validates once, services trust context (0ms validation)",
+    "estimated_improvement": "10-20ms reduction in request latency",
+    "reduced_load": "Auth service load reduced by 60-70%"
+  },
+  "security_considerations": [
+    "Service token must be kept secret",
+    "Only internal network should allow service-to-service calls",
+    "Use network policies in Kubernetes to restrict access",
+    "Rotate service token periodically",
+    "Monitor for unauthorized service token usage",
+    "Log all internal requests for audit"
+  ],
+  "notes": [
+    "This optimization significantly improves performance",
+    "Reduces load on auth service",
+    "Maintains security through service token",
+    "Enables better tracing and debugging",
+    "Follows microservices best practices"
+  ]
+}

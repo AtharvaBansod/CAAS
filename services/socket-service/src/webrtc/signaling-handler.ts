@@ -17,7 +17,7 @@ export class SignalingHandler {
         targetUserId: string,
         callId?: string
     ): Promise<void> {
-        const userId = socket.user?.user_id || socket.user?.sub;
+        const userId = socket.user?.user_id;
 
         // Validate SDP
         const errors = this.validateSdp(offer);
@@ -45,7 +45,7 @@ export class SignalingHandler {
         targetUserId: string,
         callId?: string
     ): Promise<void> {
-        const userId = socket.user?.user_id || socket.user?.sub;
+        const userId = socket.user?.user_id;
 
         // Validate SDP
         const errors = this.validateSdp(answer);
@@ -73,7 +73,7 @@ export class SignalingHandler {
         targetUserId: string,
         callId?: string
     ): Promise<void> {
-        const userId = socket.user?.user_id || socket.user?.sub;
+        const userId = socket.user?.user_id;
 
         // Validate ICE candidate
         const errors = this.validateIceCandidate(candidate);

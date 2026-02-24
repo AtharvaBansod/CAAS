@@ -1,0 +1,422 @@
+{
+  "task_id": "phase-4.5.z.x-02",
+  "title": "Gateway - Route Restructuring and Auth Integration",
+  "phase": "4.5.z.x",
+  "category": "gateway",
+  "priority": "critical",
+  "estimated_hours": 12,
+  "dependencies": ["phase-4.5.z.x-01"],
+  "description": "Restructure gateway routes to properly separate client-facing, SDK, and end-user routes. Integrate with auth service for all authentication needs.",
+  "objectives": [
+    "Remove token generation from gateway",
+    "Integrate auth service client for validation",
+    "Restructure routes into logical groups",
+    "Implement proper authentication middleware",
+    "Add IP and origin validation"
+  ],
+  "subtasks": [
+    {
+      "id": "02.1",
+      "title": "Remove Token Generation from Gateway",
+      "description": "Delete token-service.ts and remove all JWT generation logic from gateway",
+      "files_to_modify": [
+        "services/gateway/src/services/token-service.ts"
+      ],
+      "files_to_delete": [
+        "services/gateway/src/services/token-service.ts"
+      ],
+      "implementation_details": {
+        "steps": [
+          "Remove token-service.ts file",
+          "Remove imports of tokenService from all files",
+          "Remove JWT generation logic from routes",
+          "Update routes to use auth service client instead"
+        ],
+        "affected_files": [
+          "services/gateway/src/routes/v1/auth/sdk-auth.ts",
+          "services/gateway/src/routes/v1/auth/refresh.ts",
+          "services/gateway/src/middleware/auth/jwt-auth.ts"
+        ]
+      }
+    },
+    {
+      "id": "02.2",
+      "title": "Enhance Auth Service Client",
+      "description": "Extend auth-client.ts with new endpoints for API key validation and SDK session creation",
+      "files_to_modify": [
+        "services/gateway/src/clients/auth-client.ts"
+      ],
+      "implementation_details": {
+        "new_methods": [
+          {
+            "name": "validateApiKey",
+            "signature": "async validateApiKey(apiKey: string, ipAddress: string): Promise<ClientContext>",
+            "description": "Validate API key and return client context",
+            "endpoint": "POST /api/v1/auth/internal/validate-api-key",
+            "caching": "Cache valid keys in Redis for 5 minutes"
+          },
+          {
+            "name": "createSdkSession",
+            "signature": "async createSdkSession(apiKey: string, request: SdkSessionRequest): Promise<SdkSessionResponse>",
+            "description": "Create end-user session via SDK",
+            "endpoint": "POST /api/v1/auth/sdk/session",
+            "headers": {
+              "X-API-Key": "apiKey"
+            }
+          },
+          {
+            "name": "validateTokenInternal",
+            "signature": "async validateTokenInternal(token: string): Promise<TokenValidationResponse>",
+            "description": "Validate JWT token (internal use)",
+            "endpoint": "POST /api/v1/auth/internal/validate",
+            "caching": "Cache valid tokens in Redis for 1 minute"
+          }
+        ],
+        "types_to_add": {
+          "ClientContext": {
+            "client_id": "string",
+            "tenant_id": "string",
+            "plan": "string",
+            "permissions": "string[]",
+            "rate_limit_tier": "string"
+          },
+          "SdkSessionRequest": {
+            "user_external_id": "string",
+            "user_data": "object",
+            "device_info": "object"
+          },
+          "SdkSessionResponse": {
+            "access_token": "string",
+            "refresh_token": "string",
+            "expires_in": "number",
+            "token_type": "string",
+            "user": "object",
+            "socket_urls": "string[]"
+          },
+          "TokenValidationResponse": {
+            "valid": "boolean",
+            "payload": "object",
+            "error": "string"
+          }
+        }
+      }
+    },
+    {
+      "id": "02.3",
+      "title": "Refactor Authentication Middleware",
+      "description": "Update auth middleware to use auth service for validation",
+      "files_to_modify": [
+        "services/gateway/src/middleware/auth/api-key-auth.ts",
+        "services/gateway/src/middleware/auth/jwt-auth.ts",
+        "services/gateway/src/middleware/auth/index.ts"
+      ],
+      "implementation_details": {
+        "api_key_auth_strategy": {
+          "file": "services/gateway/src/middleware/auth/api-key-auth.ts",
+          "changes": [
+            "Remove local tenant lookup",
+            "Call authServiceClient.validateApiKey()",
+            "Extract IP from request (handle X-Forwarded-For)",
+            "Return AuthContext with client info",
+            "Cache result in request object"
+          ],
+          "code_example": "const clientContext = await authServiceClient.validateApiKey(apiKey, clientIp);"
+        },
+        "jwt_auth_strategy": {
+          "file": "services/gateway/src/middleware/auth/jwt-auth.ts",
+          "changes": [
+            "Remove local JWT verification",
+            "Call authServiceClient.validateTokenInternal()",
+            "Return AuthContext with user info",
+            "Handle token expiration gracefully"
+          ],
+          "code_example": "const validation = await authServiceClient.validateTokenInternal(token);"
+        },
+        "middleware_index": {
+          "file": "services/gateway/src/middleware/auth/index.ts",
+          "changes": [
+            "Inject authServiceClient into strategies",
+            "Update error handling",
+            "Add correlation ID to auth requests"
+          ]
+        }
+      }
+    },
+    {
+      "id": "02.4",
+      "title": "Add IP Whitelist Middleware",
+      "description": "Create middleware to validate IP addresses against whitelist for API key requests",
+      "files_to_create": [
+        "services/gateway/src/middleware/security/ip-whitelist-validator.ts"
+      ],
+      "implementation_details": {
+        "middleware_logic": [
+          "Extract client IP from request (X-Forwarded-For, X-Real-IP, or socket)",
+          "Get tenant_id from auth context",
+          "Fetch IP whitelist from Redis (cache from auth service)",
+          "Validate IP against whitelist (support CIDR notation)",
+          "If no whitelist configured, allow (for development)",
+          "If whitelist exists and IP not in list, reject with 403",
+          "Log all IP validation attempts"
+        ],
+        "usage": "Apply to routes that use API key authentication",
+        "configuration": {
+          "enabled": "boolean (env: IP_WHITELIST_ENABLED)",
+          "strict_mode": "boolean (reject if no whitelist configured)",
+          "cache_ttl": "number (seconds, default: 300)"
+        }
+      }
+    },
+    {
+      "id": "02.5",
+      "title": "Add Origin Validation Middleware",
+      "description": "Create middleware to validate Origin header for JWT requests",
+      "files_to_create": [
+        "services/gateway/src/middleware/security/origin-validator.ts"
+      ],
+      "implementation_details": {
+        "middleware_logic": [
+          "Extract Origin header from request",
+          "Get tenant_id from auth context",
+          "Fetch origin whitelist from Redis",
+          "Validate origin against whitelist",
+          "If no whitelist configured, allow (for development)",
+          "If whitelist exists and origin not in list, reject with 403",
+          "Log all origin validation attempts"
+        ],
+        "usage": "Apply to routes that use JWT authentication",
+        "configuration": {
+          "enabled": "boolean (env: ORIGIN_VALIDATION_ENABLED)",
+          "strict_mode": "boolean",
+          "cache_ttl": "number (seconds, default: 300)"
+        }
+      }
+    },
+    {
+      "id": "02.6",
+      "title": "Restructure Route Groups",
+      "description": "Organize routes into logical groups: client, sdk, and user",
+      "files_to_modify": [
+        "services/gateway/src/routes/v1/index.ts"
+      ],
+      "files_to_create": [
+        "services/gateway/src/routes/v1/client/index.ts",
+        "services/gateway/src/routes/v1/client/register.ts",
+        "services/gateway/src/routes/v1/client/login.ts",
+        "services/gateway/src/routes/v1/client/profile.ts",
+        "services/gateway/src/routes/v1/sdk/index.ts",
+        "services/gateway/src/routes/v1/sdk/session.ts",
+        "services/gateway/src/routes/v1/sdk/refresh.ts",
+        "services/gateway/src/routes/v1/user/index.ts"
+      ],
+      "implementation_details": {
+        "route_structure": {
+          "/v1/client/*": {
+            "description": "Client-facing routes for SAAS company dashboard (future)",
+            "authentication": "Session-based (future implementation)",
+            "routes": [
+              "POST /v1/client/register - Register new SAAS client",
+              "POST /v1/client/login - Dashboard login",
+              "GET /v1/client/profile - Get client profile",
+              "PUT /v1/client/settings - Update settings",
+              "GET /v1/client/api-keys - List API keys",
+              "POST /v1/client/api-keys/rotate - Rotate API keys",
+              "GET /v1/client/ip-whitelist - Get IP whitelist",
+              "POST /v1/client/ip-whitelist - Add IP to whitelist",
+              "GET /v1/client/origin-whitelist - Get origin whitelist",
+              "POST /v1/client/origin-whitelist - Add origin"
+            ],
+            "middleware": ["sessionAuth (future)", "clientContext"]
+          },
+          "/v1/sdk/*": {
+            "description": "SDK routes for SAAS backend to create end-user sessions",
+            "authentication": "API Key (X-API-Key header)",
+            "routes": [
+              "POST /v1/sdk/session - Create end-user session",
+              "POST /v1/sdk/refresh - Refresh end-user token",
+              "POST /v1/sdk/logout - Logout end-user",
+              "POST /v1/sdk/validate - Validate token (for SAAS backend)"
+            ],
+            "middleware": ["apiKeyAuth", "ipWhitelistValidator", "rateLimitByTier"]
+          },
+          "/v1/user/*": {
+            "description": "End-user routes (authenticated with JWT)",
+            "authentication": "JWT Bearer token",
+            "routes": [
+              "GET /v1/conversations - List conversations",
+              "POST /v1/conversations - Create conversation",
+              "GET /v1/messages - List messages",
+              "POST /v1/messages - Send message",
+              "POST /v1/media/upload - Upload file",
+              "GET /v1/search - Search messages",
+              "GET /v1/profile - Get user profile",
+              "PUT /v1/profile - Update user profile"
+            ],
+            "middleware": ["jwtAuth", "originValidator", "tenantIsolation", "rateLimitByUser"]
+          }
+        }
+      }
+    },
+    {
+      "id": "02.7",
+      "title": "Implement SDK Session Route",
+      "description": "Create new SDK session route that delegates to auth service",
+      "files_to_modify": [
+        "services/gateway/src/routes/v1/sdk/session.ts"
+      ],
+      "implementation_details": {
+        "endpoint": "POST /v1/sdk/session",
+        "authentication": "API Key (validated by middleware)",
+        "request_body": {
+          "user_external_id": "string (required)",
+          "user_data": {
+            "name": "string",
+            "email": "string",
+            "avatar": "string",
+            "metadata": "object"
+          },
+          "device_info": {
+            "device_id": "string",
+            "device_type": "string",
+            "user_agent": "string"
+          }
+        },
+        "response": {
+          "access_token": "string",
+          "refresh_token": "string",
+          "expires_in": "number",
+          "token_type": "Bearer",
+          "user": "object",
+          "socket_urls": "string[]"
+        },
+        "logic": [
+          "Extract API key from request (already validated by middleware)",
+          "Extract client IP",
+          "Call authServiceClient.createSdkSession()",
+          "Return response from auth service",
+          "Log session creation event"
+        ],
+        "error_handling": [
+          "400 - Invalid request body",
+          "401 - Invalid API key",
+          "403 - IP not whitelisted",
+          "429 - Rate limit exceeded",
+          "500 - Auth service error"
+        ]
+      }
+    },
+    {
+      "id": "02.8",
+      "title": "Update Existing Routes to Use New Auth",
+      "description": "Update all existing routes to use new authentication flow",
+      "files_to_modify": [
+        "services/gateway/src/routes/v1/conversations/*.ts",
+        "services/gateway/src/routes/v1/messages/*.ts",
+        "services/gateway/src/routes/v1/media/*.ts",
+        "services/gateway/src/routes/v1/search/*.ts"
+      ],
+      "implementation_details": {
+        "changes": [
+          "Remove old auth decorators",
+          "Add new middleware: jwtAuth, originValidator, tenantIsolation",
+          "Update request.user to use new AuthContext structure",
+          "Ensure tenant_id is always present",
+          "Add proper error handling for auth failures"
+        ],
+        "example_route": {
+          "before": "fastify.get('/conversations', { preHandler: [requireAuth] }, handler)",
+          "after": "fastify.get('/conversations', { preHandler: [jwtAuth, originValidator, tenantIsolation] }, handler)"
+        }
+      }
+    },
+    {
+      "id": "02.9",
+      "title": "Add Client Registration Route (Placeholder)",
+      "description": "Add placeholder route for client registration (will be used by client-facing UI)",
+      "files_to_create": [
+        "services/gateway/src/routes/v1/client/register.ts"
+      ],
+      "implementation_details": {
+        "endpoint": "POST /v1/client/register",
+        "authentication": "None (public endpoint)",
+        "request_body": {
+          "company_name": "string",
+          "email": "string",
+          "password": "string",
+          "plan": "free | business | enterprise"
+        },
+        "response": {
+          "client_id": "string",
+          "tenant_id": "string",
+          "api_key": "string",
+          "message": "Registration successful. Check your email for verification."
+        },
+        "logic": [
+          "Validate request body",
+          "Call authServiceClient.registerClient()",
+          "Send verification email (future)",
+          "Return response",
+          "Log registration event"
+        ],
+        "note": "This is a placeholder for future client-facing UI. Currently returns success for testing."
+      }
+    },
+    {
+      "id": "02.10",
+      "title": "Update Rate Limiting by Auth Type",
+      "description": "Implement different rate limits for API key vs JWT requests",
+      "files_to_modify": [
+        "services/gateway/src/middleware/rate-limit/tiers.ts",
+        "services/gateway/src/middleware/rate-limit/index.ts"
+      ],
+      "implementation_details": {
+        "rate_limit_tiers": {
+          "api_key": {
+            "free": "100 requests/minute",
+            "business": "1000 requests/minute",
+            "enterprise": "10000 requests/minute"
+          },
+          "jwt": {
+            "per_user": "60 requests/minute",
+            "per_tenant": "1000 requests/minute"
+          }
+        },
+        "logic": [
+          "Determine auth type from request context",
+          "Apply appropriate rate limit tier",
+          "Use Redis for distributed rate limiting",
+          "Return 429 with Retry-After header if exceeded"
+        ]
+      }
+    }
+  ],
+  "testing_requirements": [
+    "Unit tests for all new middleware",
+    "Unit tests for auth service client methods",
+    "Integration tests for SDK session creation",
+    "Integration tests for JWT validation",
+    "Integration tests for IP whitelist validation",
+    "Integration tests for origin validation",
+    "E2E test for complete SDK auth flow",
+    "E2E test for end-user request flow",
+    "Load test for rate limiting"
+  ],
+  "acceptance_criteria": [
+    "Gateway never generates tokens",
+    "All authentication goes through auth service",
+    "IP whitelist validation works correctly",
+    "Origin validation works correctly",
+    "Routes are properly organized",
+    "Rate limiting works by auth type",
+    "All tests passing",
+    "Documentation updated"
+  ],
+  "notes": [
+    "This task removes all token generation from gateway",
+    "Gateway becomes a smart proxy that validates via auth service",
+    "Proper separation of concerns between client, SDK, and user routes",
+    "IP whitelist for server-to-server (API key)",
+    "Origin validation for client-to-server (JWT)",
+    "Use feature flags to enable/disable new auth flow during migration"
+  ]
+}

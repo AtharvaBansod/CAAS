@@ -59,22 +59,27 @@ export class SocketHealthChecker {
   }
 
   checkMemoryUsage(): HealthStatus {
-    const usage = process.memoryUsage();
-    const heapUsedMB = usage.heapUsed / 1024 / 1024;
-    const heapTotalMB = usage.heapTotal / 1024 / 1024;
-    const usagePercent = (heapUsedMB / heapTotalMB) * 100;
+    const memory = process.memoryUsage();
+    const heapUsedMB = memory.heapUsed / 1024 / 1024;
 
-    if (usagePercent > 95) {
+    // Get V8 heap statistics to find the actual limit
+    const v8 = require('v8');
+    const heapStats = v8.getHeapStatistics();
+    const heapLimitMB = heapStats.heap_size_limit / 1024 / 1024;
+
+    const usagePercent = (heapUsedMB / heapLimitMB) * 100;
+
+    if (usagePercent > 90) {
       return {
         status: 'unhealthy',
-        message: `Memory usage critical: ${usagePercent.toFixed(1)}%`,
+        message: `Memory usage critical: ${usagePercent.toFixed(1)}% of ${Math.round(heapLimitMB)}MB limit`,
       };
     }
 
-    if (usagePercent > 85) {
+    if (usagePercent > 80) {
       return {
         status: 'degraded',
-        message: `Memory usage high: ${usagePercent.toFixed(1)}%`,
+        message: `Memory usage high: ${usagePercent.toFixed(1)}% of ${Math.round(heapLimitMB)}MB limit`,
       };
     }
 

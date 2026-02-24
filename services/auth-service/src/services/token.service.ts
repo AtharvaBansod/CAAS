@@ -1,40 +1,27 @@
 /**
  * Token Service
- * Wraps existing JWT functionality
+ * Phase 4.5.z.x - Task 04: Public Key Infrastructure Removal
+ * 
+ * Refactored to use JWT_SECRET (HMAC HS256) instead of RSA public/private keys
+ * The auth service is the single source of truth - no key distribution needed
  */
 
 import jwt from 'jsonwebtoken';
-import fs from 'fs';
 import { config } from '../config/config';
 import { User } from './auth.service';
 import { v4 as uuidv4 } from 'uuid';
 
 export class TokenService {
-  private privateKey: string | null = null;
-  private publicKey: string | null = null;
+  private jwtSecret: string;
 
   constructor() {
-    this.loadKeys();
-  }
-
-  private loadKeys() {
-    try {
-      if (fs.existsSync(config.jwt.privateKeyPath)) {
-        this.privateKey = fs.readFileSync(config.jwt.privateKeyPath, 'utf8');
-      }
-      if (fs.existsSync(config.jwt.publicKeyPath)) {
-        this.publicKey = fs.readFileSync(config.jwt.publicKeyPath, 'utf8');
-      }
-    } catch (error) {
-      console.error('Failed to load JWT keys:', error);
+    this.jwtSecret = config.jwt.secret;
+    if (!this.jwtSecret) {
+      throw new Error('JWT_SECRET not configured');
     }
   }
 
-  async generateTokenPair(user: User, session: any) {
-    if (!this.privateKey) {
-      throw new Error('JWT private key not loaded');
-    }
-
+  async generateTokenPair(user: User & { external_id?: string }, session: any) {
     const jti = uuidv4();
     const now = Math.floor(Date.now() / 1000);
 
@@ -43,6 +30,7 @@ export class TokenService {
       user_id: user.user_id,
       tenant_id: user.tenant_id,
       email: user.email,
+      external_id: (user as any).external_id,
       session_id: session.session_id,
       type: 'access',
       iat: now,
@@ -61,12 +49,12 @@ export class TokenService {
       iss: config.jwt.issuer,
     };
 
-    const access_token = jwt.sign(accessTokenPayload, this.privateKey, {
-      algorithm: config.jwt.algorithm,
+    const access_token = jwt.sign(accessTokenPayload, this.jwtSecret, {
+      algorithm: 'HS256',
     });
 
-    const refresh_token = jwt.sign(refreshTokenPayload, this.privateKey, {
-      algorithm: config.jwt.algorithm,
+    const refresh_token = jwt.sign(refreshTokenPayload, this.jwtSecret, {
+      algorithm: 'HS256',
     });
 
     return {
@@ -78,13 +66,9 @@ export class TokenService {
   }
 
   async validateToken(token: string): Promise<any> {
-    if (!this.publicKey) {
-      throw new Error('JWT public key not loaded');
-    }
-
     try {
-      const payload = jwt.verify(token, this.publicKey, {
-        algorithms: [config.jwt.algorithm],
+      const payload = jwt.verify(token, this.jwtSecret, {
+        algorithms: ['HS256'],
         issuer: config.jwt.issuer,
       });
 
@@ -92,11 +76,12 @@ export class TokenService {
     } catch (error: any) {
       if (config.jwt.allowExternalIssuer) {
         try {
-          // Compatibility mode: accept tokens signed by trusted keypair even if issuer differs
-          return jwt.verify(token, this.publicKey, {
-            algorithms: [config.jwt.algorithm],
+          // Compatibility mode: accept tokens with different issuer during migration
+          return jwt.verify(token, this.jwtSecret, {
+            algorithms: ['HS256'],
           });
         } catch {
+          // Fall through to throw
         }
       }
 

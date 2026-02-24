@@ -18,8 +18,9 @@ services:
       - MONGODB_URI=${MONGODB_URI}
       - REDIS_URL=${REDIS_URL}
       - KAFKA_BROKERS=${KAFKA_BROKERS}
-      - JWT_PRIVATE_KEY=${JWT_PRIVATE_KEY}
-      - JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY}
+      # Phase 4.5.z.x: Auth Service replaces JWT keys
+      - AUTH_SERVICE_URL=${AUTH_SERVICE_URL:-http://auth-service:3001}
+      - SERVICE_SECRET=${SERVICE_SECRET:-dev-service-secret}
       - CORS_ORIGINS=${CORS_ORIGINS}
     volumes:
       - ./:/app

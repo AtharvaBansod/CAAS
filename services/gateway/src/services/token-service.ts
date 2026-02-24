@@ -1,43 +1,56 @@
-import { signJwt, verifyJwt } from '../utils/jwt-helpers';
-import { generateRandomString } from '../utils/crypto';
-
-interface TokenPayload {
-  sub: string; // user_id
-  tenant_id: string;
-  scope?: string;
-  [key: string]: any;
-}
+/**
+ * Token Service
+ * Phase 4.5.z.x - Task 04: Public Key Infrastructure Removal
+ * 
+ * DEPRECATED: Gateway no longer generates or validates tokens locally.
+ * All token operations are delegated to the Auth Service.
+ * This file is kept for backward compatibility during migration.
+ */
 
 export class TokenService {
-  private readonly refreshTokens = new Map<string, any>(); // Mock storage
-
-  generateAccessToken(payload: TokenPayload): string {
-    return signJwt(payload, { expiresIn: '15m' });
+  /**
+   * @deprecated Use AuthServiceClient via gateway's auth middleware
+   */
+  generateAccessToken(_payload: any): string {
+    throw new Error(
+      'Gateway token generation is deprecated. Use Auth Service for token generation.'
+    );
   }
 
-  generateRefreshToken(userId: string): string {
-    const token = generateRandomString(40);
-    // Store in Redis/DB with expiry
-    this.refreshTokens.set(token, { userId, expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000 });
-    return token;
+  /**
+   * @deprecated Use AuthServiceClient via gateway's auth middleware
+   */
+  generateRefreshToken(_userId: string): string {
+    throw new Error(
+      'Gateway token generation is deprecated. Use Auth Service for token generation.'
+    );
   }
 
-  validateToken(token: string): TokenPayload {
-    return verifyJwt<TokenPayload>(token);
+  /**
+   * @deprecated Use AuthServiceClient.validateToken() instead
+   */
+  validateToken(_token: string): any {
+    throw new Error(
+      'Gateway token validation is deprecated. Use Auth Service for token validation.'
+    );
   }
 
-  async validateRefreshToken(token: string): Promise<string | null> {
-    const data = this.refreshTokens.get(token);
-    if (!data) return null;
-    if (Date.now() > data.expiresAt) {
-      this.refreshTokens.delete(token);
-      return null;
-    }
-    return data.userId;
+  /**
+   * @deprecated Use AuthServiceClient.refreshToken() instead
+   */
+  async validateRefreshToken(_token: string): Promise<string | null> {
+    throw new Error(
+      'Gateway refresh token validation is deprecated. Use Auth Service.'
+    );
   }
 
-  async revokeRefreshToken(token: string): Promise<void> {
-    this.refreshTokens.delete(token);
+  /**
+   * @deprecated Use AuthServiceClient.logout() instead
+   */
+  async revokeRefreshToken(_token: string): Promise<void> {
+    throw new Error(
+      'Gateway token revocation is deprecated. Use Auth Service.'
+    );
   }
 }
 

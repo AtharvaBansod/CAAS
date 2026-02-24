@@ -1,7 +1,14 @@
+/**
+ * API Key Auth Strategy
+ * Phase 4.5.z.x - Task 02: Gateway Route Restructuring
+ * 
+ * Delegates API key validation to the Auth Service
+ * Includes IP whitelist checking via the auth service
+ */
+
 import { FastifyRequest } from 'fastify';
 import { AuthStrategy } from './strategies';
 import { AuthContext } from './auth-context';
-import { tenantService } from '../../services/tenant-service';
 
 export class ApiKeyAuthStrategy extends AuthStrategy {
   name = 'api_key';
@@ -13,18 +20,37 @@ export class ApiKeyAuthStrategy extends AuthStrategy {
       return null;
     }
 
-    const tenant = await tenantService.getTenantByApiKey(apiKey);
+    try {
+      // Delegate API key validation to the auth service
+      const authClient = (request.server as any).authClient;
+      if (!authClient) {
+        request.log.error('AuthServiceClient not available on server instance');
+        return null;
+      }
 
-    if (tenant) {
+      const clientIp = request.ip;
+      const result = await authClient.validateApiKey(apiKey, clientIp);
+
+      if (!result.valid || !result.client) {
+        request.log.warn({ error: result.error }, 'API key validation failed');
+        return null;
+      }
+
       return {
-        tenant_id: tenant.tenant_id,
+        tenant_id: result.client.tenant_id,
         auth_type: 'api_key',
-        permissions: ['*'], // In real app, we'd fetch specific permissions for this key
-        rate_limit_tier: tenant.plan === 'enterprise' ? 'enterprise' : 'business',
-        metadata: { source: 'api_key' },
+        permissions: result.client.permissions || ['*'],
+        rate_limit_tier: result.client.rate_limit_tier || 'business',
+        metadata: {
+          client_id: result.client.client_id,
+          plan: result.client.plan,
+          source: 'api_key',
+          api_key: apiKey, // Store for proxying to downstream
+        },
       };
+    } catch (err: any) {
+      request.log.error({ error: err.message }, 'API key auth strategy error');
+      return null;
     }
-
-    return null;
   }
 }

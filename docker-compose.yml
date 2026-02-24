@@ -415,17 +415,17 @@ services:
       - REDIS_PASSWORD=${REDIS_PASSWORD:-caas_redis_2026}
       - REDIS_DB=0
       - KAFKA_BROKERS=kafka-1:29092,kafka-2:29092,kafka-3:29092
-      - JWT_PRIVATE_KEY_PATH=/app/keys/private.pem
-      - JWT_PUBLIC_KEY_PATH=/app/keys/public.pem
-      - JWT_ALGORITHM=RS256
+      # Phase 4.5.z.x: JWT_SECRET replaces RSA key files
+      - JWT_SECRET=${JWT_SECRET:-change_this_in_production_please}
       - JWT_ACCESS_TOKEN_EXPIRY=900
       - JWT_REFRESH_TOKEN_EXPIRY=604800
       - JWT_ISSUER=caas-auth-service
+      - SERVICE_SECRET=${SERVICE_SECRET:-dev-service-secret}
       - SESSION_TTL_SECONDS=86400
       - MAX_SESSIONS_PER_USER=10
       - COMPLIANCE_SERVICE_URL=http://compliance-service:3008
       - CORS_ORIGINS=http://gateway:3000,http://localhost:3000
-      - RATE_LIMIT_MAX=100
+      - RATE_LIMIT_MAX=10000
       - RATE_LIMIT_WINDOW_MS=900000
     networks:
       caas-network:
@@ -437,8 +437,6 @@ services:
         condition: service_healthy
       kafka-1:
         condition: service_healthy
-    volumes:
-      - ./keys:/app/keys:ro
     healthcheck:
       test: ["CMD", "node", "-e", "const http = require('http'); http.get('http://127.0.0.1:3001/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"]
       interval: 30s
@@ -551,8 +549,8 @@ services:
       - REDIS_DB=0
       - KAFKA_BROKERS=kafka-1:29092,kafka-2:29092,kafka-3:29092
       - JWT_SECRET=${JWT_SECRET:-change_this_in_production_please}
-      - JWT_PRIVATE_KEY=${JWT_PRIVATE_KEY}
-      - JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY}
+      # Phase 4.5.z.x: Service secret for inter-service communication
+      - SERVICE_SECRET=${SERVICE_SECRET:-dev-service-secret}
       - CORS_ORIGINS=${CORS_ORIGINS:-*}
       - ELASTICSEARCH_URL=http://elasticsearch:9200
       - ELASTICSEARCH_PASSWORD=${ELASTICSEARCH_PASSWORD:-changeme}
@@ -588,13 +586,7 @@ services:
       retries: 3
       start_period: 40s
     restart: unless-stopped
-    command: >
-      sh -c "
-      mkdir -p keys;
-      if [ ! -z \"$JWT_PRIVATE_KEY\" ]; then echo \"$JWT_PRIVATE_KEY\" > keys/private.pem; fi;
-      if [ ! -z \"$JWT_PUBLIC_KEY\" ]; then echo \"$JWT_PUBLIC_KEY\" > keys/public.pem; fi;
-      node dist/src/main.js
-      "
+    command: node dist/src/main.js
 
   # ============================================
   # DEVELOPMENT & MONITORING TOOLS
@@ -674,7 +666,9 @@ services:
       - INSTANCE_ID=socket-1
       - COMPLIANCE_SERVICE_URL=http://compliance-service:3008
       - JWT_SECRET=${JWT_SECRET:-change_this_in_production_please}
-      - JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY}
+      # Phase 4.5.z.x: Auth service integration
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - SERVICE_SECRET=${SERVICE_SECRET:-dev-service-secret}
     depends_on:
       redis-socket:
         condition: service_healthy
@@ -709,7 +703,9 @@ services:
       - INSTANCE_ID=socket-2
       - COMPLIANCE_SERVICE_URL=http://compliance-service:3008
       - JWT_SECRET=${JWT_SECRET:-change_this_in_production_please}
-      - JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY}
+      # Phase 4.5.z.x: Auth service integration
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - SERVICE_SECRET=${SERVICE_SECRET:-dev-service-secret}
     depends_on:
       redis-socket:
         condition: service_healthy
@@ -853,7 +849,8 @@ services:
       - MONGODB_URI=mongodb://${MONGO_ROOT_USER:-caas_admin}:${MONGO_ROOT_PASSWORD:-caas_secret_2026}@mongodb-primary:27017/caas_platform?authSource=admin&replicaSet=caas-rs
       - REDIS_URL=redis://:${REDIS_PASSWORD:-caas_redis_2026}@redis-shared:6379/0
       - KAFKA_BROKERS=kafka-1:29092,kafka-2:29092,kafka-3:29092
-      - JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY}
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - SERVICE_SECRET=${SERVICE_SECRET:-dev-service-secret}
       - COMPLIANCE_SERVICE_URL=http://compliance-service:3008
       - S3_ENDPOINT=http://minio:9000
       - S3_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}

@@ -1,8 +1,9 @@
 /**
  * Auth Service Client
- * Phase 4.5.0 - Task 03: Gateway Auth Client Integration
+ * Phase 4.5.z.x - Task 02: Gateway Auth Client Enhanced
  * 
  * HTTP client for communicating with standalone auth service
+ * Now includes internal validation endpoints and API key validation
  */
 
 import axios, { AxiosInstance, AxiosError } from 'axios';
@@ -11,6 +12,7 @@ import Redis from 'ioredis';
 
 export interface AuthClientConfig {
   baseURL: string;
+  serviceSecret?: string;
   timeout?: number;
   retries?: number;
   circuitBreaker?: {
@@ -51,8 +53,28 @@ export interface ValidateTokenRequest {
 
 export interface ValidateTokenResponse {
   valid: boolean;
-  payload?: any;
+  payload?: {
+    user_id: string;
+    tenant_id: string;
+    external_id?: string;
+    permissions: string[];
+    session_id?: string;
+    exp: number;
+    email?: string;
+  };
   session?: any;
+  error?: string;
+}
+
+export interface ValidateApiKeyResponse {
+  valid: boolean;
+  client?: {
+    client_id: string;
+    tenant_id: string;
+    plan: string;
+    permissions: string[];
+    rate_limit_tier: string;
+  };
   error?: string;
 }
 
@@ -69,6 +91,34 @@ export interface SessionInfo {
   expires_at: string;
 }
 
+export interface SdkSessionRequest {
+  user_external_id: string;
+  user_data?: {
+    name?: string;
+    email?: string;
+    avatar?: string;
+    metadata?: Record<string, any>;
+  };
+  device_info?: {
+    device_id?: string;
+    device_type?: 'web' | 'mobile' | 'desktop';
+    user_agent?: string;
+  };
+}
+
+export interface SdkSessionResponse {
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+  token_type: string;
+  user: {
+    user_id: string;
+    external_id: string;
+    tenant_id: string;
+  };
+  socket_urls: string[];
+}
+
 export class AuthServiceClient {
   private client: AxiosInstance;
   private circuitBreaker: CircuitBreaker;
@@ -79,12 +129,19 @@ export class AuthServiceClient {
     this.config = config;
     this.redis = redis;
 
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    // Add service secret for service-to-service auth
+    if (config.serviceSecret) {
+      headers['X-Service-Secret'] = config.serviceSecret;
+    }
+
     this.client = axios.create({
       baseURL: config.baseURL,
       timeout: config.timeout || 5000,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
     });
 
     // Setup circuit breaker
@@ -109,13 +166,13 @@ export class AuthServiceClient {
       (response) => response,
       async (error: AxiosError) => {
         const config = error.config as any;
-        
+
         if (!config || !config.retry) {
           config.retry = 0;
         }
 
         const maxRetries = this.config.retries || 3;
-        
+
         if (config.retry < maxRetries && this.shouldRetry(error)) {
           config.retry += 1;
           await this.delay(Math.pow(2, config.retry) * 100);
@@ -149,15 +206,19 @@ export class AuthServiceClient {
     }
   }
 
-  private async setCache(key: string, value: any): Promise<void> {
+  private async setCache(key: string, value: any, ttl?: number): Promise<void> {
     if (!this.redis || !this.config.cache) return;
 
     try {
-      await this.redis.setex(
-        `${this.config.cache.keyPrefix}${key}`,
-        this.config.cache.ttl,
-        JSON.stringify(value)
-      );
+      const cacheKey = `${this.config.cache.keyPrefix}${key}`;
+      const expiration = ttl || this.config.cache.ttl;
+      const data = JSON.stringify(value);
+
+      if (typeof (this.redis as any).setex === 'function') {
+        await (this.redis as any).setex(cacheKey, expiration, data);
+      } else if (typeof (this.redis as any).set === 'function') {
+        await (this.redis as any).set(cacheKey, data, 'EX', expiration);
+      }
     } catch (error) {
       console.error('Cache set error:', error);
     }
@@ -173,51 +234,11 @@ export class AuthServiceClient {
     }
   }
 
+  // ─── User Authentication (Login/Logout) ───
+
   async login(request: LoginRequest): Promise<LoginResponse> {
     return this.circuitBreaker.execute(async () => {
       const response = await this.client.post<LoginResponse>('/api/v1/auth/login', request);
-      return response.data;
-    });
-  }
-
-  async validateToken(token: string): Promise<ValidateTokenResponse> {
-    // Check cache first
-    const cacheKey = `validate:${token}`;
-    const cached = await this.getCached<ValidateTokenResponse>(cacheKey);
-    if (cached) {
-      return cached;
-    }
-
-    return this.circuitBreaker.execute(async () => {
-      try {
-        const response = await this.client.post<ValidateTokenResponse>(
-          '/api/v1/auth/validate',
-          { token }
-        );
-
-        // Cache successful validation
-        if (response.data.valid) {
-          await this.setCache(cacheKey, response.data);
-        }
-
-        return response.data;
-      } catch (error: any) {
-        if (error.response?.status === 401) {
-          return {
-            valid: false,
-            error: error.response.data?.error || 'Invalid token',
-          };
-        }
-        throw error;
-      }
-    });
-  }
-
-  async refreshToken(refreshToken: string): Promise<LoginResponse> {
-    return this.circuitBreaker.execute(async () => {
-      const response = await this.client.post<LoginResponse>('/api/v1/auth/refresh', {
-        refresh_token: refreshToken,
-      });
       return response.data;
     });
   }
@@ -238,6 +259,116 @@ export class AuthServiceClient {
       await this.deleteCache(`validate:${token}`);
     });
   }
+
+  // ─── Internal Validation (Phase 4.5.z.x) ───
+
+  /**
+   * Validate JWT token via internal endpoint
+   * This is the primary token validation method for the gateway
+   */
+  async validateToken(token: string): Promise<ValidateTokenResponse> {
+    // Check cache first
+    const cacheKey = `validate:${token}`;
+    const cached = await this.getCached<ValidateTokenResponse>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    return this.circuitBreaker.execute(async () => {
+      try {
+        const response = await this.client.post<ValidateTokenResponse>(
+          '/api/v1/auth/internal/validate',
+          { token }
+        );
+
+        // Cache successful validation (short TTL)
+        if (response.data.valid) {
+          await this.setCache(cacheKey, response.data, 60); // 1 min cache
+        }
+
+        return response.data;
+      } catch (error: any) {
+        if (error.response?.status === 401) {
+          return {
+            valid: false,
+            error: error.response.data?.error || 'Invalid token',
+          };
+        }
+        throw error;
+      }
+    });
+  }
+
+  /**
+   * Validate API key via internal endpoint
+   * Used by gateway for server-to-server auth
+   */
+  async validateApiKey(apiKey: string, ipAddress?: string): Promise<ValidateApiKeyResponse> {
+    // Check cache first
+    const cacheKey = `apikey:${apiKey}`;
+    const cached = await this.getCached<ValidateApiKeyResponse>(cacheKey);
+    if (cached && cached.valid) {
+      return cached;
+    }
+
+    return this.circuitBreaker.execute(async () => {
+      try {
+        const response = await this.client.post<ValidateApiKeyResponse>(
+          '/api/v1/auth/internal/validate-api-key',
+          { api_key: apiKey, ip_address: ipAddress }
+        );
+
+        // Cache successful validation
+        if (response.data.valid) {
+          await this.setCache(cacheKey, response.data, 300); // 5 min cache
+        }
+
+        return response.data;
+      } catch (error: any) {
+        if (error.response?.status === 401) {
+          return {
+            valid: false,
+            error: error.response.data?.error || 'Invalid API key',
+          };
+        }
+        throw error;
+      }
+    });
+  }
+
+  // ─── SDK Operations (Phase 4.5.z.x) ───
+
+  /**
+   * Create SDK session for end-user
+   * Proxied through gateway from SAAS backend
+   */
+  async createSdkSession(request: SdkSessionRequest, apiKey: string): Promise<SdkSessionResponse> {
+    return this.circuitBreaker.execute(async () => {
+      const response = await this.client.post<SdkSessionResponse>(
+        '/api/v1/auth/sdk/session',
+        request,
+        {
+          headers: {
+            'X-Api-Key': apiKey,
+          },
+        }
+      );
+      return response.data;
+    });
+  }
+
+  // ─── Token Refresh ───
+
+  async refreshToken(refreshToken: string): Promise<LoginResponse> {
+    return this.circuitBreaker.execute(async () => {
+      const response = await this.client.post<LoginResponse>('/api/v1/auth/refresh', {
+        refresh_token: refreshToken,
+      });
+      return response.data;
+    });
+  }
+
+  // ─── Session Management ───
 
   async getSession(token: string): Promise<SessionInfo> {
     // Check cache first
@@ -292,6 +423,25 @@ export class AuthServiceClient {
       });
     });
   }
+
+  // ─── Client Management (Phase 4.5.z.x) ───
+
+  /**
+   * Register a new SAAS client
+   */
+  async registerClient(data: {
+    company_name: string;
+    email: string;
+    password: string;
+    plan?: string;
+  }): Promise<any> {
+    return this.circuitBreaker.execute(async () => {
+      const response = await this.client.post('/api/v1/auth/client/register', data);
+      return response.data;
+    });
+  }
+
+  // ─── Health Check ───
 
   getCircuitBreakerState(): string {
     return this.circuitBreaker.getState();

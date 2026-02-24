@@ -1,0 +1,321 @@
+{
+  "task_id": "phase-4.5.z.x-03",
+  "title": "Socket Service - Auth Service Integration",
+  "phase": "4.5.z.x",
+  "category": "socket-service",
+  "priority": "high",
+  "estimated_hours": 6,
+  "dependencies": ["phase-4.5.z.x-01"],
+  "description": "Update socket service to use auth service for token validation instead of public key verification. Validate once on connection, store context in Redis, use for permissions.",
+  "objectives": [
+    "Remove public key verification from socket service",
+    "Integrate auth service client for token validation",
+    "Validate token once on WebSocket connection",
+    "Store validated context in Redis",
+    "Use Redis metadata for room permissions",
+    "Remove unnecessary re-validation on every message"
+  ],
+  "subtasks": [
+    {
+      "id": "03.1",
+      "title": "Add Auth Service Client to Socket Service",
+      "description": "Create auth service client in socket service",
+      "files_to_create": [
+        "services/socket-service/src/clients/auth-client.ts"
+      ],
+      "implementation_details": {
+        "client_methods": [
+          {
+            "name": "validateToken",
+            "signature": "async validateToken(token: string): Promise<TokenValidationResponse>",
+            "description": "Validate JWT token via auth service",
+            "endpoint": "POST /api/v1/auth/internal/validate"
+          }
+        ],
+        "configuration": {
+          "baseURL": "process.env.AUTH_SERVICE_URL || 'http://auth-service:3007'",
+          "timeout": "5000ms",
+          "retries": "3",
+          "circuit_breaker": {
+            "enabled": true,
+            "failure_threshold": 50,
+            "reset_timeout": 30000
+          }
+        }
+      }
+    },
+    {
+      "id": "03.2",
+      "title": "Update Connection Authentication",
+      "description": "Update socket connection handler to validate token via auth service",
+      "files_to_modify": [
+        "services/socket-service/src/middleware/auth.middleware.ts",
+        "services/socket-service/src/server.ts"
+      ],
+      "implementation_details": {
+        "connection_flow": [
+          "Extract token from handshake (auth.token or query.token)",
+          "Call authServiceClient.validateToken(token)",
+          "If invalid, reject connection with error",
+          "If valid, extract user context from response",
+          "Store context in socket.data",
+          "Store context in Redis with key: socket:{socket_id}",
+          "Join user to personal room: user:{user_id}",
+          "Join user to tenant room: tenant:{tenant_id}",
+          "Emit 'authenticated' event to client",
+          "Log successful connection"
+        ],
+        "context_structure": {
+          "socket_id": "string",
+          "user_id": "string",
+          "tenant_id": "string",
+          "external_id": "string",
+          "permissions": "string[]",
+          "session_id": "string",
+          "connected_at": "Date",
+          "last_activity": "Date"
+        },
+        "redis_storage": {
+          "key": "socket:{socket_id}",
+          "ttl": "86400 (24 hours)",
+          "data": "JSON.stringify(context)"
+        },
+        "error_handling": [
+          "Invalid token -> disconnect with 'auth_error'",
+          "Expired token -> disconnect with 'token_expired'",
+          "Auth service unavailable -> disconnect with 'service_unavailable'",
+          "Rate limit exceeded -> disconnect with 'rate_limited'"
+        ]
+      }
+    },
+    {
+      "id": "03.3",
+      "title": "Remove Public Key Verification",
+      "description": "Remove all public key verification logic from socket service",
+      "files_to_modify": [
+        "services/socket-service/src/middleware/auth.middleware.ts",
+        "services/socket-service/src/utils/jwt.ts"
+      ],
+      "files_to_delete": [
+        "services/socket-service/src/utils/jwt.ts"
+      ],
+      "implementation_details": {
+        "steps": [
+          "Remove JWT verification using public key",
+          "Remove public key loading from env/files",
+          "Remove jose or jsonwebtoken imports",
+          "Update all references to use auth service client",
+          "Remove PUBLIC_KEY env variable usage"
+        ]
+      }
+    },
+    {
+      "id": "03.4",
+      "title": "Implement Redis Context Cache",
+      "description": "Create service to manage socket context in Redis",
+      "files_to_create": [
+        "services/socket-service/src/services/socket-context.service.ts"
+      ],
+      "implementation_details": {
+        "methods": [
+          {
+            "name": "storeContext",
+            "signature": "async storeContext(socketId: string, context: SocketContext): Promise<void>",
+            "description": "Store socket context in Redis",
+            "logic": [
+              "Serialize context to JSON",
+              "Store in Redis with key: socket:{socketId}",
+              "Set TTL to 24 hours",
+              "Also store reverse mapping: user:{userId} -> Set of socket IDs"
+            ]
+          },
+          {
+            "name": "getContext",
+            "signature": "async getContext(socketId: string): Promise<SocketContext | null>",
+            "description": "Retrieve socket context from Redis",
+            "logic": [
+              "Get from Redis",
+              "Parse JSON",
+              "Return context or null if not found"
+            ]
+          },
+          {
+            "name": "updateActivity",
+            "signature": "async updateActivity(socketId: string): Promise<void>",
+            "description": "Update last activity timestamp",
+            "logic": [
+              "Get context",
+              "Update last_activity",
+              "Store back in Redis",
+              "Extend TTL"
+            ]
+          },
+          {
+            "name": "removeContext",
+            "signature": "async removeContext(socketId: string): Promise<void>",
+            "description": "Remove socket context on disconnect",
+            "logic": [
+              "Get context to get user_id",
+              "Remove socket:{socketId}",
+              "Remove from user:{userId} set",
+              "Clean up any room memberships"
+            ]
+          },
+          {
+            "name": "getUserSockets",
+            "signature": "async getUserSockets(userId: string): Promise<string[]>",
+            "description": "Get all socket IDs for a user",
+            "logic": [
+              "Get set from user:{userId}",
+              "Return array of socket IDs"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "03.5",
+      "title": "Update Room Permission Checks",
+      "description": "Use Redis context for room permission validation instead of re-validating tokens",
+      "files_to_modify": [
+        "services/socket-service/src/middleware/room-auth.middleware.ts",
+        "services/socket-service/src/handlers/room.handler.ts"
+      ],
+      "implementation_details": {
+        "permission_check_flow": [
+          "Get socket context from Redis (not from token)",
+          "Extract user_id and tenant_id",
+          "Check if user is member of room (from MongoDB or Redis cache)",
+          "Check user permissions for action",
+          "Allow or deny based on permissions",
+          "No token re-validation needed"
+        ],
+        "room_membership_cache": {
+          "key": "room:{room_id}:members",
+          "type": "Set",
+          "members": "user_id[]",
+          "ttl": "3600 (1 hour)",
+          "invalidation": "On member add/remove"
+        },
+        "permission_matrix": {
+          "room_owner": ["read", "write", "delete", "manage_members", "delete_room"],
+          "room_admin": ["read", "write", "delete", "manage_members"],
+          "room_member": ["read", "write"],
+          "room_guest": ["read"]
+        }
+      }
+    },
+    {
+      "id": "03.6",
+      "title": "Implement Heartbeat and Activity Tracking",
+      "description": "Add heartbeat mechanism to keep context fresh and track activity",
+      "files_to_modify": [
+        "services/socket-service/src/server.ts",
+        "services/socket-service/src/handlers/heartbeat.handler.ts"
+      ],
+      "implementation_details": {
+        "heartbeat_event": {
+          "client_sends": "ping",
+          "server_responds": "pong",
+          "interval": "30 seconds",
+          "timeout": "60 seconds"
+        },
+        "activity_tracking": [
+          "On any message from client, update last_activity in Redis",
+          "If no activity for 5 minutes, mark as idle",
+          "If no activity for 30 minutes, disconnect",
+          "Update presence status based on activity"
+        ],
+        "disconnect_handling": [
+          "On disconnect, remove context from Redis",
+          "Update presence to offline",
+          "Clean up room memberships",
+          "Log disconnect event"
+        ]
+      }
+    },
+    {
+      "id": "03.7",
+      "title": "Add Token Refresh Support",
+      "description": "Allow clients to refresh tokens over WebSocket connection",
+      "files_to_create": [
+        "services/socket-service/src/handlers/auth.handler.ts"
+      ],
+      "implementation_details": {
+        "refresh_event": {
+          "event": "auth:refresh",
+          "request": {
+            "refresh_token": "string"
+          },
+          "response": {
+            "access_token": "string",
+            "expires_in": "number"
+          }
+        },
+        "logic": [
+          "Client sends refresh_token via socket event",
+          "Socket service calls auth service refresh endpoint",
+          "If successful, update socket context with new token info",
+          "Emit new access_token to client",
+          "Client updates token in memory",
+          "No need to reconnect"
+        ]
+      }
+    },
+    {
+      "id": "03.8",
+      "title": "Update Event Handlers to Use Context",
+      "description": "Update all event handlers to use Redis context instead of token",
+      "files_to_modify": [
+        "services/socket-service/src/handlers/message.handler.ts",
+        "services/socket-service/src/handlers/presence.handler.ts",
+        "services/socket-service/src/handlers/typing.handler.ts",
+        "services/socket-service/src/handlers/call.handler.ts"
+      ],
+      "implementation_details": {
+        "pattern": [
+          "Get context from socket.data (already loaded on connection)",
+          "Or get from Redis if needed: socketContextService.getContext(socket.id)",
+          "Use context.user_id, context.tenant_id for operations",
+          "No token parsing or validation needed",
+          "Update last_activity on each event"
+        ],
+        "example": {
+          "before": "const decoded = verifyToken(socket.handshake.auth.token);",
+          "after": "const context = socket.data.context || await socketContextService.getContext(socket.id);"
+        }
+      }
+    }
+  ],
+  "testing_requirements": [
+    "Unit tests for auth service client",
+    "Unit tests for socket context service",
+    "Integration test for socket connection with valid token",
+    "Integration test for socket connection with invalid token",
+    "Integration test for socket connection with expired token",
+    "Integration test for room permission checks",
+    "Integration test for token refresh over socket",
+    "Integration test for heartbeat and activity tracking",
+    "Load test for concurrent connections",
+    "Test auth service unavailability handling"
+  ],
+  "acceptance_criteria": [
+    "Socket service validates tokens via auth service",
+    "No public key verification in socket service",
+    "Context stored in Redis on connection",
+    "Room permissions use Redis context",
+    "No re-validation on every message",
+    "Heartbeat keeps connections alive",
+    "Token refresh works over socket",
+    "All tests passing",
+    "Performance improved (no repeated validation)"
+  ],
+  "notes": [
+    "This task removes public key dependency from socket service",
+    "Validation happens once on connection, not on every message",
+    "Redis context provides fast access to user info",
+    "Improves performance significantly",
+    "Reduces load on auth service",
+    "Maintains security through proper context management"
+  ]
+}

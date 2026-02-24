@@ -1,0 +1,661 @@
+{
+  "task_id": "phase-4.5.z.x-06",
+  "title": "Comprehensive Testing and Documentation",
+  "phase": "4.5.z.x",
+  "category": "testing-documentation",
+  "priority": "high",
+  "estimated_hours": 8,
+  "dependencies": ["phase-4.5.z.x-01", "phase-4.5.z.x-02", "phase-4.5.z.x-03", "phase-4.5.z.x-04", "phase-4.5.z.x-05"],
+  "description": "Create comprehensive tests and documentation for the new authentication architecture",
+  "objectives": [
+    "Create E2E tests for all authentication flows",
+    "Create integration tests for service communication",
+    "Update API documentation",
+    "Create architecture documentation",
+    "Create migration guide",
+    "Create troubleshooting guide"
+  ],
+  "subtasks": [
+    {
+      "id": "06.1",
+      "title": "E2E Test - Client Registration Flow",
+      "description": "Test complete SAAS client registration and API key generation",
+      "files_to_create": [
+        "tests/e2e/auth/client-registration.test.ts"
+      ],
+      "implementation_details": {
+        "test_scenarios": [
+          {
+            "name": "Successful client registration",
+            "steps": [
+              "POST /v1/client/register with valid data",
+              "Verify response contains client_id, tenant_id, api_key",
+              "Verify client stored in MongoDB",
+              "Verify API key hash stored correctly",
+              "Verify default settings created"
+            ],
+            "assertions": [
+              "Status code 201",
+              "Response has all required fields",
+              "API key format is correct (caas_prod_xxx)",
+              "Client can be retrieved from database"
+            ]
+          },
+          {
+            "name": "Duplicate email registration",
+            "steps": [
+              "Register client with email",
+              "Try to register again with same email",
+              "Verify error response"
+            ],
+            "assertions": [
+              "Second request returns 409 Conflict",
+              "Error message indicates duplicate email"
+            ]
+          },
+          {
+            "name": "Invalid email format",
+            "steps": [
+              "POST /v1/client/register with invalid email",
+              "Verify validation error"
+            ],
+            "assertions": [
+              "Status code 400",
+              "Error message indicates invalid email"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "06.2",
+      "title": "E2E Test - SDK Session Creation Flow",
+      "description": "Test complete SDK authentication flow from SAAS backend",
+      "files_to_create": [
+        "tests/e2e/auth/sdk-session-creation.test.ts"
+      ],
+      "implementation_details": {
+        "test_scenarios": [
+          {
+            "name": "Create session with valid API key",
+            "steps": [
+              "Register client and get API key",
+              "POST /v1/sdk/session with API key and user data",
+              "Verify response contains access_token, refresh_token",
+              "Verify JWT token is valid",
+              "Verify user created in MongoDB",
+              "Verify session stored in MongoDB"
+            ],
+            "assertions": [
+              "Status code 200",
+              "Access token is valid JWT",
+              "Refresh token is opaque string",
+              "Socket URLs are provided",
+              "User exists in database",
+              "Session exists in database"
+            ]
+          },
+          {
+            "name": "Create session with invalid API key",
+            "steps": [
+              "POST /v1/sdk/session with invalid API key",
+              "Verify error response"
+            ],
+            "assertions": [
+              "Status code 401",
+              "Error message indicates invalid API key"
+            ]
+          },
+          {
+            "name": "Create session from non-whitelisted IP",
+            "steps": [
+              "Register client with IP whitelist",
+              "POST /v1/sdk/session from different IP",
+              "Verify error response"
+            ],
+            "assertions": [
+              "Status code 403",
+              "Error message indicates IP not whitelisted"
+            ]
+          },
+          {
+            "name": "Create multiple sessions for same user",
+            "steps": [
+              "Create session for user",
+              "Create another session for same user",
+              "Verify both sessions exist",
+              "Verify user has multiple active sessions"
+            ],
+            "assertions": [
+              "Both requests succeed",
+              "Different session IDs",
+              "User has 2 active sessions in database"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "06.3",
+      "title": "E2E Test - End-User Request Flow",
+      "description": "Test complete end-user authenticated request flow",
+      "files_to_create": [
+        "tests/e2e/auth/end-user-requests.test.ts"
+      ],
+      "implementation_details": {
+        "test_scenarios": [
+          {
+            "name": "Authenticated request with valid token",
+            "steps": [
+              "Create session and get access token",
+              "GET /v1/conversations with Bearer token",
+              "Verify request succeeds",
+              "Verify tenant isolation"
+            ],
+            "assertions": [
+              "Status code 200",
+              "Response contains only user's conversations",
+              "No cross-tenant data leakage"
+            ]
+          },
+          {
+            "name": "Request with expired token",
+            "steps": [
+              "Create session with short expiry",
+              "Wait for token to expire",
+              "Make request with expired token",
+              "Verify error response"
+            ],
+            "assertions": [
+              "Status code 401",
+              "Error message indicates token expired"
+            ]
+          },
+          {
+            "name": "Request from non-whitelisted origin",
+            "steps": [
+              "Create session",
+              "Make request with Origin header not in whitelist",
+              "Verify error response"
+            ],
+            "assertions": [
+              "Status code 403",
+              "Error message indicates origin not allowed"
+            ]
+          },
+          {
+            "name": "Token refresh flow",
+            "steps": [
+              "Create session and get tokens",
+              "POST /v1/sdk/refresh with refresh token",
+              "Verify new access token received",
+              "Verify old refresh token invalidated",
+              "Make request with new token"
+            ],
+            "assertions": [
+              "Refresh succeeds",
+              "New access token is valid",
+              "Old refresh token cannot be reused",
+              "Request with new token succeeds"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "06.4",
+      "title": "E2E Test - Socket Connection Flow",
+      "description": "Test WebSocket connection with authentication",
+      "files_to_create": [
+        "tests/e2e/auth/socket-connection.test.ts"
+      ],
+      "implementation_details": {
+        "test_scenarios": [
+          {
+            "name": "Connect with valid token",
+            "steps": [
+              "Create session and get access token",
+              "Connect to socket with token",
+              "Verify connection succeeds",
+              "Verify context stored in Redis",
+              "Verify user joined personal room"
+            ],
+            "assertions": [
+              "Connection established",
+              "Authenticated event received",
+              "Context exists in Redis",
+              "User in correct rooms"
+            ]
+          },
+          {
+            "name": "Connect with invalid token",
+            "steps": [
+              "Connect to socket with invalid token",
+              "Verify connection rejected"
+            ],
+            "assertions": [
+              "Connection rejected",
+              "Error event received",
+              "No context in Redis"
+            ]
+          },
+          {
+            "name": "Token refresh over socket",
+            "steps": [
+              "Connect with valid token",
+              "Emit auth:refresh event with refresh token",
+              "Verify new access token received",
+              "Verify connection remains active"
+            ],
+            "assertions": [
+              "Refresh succeeds",
+              "New token received",
+              "No reconnection needed"
+            ]
+          },
+          {
+            "name": "Multiple connections for same user",
+            "steps": [
+              "Create session",
+              "Connect from browser",
+              "Connect from mobile",
+              "Verify both connections active",
+              "Send message to user",
+              "Verify both connections receive message"
+            ],
+            "assertions": [
+              "Both connections established",
+              "User has 2 socket IDs in Redis",
+              "Message delivered to both"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "06.5",
+      "title": "Integration Test - Inter-Service Communication",
+      "description": "Test service-to-service communication with context headers",
+      "files_to_create": [
+        "tests/integration/inter-service-communication.test.ts"
+      ],
+      "implementation_details": {
+        "test_scenarios": [
+          {
+            "name": "Gateway to media service with context",
+            "steps": [
+              "Authenticate at gateway",
+              "POST /v1/media/upload",
+              "Verify gateway adds context headers",
+              "Verify media service trusts context",
+              "Verify no token re-validation"
+            ],
+            "assertions": [
+              "Request succeeds",
+              "Context headers present",
+              "Media service logs show trusted context",
+              "No auth service call from media service"
+            ]
+          },
+          {
+            "name": "Invalid service token",
+            "steps": [
+              "Make internal request with wrong service token",
+              "Verify request rejected"
+            ],
+            "assertions": [
+              "Status code 401",
+              "Error indicates invalid service token"
+            ]
+          },
+          {
+            "name": "Request tracing across services",
+            "steps": [
+              "Make request to gateway",
+              "Verify X-Request-Id propagated",
+              "Check logs in all services",
+              "Verify same request ID in all logs"
+            ],
+            "assertions": [
+              "Request ID consistent",
+              "All services log with same ID",
+              "Can trace request path"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "06.6",
+      "title": "Performance Test - Auth Service Load",
+      "description": "Test auth service performance under load",
+      "files_to_create": [
+        "tests/performance/auth-service-load.test.ts"
+      ],
+      "implementation_details": {
+        "test_scenarios": [
+          {
+            "name": "Token validation throughput",
+            "config": {
+              "concurrent_requests": 100,
+              "duration": "60 seconds",
+              "ramp_up": "10 seconds"
+            },
+            "metrics": [
+              "Requests per second",
+              "Average latency",
+              "P95 latency",
+              "P99 latency",
+              "Error rate"
+            ],
+            "targets": {
+              "rps": "> 1000",
+              "avg_latency": "< 10ms",
+              "p95_latency": "< 20ms",
+              "error_rate": "< 0.1%"
+            }
+          },
+          {
+            "name": "Session creation throughput",
+            "config": {
+              "concurrent_requests": 50,
+              "duration": "60 seconds"
+            },
+            "metrics": [
+              "Sessions created per second",
+              "Average latency",
+              "Database write latency"
+            ],
+            "targets": {
+              "sessions_per_sec": "> 500",
+              "avg_latency": "< 50ms"
+            }
+          },
+          {
+            "name": "Redis cache effectiveness",
+            "steps": [
+              "Make 1000 token validations",
+              "Measure cache hit rate",
+              "Measure latency with cache",
+              "Measure latency without cache"
+            ],
+            "targets": {
+              "cache_hit_rate": "> 90%",
+              "cached_latency": "< 5ms",
+              "uncached_latency": "< 20ms"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "06.7",
+      "title": "Update API Documentation",
+      "description": "Update Swagger/OpenAPI documentation for new endpoints",
+      "files_to_modify": [
+        "services/gateway/src/docs/openapi-generator.ts",
+        "docs/API_REFERENCE.md"
+      ],
+      "implementation_details": {
+        "endpoints_to_document": [
+          {
+            "path": "/v1/client/register",
+            "method": "POST",
+            "description": "Register new SAAS client",
+            "auth": "None",
+            "request_body": "ClientRegistrationRequest",
+            "responses": {
+              "201": "Client created successfully",
+              "400": "Invalid request",
+              "409": "Email already exists"
+            }
+          },
+          {
+            "path": "/v1/sdk/session",
+            "method": "POST",
+            "description": "Create end-user session",
+            "auth": "API Key",
+            "request_body": "SdkSessionRequest",
+            "responses": {
+              "200": "Session created",
+              "401": "Invalid API key",
+              "403": "IP not whitelisted"
+            }
+          },
+          {
+            "path": "/v1/sdk/refresh",
+            "method": "POST",
+            "description": "Refresh access token",
+            "auth": "API Key",
+            "request_body": "RefreshTokenRequest",
+            "responses": {
+              "200": "Token refreshed",
+              "401": "Invalid refresh token"
+            }
+          }
+        ],
+        "schemas_to_add": [
+          "ClientRegistrationRequest",
+          "ClientRegistrationResponse",
+          "SdkSessionRequest",
+          "SdkSessionResponse",
+          "RefreshTokenRequest",
+          "RefreshTokenResponse"
+        ]
+      }
+    },
+    {
+      "id": "06.8",
+      "title": "Create Architecture Documentation",
+      "description": "Document the new authentication architecture",
+      "files_to_create": [
+        "docs/architecture/authentication-architecture.md",
+        "docs/diagrams/new-auth-flow.md"
+      ],
+      "implementation_details": {
+        "documentation_sections": [
+          {
+            "title": "Overview",
+            "content": "High-level architecture of authentication system"
+          },
+          {
+            "title": "Components",
+            "content": "Auth service, Gateway, Socket service roles"
+          },
+          {
+            "title": "Authentication Flows",
+            "content": "Client registration, SDK session, end-user requests, socket connection"
+          },
+          {
+            "title": "Security Model",
+            "content": "API key auth, JWT auth, IP whitelist, origin validation"
+          },
+          {
+            "title": "Inter-Service Communication",
+            "content": "Context headers, service tokens, trusted communication"
+          },
+          {
+            "title": "Performance Optimizations",
+            "content": "Redis caching, single validation, context propagation"
+          },
+          {
+            "title": "Monitoring and Debugging",
+            "content": "Request tracing, logging, metrics"
+          }
+        ],
+        "diagrams": [
+          "Client registration flow",
+          "SDK session creation flow",
+          "End-user request flow",
+          "Socket connection flow",
+          "Inter-service communication",
+          "Token lifecycle"
+        ]
+      }
+    },
+    {
+      "id": "06.9",
+      "title": "Create Migration Guide",
+      "description": "Document how to migrate from old to new auth system",
+      "files_to_create": [
+        "docs/MIGRATION_GUIDE_AUTH_REFACTOR.md"
+      ],
+      "implementation_details": {
+        "guide_sections": [
+          {
+            "title": "Overview",
+            "content": "What changed and why"
+          },
+          {
+            "title": "Breaking Changes",
+            "content": "List of breaking changes and how to handle them"
+          },
+          {
+            "title": "Migration Steps",
+            "content": "Step-by-step migration process"
+          },
+          {
+            "title": "Environment Variables",
+            "content": "New env variables to add, old ones to remove"
+          },
+          {
+            "title": "Testing",
+            "content": "How to test the migration"
+          },
+          {
+            "title": "Rollback Plan",
+            "content": "How to rollback if issues occur"
+          },
+          {
+            "title": "FAQ",
+            "content": "Common questions and answers"
+          }
+        ],
+        "breaking_changes": [
+          "Public keys no longer used",
+          "Token generation moved to auth service",
+          "New SDK session endpoint",
+          "Context headers required for internal calls",
+          "Service token required for inter-service calls"
+        ]
+      }
+    },
+    {
+      "id": "06.10",
+      "title": "Create Troubleshooting Guide",
+      "description": "Document common issues and solutions",
+      "files_to_create": [
+        "docs/TROUBLESHOOTING_AUTH.md"
+      ],
+      "implementation_details": {
+        "common_issues": [
+          {
+            "issue": "401 Unauthorized on SDK session creation",
+            "causes": [
+              "Invalid API key",
+              "API key not found in database",
+              "API key revoked"
+            ],
+            "solutions": [
+              "Verify API key format",
+              "Check if client exists in database",
+              "Check if API key is active",
+              "Regenerate API key if needed"
+            ]
+          },
+          {
+            "issue": "403 Forbidden - IP not whitelisted",
+            "causes": [
+              "Request from non-whitelisted IP",
+              "IP whitelist not configured",
+              "X-Forwarded-For header missing"
+            ],
+            "solutions": [
+              "Add IP to whitelist",
+              "Configure proxy to send X-Forwarded-For",
+              "Disable IP whitelist for development"
+            ]
+          },
+          {
+            "issue": "403 Forbidden - Origin not allowed",
+            "causes": [
+              "Request from non-whitelisted origin",
+              "Origin header missing",
+              "CORS misconfiguration"
+            ],
+            "solutions": [
+              "Add origin to whitelist",
+              "Configure CORS properly",
+              "Check browser sends Origin header"
+            ]
+          },
+          {
+            "issue": "Socket connection rejected",
+            "causes": [
+              "Invalid token",
+              "Expired token",
+              "Auth service unavailable"
+            ],
+            "solutions": [
+              "Refresh token before connecting",
+              "Check auth service health",
+              "Verify token format"
+            ]
+          },
+          {
+            "issue": "Inter-service call fails with 401",
+            "causes": [
+              "Invalid service token",
+              "Missing context headers",
+              "Service token not configured"
+            ],
+            "solutions": [
+              "Verify SERVICE_SECRET matches across services",
+              "Check context headers are added",
+              "Verify X-Internal-Request header present"
+            ]
+          }
+        ],
+        "debugging_tips": [
+          "Check auth service logs for validation errors",
+          "Verify Redis cache for token validation",
+          "Check MongoDB for client/session records",
+          "Use X-Request-Id to trace requests",
+          "Enable debug logging for auth middleware"
+        ]
+      }
+    }
+  ],
+  "testing_requirements": [
+    "All E2E tests passing",
+    "All integration tests passing",
+    "Performance tests meet targets",
+    "Load tests show improved performance",
+    "Documentation reviewed and approved"
+  ],
+  "acceptance_criteria": [
+    "Complete test coverage for all flows",
+    "All tests passing consistently",
+    "Performance targets met",
+    "API documentation complete and accurate",
+    "Architecture documentation clear and comprehensive",
+    "Migration guide tested and validated",
+    "Troubleshooting guide covers common issues"
+  ],
+  "deliverables": [
+    "E2E test suite",
+    "Integration test suite",
+    "Performance test suite",
+    "Updated API documentation",
+    "Architecture documentation",
+    "Migration guide",
+    "Troubleshooting guide"
+  ],
+  "notes": [
+    "Testing is critical for this refactor",
+    "Document everything for future reference",
+    "Migration guide helps with deployment",
+    "Troubleshooting guide reduces support burden",
+    "Performance tests validate optimizations"
+  ]
+}

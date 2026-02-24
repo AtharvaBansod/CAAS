@@ -106,26 +106,26 @@ export class AuthServer {
     // Correlation ID middleware (must be first)
     const { correlationMiddleware } = await import('./middleware/correlation.middleware');
     this.server.addHook('onRequest', correlationMiddleware);
-    
+
     // Request logging
     this.server.addHook('onRequest', requestLogger);
   }
 
   private async connectDatabases(): Promise<void> {
     logger.info('Connecting to databases...');
-    
+
     try {
       await MongoDBConnection.connect();
       await RedisConnection.connect();
-      
+
       // Initialize compliance client
       const complianceUrl = process.env.COMPLIANCE_SERVICE_URL || 'http://compliance-service:3008';
       initializeComplianceClient(complianceUrl);
       logger.info('Compliance client initialized');
-      
+
       // Initialize database indexes
       await this.initializeIndexes();
-      
+
       logger.info('Database connections established');
     } catch (error) {
       logger.error({ error }, 'Failed to connect to databases');
@@ -143,10 +143,14 @@ export class AuthServer {
       const sessionRepo = new SessionRepository();
       const auditRepo = new AuditRepository();
 
+      const { ClientRepository } = await import('./repositories/client.repository');
+      const clientRepo = new ClientRepository();
+
       await Promise.all([
         userRepo.ensureIndexes(),
         sessionRepo.ensureIndexes(),
         auditRepo.ensureIndexes(),
+        clientRepo.ensureIndexes(),
       ]);
 
       logger.info('Database indexes initialized');
@@ -164,6 +168,18 @@ export class AuthServer {
     await this.server.register(authRoutes, { prefix: '/api/v1/auth' });
     await this.server.register(userRoutes, { prefix: '/api/v1/users' });
     await this.server.register(sessionRoutes, { prefix: '/api/v1/sessions' });
+
+    // Phase 4.5.z.x: Internal API routes (used by gateway and other services)
+    const { internalRoutes } = await import('./routes/internal.routes');
+    await this.server.register(internalRoutes, { prefix: '/api/v1/auth/internal' });
+
+    // Phase 4.5.z.x: Client management routes
+    const { clientRoutes } = await import('./routes/client.routes');
+    await this.server.register(clientRoutes, { prefix: '/api/v1/auth/client' });
+
+    // Phase 4.5.z.x: SDK session routes
+    const { sdkRoutes } = await import('./routes/sdk.routes');
+    await this.server.register(sdkRoutes, { prefix: '/api/v1/auth/sdk' });
 
     logger.info('Routes registered');
   }
@@ -187,7 +203,7 @@ export class AuthServer {
       await this.server.close();
       await MongoDBConnection.disconnect();
       await RedisConnection.disconnect();
-      
+
       logger.info('Auth service stopped gracefully');
     } catch (error) {
       logger.error({ error }, 'Error stopping auth service');

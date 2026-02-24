@@ -1,0 +1,281 @@
+{
+  "task_id": "phase-4.5.z.x-04",
+  "title": "Remove Public Key Infrastructure",
+  "phase": "4.5.z.x",
+  "category": "cleanup",
+  "priority": "medium",
+  "estimated_hours": 3,
+  "dependencies": ["phase-4.5.z.x-02", "phase-4.5.z.x-03"],
+  "description": "Remove all public key infrastructure from the codebase. Delete keys folder, remove env variables, clean up JWT verification code that uses public keys.",
+  "objectives": [
+    "Delete keys/ folder",
+    "Remove public key env variables",
+    "Remove public key verification code",
+    "Update docker-compose files",
+    "Update documentation"
+  ],
+  "subtasks": [
+    {
+      "id": "04.1",
+      "title": "Delete Keys Folder",
+      "description": "Remove the keys/ folder containing public/private key files",
+      "files_to_delete": [
+        "keys/private.pem",
+        "keys/public.pem",
+        "keys/"
+      ],
+      "implementation_details": {
+        "steps": [
+          "Backup keys folder (just in case)",
+          "Delete keys/private.pem",
+          "Delete keys/public.pem",
+          "Delete keys/ directory",
+          "Update .gitignore to remove keys/ entry"
+        ]
+      }
+    },
+    {
+      "id": "04.2",
+      "title": "Remove Public Key Environment Variables",
+      "description": "Remove all PUBLIC_KEY and PRIVATE_KEY env variables from all services",
+      "files_to_modify": [
+        ".env.example",
+        "services/gateway/.env.example",
+        "services/auth-service/.env.example",
+        "services/socket-service/.env.example",
+        "docker-compose.yml"
+      ],
+      "implementation_details": {
+        "env_variables_to_remove": [
+          "PUBLIC_KEY",
+          "PRIVATE_KEY",
+          "PUBLIC_KEY_PATH",
+          "PRIVATE_KEY_PATH",
+          "JWT_PUBLIC_KEY",
+          "JWT_PRIVATE_KEY"
+        ],
+        "env_variables_to_keep": [
+          "JWT_SECRET (for auth service only)",
+          "JWT_EXPIRES_IN",
+          "JWT_REFRESH_EXPIRES_IN"
+        ],
+        "docker_compose_changes": [
+          "Remove volume mounts for keys/",
+          "Remove PUBLIC_KEY env variables",
+          "Add AUTH_SERVICE_URL to gateway and socket service"
+        ]
+      }
+    },
+    {
+      "id": "04.3",
+      "title": "Remove JWT Verification Code Using Public Keys",
+      "description": "Search and remove all code that verifies JWTs using public keys",
+      "files_to_search": [
+        "services/gateway/src/**/*.ts",
+        "services/socket-service/src/**/*.ts",
+        "services/media-service/src/**/*.ts",
+        "services/search-service/src/**/*.ts"
+      ],
+      "implementation_details": {
+        "search_patterns": [
+          "jose.jwtVerify",
+          "jwt.verify.*publicKey",
+          "verifyJwt.*publicKey",
+          "readFileSync.*public.pem",
+          "PUBLIC_KEY",
+          "publicKey"
+        ],
+        "actions": [
+          "Remove JWT verification functions that use public keys",
+          "Replace with auth service client calls",
+          "Remove jose or jsonwebtoken imports if no longer needed",
+          "Update tests to mock auth service instead of JWT verification"
+        ]
+      }
+    },
+    {
+      "id": "04.4",
+      "title": "Update Key Generation Scripts",
+      "description": "Remove or update scripts that generate JWT keys",
+      "files_to_modify": [
+        "scripts/generate-jwt-keys.js",
+        "services/gateway/generate-keys.js"
+      ],
+      "files_to_delete": [
+        "scripts/generate-jwt-keys.js",
+        "services/gateway/generate-keys.js"
+      ],
+      "implementation_details": {
+        "steps": [
+          "Delete generate-jwt-keys.js scripts",
+          "Remove references from package.json scripts",
+          "Update setup documentation to remove key generation step",
+          "Add note that JWT_SECRET is now used instead"
+        ]
+      }
+    },
+    {
+      "id": "04.5",
+      "title": "Update Docker Compose Configuration",
+      "description": "Remove key-related volumes and env variables from docker-compose",
+      "files_to_modify": [
+        "docker-compose.yml",
+        "services/gateway/docker-compose.gateway.yml"
+      ],
+      "implementation_details": {
+        "changes": [
+          {
+            "service": "gateway",
+            "remove": [
+              "volumes: - ./keys:/app/keys:ro",
+              "environment: - PUBLIC_KEY_PATH=/app/keys/public.pem"
+            ],
+            "add": [
+              "environment: - AUTH_SERVICE_URL=http://auth-service:3007"
+            ]
+          },
+          {
+            "service": "socket-service",
+            "remove": [
+              "volumes: - ./keys:/app/keys:ro",
+              "environment: - PUBLIC_KEY_PATH=/app/keys/public.pem"
+            ],
+            "add": [
+              "environment: - AUTH_SERVICE_URL=http://auth-service:3007"
+            ]
+          },
+          {
+            "service": "auth-service",
+            "keep": [
+              "environment: - JWT_SECRET=${JWT_SECRET}"
+            ],
+            "note": "Auth service keeps JWT_SECRET for signing tokens"
+          }
+        ]
+      }
+    },
+    {
+      "id": "04.6",
+      "title": "Update Service Configuration Files",
+      "description": "Update config files to remove public key references",
+      "files_to_modify": [
+        "services/gateway/src/config/index.ts",
+        "services/socket-service/src/config/index.ts",
+        "services/auth-service/src/config/config.ts"
+      ],
+      "implementation_details": {
+        "gateway_config": {
+          "remove": [
+            "publicKey: process.env.PUBLIC_KEY",
+            "publicKeyPath: process.env.PUBLIC_KEY_PATH"
+          ],
+          "add": [
+            "authServiceUrl: process.env.AUTH_SERVICE_URL || 'http://auth-service:3007'"
+          ]
+        },
+        "socket_config": {
+          "remove": [
+            "publicKey: process.env.PUBLIC_KEY",
+            "publicKeyPath: process.env.PUBLIC_KEY_PATH"
+          ],
+          "add": [
+            "authServiceUrl: process.env.AUTH_SERVICE_URL || 'http://auth-service:3007'"
+          ]
+        },
+        "auth_config": {
+          "keep": [
+            "jwtSecret: process.env.JWT_SECRET",
+            "jwtExpiresIn: process.env.JWT_EXPIRES_IN || '15m'",
+            "jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d'"
+          ]
+        }
+      }
+    },
+    {
+      "id": "04.7",
+      "title": "Update Utility Functions",
+      "description": "Remove or update JWT utility functions that use public keys",
+      "files_to_modify": [
+        "services/gateway/src/utils/jwt-helpers.ts",
+        "services/socket-service/src/utils/jwt.ts"
+      ],
+      "files_to_delete": [
+        "services/socket-service/src/utils/jwt.ts"
+      ],
+      "implementation_details": {
+        "gateway_jwt_helpers": {
+          "remove": [
+            "verifyJwt function (uses public key)",
+            "loadPublicKey function"
+          ],
+          "keep": [
+            "extractToken function (still useful)",
+            "parseJwtPayload function (for debugging)"
+          ],
+          "note": "Verification now happens via auth service client"
+        },
+        "socket_jwt_utils": {
+          "action": "Delete entire file",
+          "reason": "All JWT operations now via auth service"
+        }
+      }
+    },
+    {
+      "id": "04.8",
+      "title": "Update Tests",
+      "description": "Update tests to remove public key mocking and use auth service mocks",
+      "files_to_modify": [
+        "services/gateway/tests/**/*.test.ts",
+        "services/socket-service/tests/**/*.test.ts"
+      ],
+      "implementation_details": {
+        "test_updates": [
+          "Remove public key file mocks",
+          "Remove JWT verification mocks",
+          "Add auth service client mocks",
+          "Mock auth service HTTP endpoints",
+          "Update test fixtures to use auth service responses"
+        ],
+        "example_mock": {
+          "before": "jest.mock('jose', () => ({ jwtVerify: jest.fn() }))",
+          "after": "jest.mock('../clients/auth-client', () => ({ AuthServiceClient: mockAuthClient }))"
+        }
+      }
+    }
+  ],
+  "testing_requirements": [
+    "Verify all services start without public key files",
+    "Verify all services start without PUBLIC_KEY env variables",
+    "Run all unit tests",
+    "Run all integration tests",
+    "Verify gateway authentication works",
+    "Verify socket authentication works",
+    "Verify no references to public keys in logs",
+    "Verify docker-compose up works without keys/ volume"
+  ],
+  "acceptance_criteria": [
+    "keys/ folder deleted",
+    "No PUBLIC_KEY env variables in any service",
+    "No code references to public key files",
+    "All services use auth service for validation",
+    "Docker compose works without key volumes",
+    "All tests passing",
+    "Documentation updated"
+  ],
+  "rollback_plan": {
+    "if_issues_found": [
+      "Restore keys/ folder from backup",
+      "Restore env variables",
+      "Revert code changes",
+      "Use feature flag to switch back to old auth"
+    ],
+    "backup_location": "z_phases/backups/keys-backup-{date}"
+  },
+  "notes": [
+    "This is a cleanup task after auth service integration",
+    "Should only be done after tasks 02 and 03 are complete and tested",
+    "Backup keys folder before deletion (just in case)",
+    "Use feature flags during transition period",
+    "Monitor logs for any public key references after cleanup"
+  ]
+}

@@ -36,7 +36,7 @@ export function registerChatNamespace(io: Server) {
 
   // Get shared Redis client from server
   const redisClient = (io as any).redisClient;
-  
+
   if (!redisClient) {
     logger.error('Redis client not available in chat namespace');
     return;
@@ -76,24 +76,24 @@ export function registerChatNamespace(io: Server) {
   const readReceiptHandler = new ReadReceiptHandler(io, readReceiptStore);
 
   const unreadCounter = new UnreadCounter(redisClient);
-  
+
   // Initialize delivery receipt handler
   const deliveryReceiptHandler = new DeliveryReceiptHandler(io, redisClient);
-  
+
   // Initialize rate limiter and spam detector
   const rateLimiter = new RoomRateLimiter(redisClient);
   const spamDetector = new SpamDetector(redisClient);
 
   // Graceful shutdown
   const cleanup = async () => {
-    await kafkaProducer.disconnect().catch(() => {});
-    await mongoClient.close().catch(() => {});
+    await kafkaProducer.disconnect().catch(() => { });
+    await mongoClient.close().catch(() => { });
   };
   process.on('SIGTERM', cleanup);
   process.on('SIGINT', cleanup);
 
   chat.on('connection', (socket: AuthenticatedSocket) => {
-    const userId = socket.user?.user_id || socket.user?.sub;
+    const userId = socket.user?.user_id;
     const tenantId = socket.user?.tenant_id;
     const displayName = (socket.user as any)?.name || (socket.user as any)?.email || userId || 'Unknown';
 
@@ -158,10 +158,10 @@ export function registerChatNamespace(io: Server) {
 
       try {
         await socket.leave(roomName);
-        
+
         // Clear typing state when leaving room
         await typingHandler.handleTypingStop(socket, conversationId, userId, tenantId);
-        
+
         logger.info(`[Chat] User ${userId} (Socket: ${socket.id}) left room: ${roomName}`);
         callback({ status: 'ok', room: roomName });
       } catch (error: any) {
@@ -228,11 +228,11 @@ export function registerChatNamespace(io: Server) {
 
       const messageId = `msg_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
       const timestamp = new Date();
-      
+
       // Get correlation ID from socket
       const { getCorrelationIdFromSocket } = await import('../middleware/correlation.middleware');
       const correlationId = getCorrelationIdFromSocket(socket);
-      
+
       const message = {
         id: messageId,
         senderId: userId,
@@ -269,7 +269,7 @@ export function registerChatNamespace(io: Server) {
         }
 
         // Update room activity
-        await roomStateManager.updateActivity(roomName, tenantId).catch(() => {});
+        await roomStateManager.updateActivity(roomName, tenantId).catch(() => { });
 
         logger.info(`[Chat] User ${userId} (Socket: ${socket.id}) sent message to room ${roomName}: ${messageContent.substring(0, 50)}...`);
         callback({ status: 'ok', message: 'Message sent', messageId });
@@ -289,7 +289,7 @@ export function registerChatNamespace(io: Server) {
 
       try {
         const receipt = await deliveryReceiptHandler.markAsDelivered(userId, messageId, conversationId);
-        
+
         // Broadcast delivery receipt to conversation (sender will see it)
         deliveryReceiptHandler.broadcastDeliveryReceipt(conversationId, tenantId, receipt, userId);
 
@@ -310,7 +310,7 @@ export function registerChatNamespace(io: Server) {
 
       try {
         const receipts = await deliveryReceiptHandler.markBatchAsDelivered(userId, messageIds, conversationId);
-        
+
         // Broadcast the last receipt (most recent delivery)
         if (receipts.length > 0) {
           const lastReceipt = receipts[receipts.length - 1];
@@ -332,7 +332,7 @@ export function registerChatNamespace(io: Server) {
 
       try {
         const deliveryStatus = await deliveryReceiptHandler.getDeliveryStatus(messageId);
-        
+
         if (!deliveryStatus) {
           return callback({ status: 'error', message: 'Message not found' });
         }
@@ -401,7 +401,7 @@ export function registerChatNamespace(io: Server) {
         const typingUsers = await typingHandler.getTypingUsers(conversationId);
         // Filter out the requesting user
         const filteredUsers = typingUsers.filter(u => u.user_id !== userId);
-        
+
         callback({
           status: 'ok',
           users: filteredUsers,
@@ -432,7 +432,7 @@ export function registerChatNamespace(io: Server) {
 
       try {
         const receipt = await readReceiptHandler.markAsRead(userId, conversationId, messageId, tenantId);
-        
+
         // Reset unread count for this conversation
         await unreadCounter.resetUnread(userId, conversationId);
 
@@ -471,7 +471,7 @@ export function registerChatNamespace(io: Server) {
 
       try {
         const receipts = await readReceiptHandler.markBatchAsRead(userId, conversationId, messageIds, tenantId);
-        
+
         // Reset unread count
         await unreadCounter.resetUnread(userId, conversationId);
 
@@ -513,7 +513,7 @@ export function registerChatNamespace(io: Server) {
 
       try {
         await readReceiptHandler.markConversationAsRead(userId, conversationId, upToMessageId, tenantId);
-        
+
         // Reset unread count
         await unreadCounter.resetUnread(userId, conversationId);
 
@@ -667,7 +667,7 @@ export function registerChatNamespace(io: Server) {
 
     socket.on('disconnect', () => {
       logger.info(`[Chat] Client disconnected: ${socket.id} (User: ${userId}, Tenant: ${tenantId})`);
-      
+
       // Clear all typing state for this user
       typingHandler.clearUserTyping(userId).catch((err) => {
         logger.error(`Failed to clear typing state for user ${userId}`, err);

@@ -161,7 +161,8 @@ try {
 
     $testsPath = (Resolve-Path ".\tests").Path
     $rawFileName = Split-Path $rawReportPath -Leaf
-    $runnerScript = "npm ci --silent; node e2e-system-scratch.js --out /tests/reports/$rawFileName --gatewayUrl $GatewayUrl --authServiceUrl $AuthServiceUrl --complianceServiceUrl $ComplianceServiceUrl --cryptoServiceUrl $CryptoServiceUrl --searchServiceUrl $SearchServiceUrl --mediaServiceUrl $MediaServiceUrl --socket1Url $Socket1Url --socket2Url $Socket2Url"
+    $ServiceSecretStr = if ($env:SERVICE_SECRET) { $env:SERVICE_SECRET } else { "dev-service-secret-change-in-production" }
+    $runnerScript = "npm ci --silent; node e2e-system-scratch.js --out /tests/reports/$rawFileName --gatewayUrl $GatewayUrl --authServiceUrl $AuthServiceUrl --complianceServiceUrl $ComplianceServiceUrl --cryptoServiceUrl $CryptoServiceUrl --searchServiceUrl $SearchServiceUrl --mediaServiceUrl $MediaServiceUrl --socket1Url $Socket1Url --socket2Url $Socket2Url --serviceSecret $ServiceSecretStr"
 
     Write-Host "4) Running Dockerized HTTP + Socket E2E suite..." -ForegroundColor Yellow
     $runnerOutput = & docker run --rm `

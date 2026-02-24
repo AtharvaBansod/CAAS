@@ -11,46 +11,9 @@ Write-Host "CAAS Platform - Starting Services" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Ensure JWT keys exist (gateway and socket need RS256 keys)
-$keysDir = ".\keys"
-if (-not (Test-Path $keysDir)) {
-    New-Item -ItemType Directory -Path $keysDir -Force | Out-Null
-}
-$privPath = Join-Path $keysDir "private.pem"
-$pubPath = Join-Path $keysDir "public.pem"
-if (-not (Test-Path $privPath)) {
-    Write-Host "Generating JWT keys for development..." -ForegroundColor Yellow
-    $generated = $false
-
-    # Prefer local node if available
-    $nodeCmd = Get-Command node -ErrorAction SilentlyContinue
-    if ($nodeCmd) {
-        node .\scripts\generate-jwt-keys.js 2>&1 | Out-Null
-        if (Test-Path $privPath) {
-            $generated = $true
-        }
-    }
-
-    # Fallback: generate keys using Dockerized node runtime (docker-only friendly)
-    if (-not $generated) {
-        Write-Host "  Local Node not available, generating keys via Docker..." -ForegroundColor Gray
-        docker run --rm -v "${PWD}:/work" -w /work node:20-alpine node ./scripts/generate-jwt-keys.js 2>&1 | Out-Null
-        if (Test-Path $privPath) {
-            $generated = $true
-        }
-    }
-
-    if (Test-Path $privPath) {
-        Write-Host "  JWT keys generated in $keysDir" -ForegroundColor Green
-    } else {
-        Write-Host "  Warning: Could not generate keys. Set JWT_PRIVATE_KEY and JWT_PUBLIC_KEY in .env manually." -ForegroundColor Yellow
-    }
-}
-# Load JWT keys into env for docker-compose (gateway/socket need these)
-if ((Test-Path $privPath) -and (Test-Path $pubPath)) {
-    $env:JWT_PRIVATE_KEY = Get-Content $privPath -Raw
-    $env:JWT_PUBLIC_KEY = Get-Content $pubPath -Raw
-}
+# Phase 4.5.z.x: JWT_SECRET (HMAC) is used instead of RSA keys.
+# No key files are needed. JWT_SECRET and SERVICE_SECRET are set in .env
+Write-Host "  Auth: Using JWT_SECRET (HMAC/HS256) - no RSA keys needed" -ForegroundColor Green
 
 # Check if Docker is running
 try {

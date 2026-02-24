@@ -1,5 +1,4 @@
 import { Server } from 'socket.io';
-import { createClient } from 'redis';
 import { config } from '../config';
 import { PresenceStore } from '../presence/presence-store';
 import { PresenceManager } from '../presence/presence-manager';
@@ -7,7 +6,6 @@ import { registerPresenceEvents } from '../presence/presence-events';
 import { registerPresenceSubscriptionEvents } from '../presence/presence-subscription-events';
 import { AuthenticatedSocket, socketAuthMiddleware } from '../middleware/auth-middleware';
 import { MinimalRedisClient } from '../tokens';
-import { AuthServiceClient } from '../clients/auth-client';
 
 export function registerPresenceNamespace(io: Server) {
   const presenceNamespace = io.of('/presence');
@@ -18,28 +16,21 @@ export function registerPresenceNamespace(io: Server) {
   const presenceNotifier = (io as any).presenceNotifier;
   const presenceAuthorizer = (io as any).presenceAuthorizer;
   const lastSeenTracker = (io as any).lastSeenTracker;
-  
+
   if (!redisClient) {
     console.error('Redis client not available in presence namespace');
     return;
   }
 
-  // Initialize Auth Service Client (Phase 4.5.0)
-  const authClient = new AuthServiceClient(
-    {
-      baseURL: process.env.AUTH_SERVICE_URL || 'http://auth-service:3001',
-      timeout: parseInt(process.env.AUTH_SERVICE_TIMEOUT || '5000'),
-      retries: parseInt(process.env.AUTH_SERVICE_RETRIES || '3'),
-      cache: {
-        ttl: parseInt(process.env.AUTH_CACHE_TTL || '300'),
-        keyPrefix: 'presence:auth:',
-      },
-    },
-    redisClient as any
-  );
+  // Get Auth Service Client from server
+  const authClient = (io as any).authClient;
 
-  // Apply authentication middleware to the presence namespace
-  presenceNamespace.use(socketAuthMiddleware(authClient));
+  if (authClient) {
+    // Apply authentication middleware to the presence namespace
+    presenceNamespace.use(socketAuthMiddleware(authClient));
+  } else {
+    console.warn('Auth client not available in presence namespace; relying on upstream auth context');
+  }
 
   // Initialize PresenceStore
   const presenceStore = new PresenceStore(redisClient as MinimalRedisClient, {
@@ -49,7 +40,7 @@ export function registerPresenceNamespace(io: Server) {
 
   // Initialize PresenceManager
   const presenceManager = new PresenceManager(io, presenceStore, config.presence.idleTimeoutSeconds);
-  
+
   // Set notifier and last seen tracker
   if (presenceNotifier) {
     presenceManager.setNotifier(presenceNotifier);
@@ -63,7 +54,7 @@ export function registerPresenceNamespace(io: Server) {
 
     // Register presence-specific events for this socket
     registerPresenceEvents(presenceManager)(socket);
-    
+
     // Register presence subscription events
     if (presenceSubscriber && presenceAuthorizer) {
       registerPresenceSubscriptionEvents(socket, presenceSubscriber, presenceAuthorizer, presenceManager);

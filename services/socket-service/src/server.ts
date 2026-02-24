@@ -65,6 +65,7 @@ export async function createSocketServer(httpServer: http.Server): Promise<Serve
   const authClient = new AuthServiceClient(
     {
       baseURL: process.env.AUTH_SERVICE_URL || 'http://auth-service:3001',
+      serviceSecret: process.env.SERVICE_SECRET || 'dev-service-secret-change-in-production',
       timeout: parseInt(process.env.AUTH_SERVICE_TIMEOUT || '5000'),
       retries: parseInt(process.env.AUTH_SERVICE_RETRIES || '3'),
       cache: {
@@ -122,7 +123,7 @@ export async function createSocketServer(httpServer: http.Server): Promise<Serve
   logger.info('Media and search handlers initialized');
 
   io.on('connection', (socket: AuthenticatedSocket) => {
-    const userId = socket.user?.user_id || socket.user?.sub;
+    const userId = socket.user?.user_id;
     const tenantId = socket.user?.tenant_id;
 
     // Track metrics
@@ -130,7 +131,7 @@ export async function createSocketServer(httpServer: http.Server): Promise<Serve
 
     if (userId && tenantId) {
       sessionManager.bindSocketToUser(userId, socket.id);
-      
+
       // Track connection
       connectionTracker.addConnection({
         socket_id: socket.id,
@@ -164,7 +165,7 @@ export async function createSocketServer(httpServer: http.Server): Promise<Serve
 
   // Graceful shutdown
   const cleanup = async () => {
-    await mongoClient.close().catch(() => {});
+    await mongoClient.close().catch(() => { });
   };
   process.on('SIGTERM', cleanup);
   process.on('SIGINT', cleanup);

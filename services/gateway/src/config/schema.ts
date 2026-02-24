@@ -8,9 +8,11 @@ export const configSchema = z.object({
   MONGODB_URI: z.string().url(),
   REDIS_URL: z.string().url(),
   KAFKA_BROKERS: z.string(),
-  JWT_PRIVATE_KEY: z.string().min(1).default(''),
-  JWT_PUBLIC_KEY: z.string().min(1).default(''),
   CORS_ORIGINS: z.string().default('*'),
+
+  // Phase 4.5.z.x: Auth Service integration (replaces JWT_PRIVATE_KEY and JWT_PUBLIC_KEY)
+  AUTH_SERVICE_URL: z.string().url().default('http://auth-service:3001'),
+  SERVICE_SECRET: z.string().min(1).default('dev-service-secret'),
 });
 
 export type Config = z.infer<typeof configSchema>;

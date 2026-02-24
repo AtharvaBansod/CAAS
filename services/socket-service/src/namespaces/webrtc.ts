@@ -43,7 +43,7 @@ export function registerWebRTCNamespace(io: Server) {
     const callTerminator = new CallTerminator(io, callStore, callHistorySaver);
 
     webrtcNamespace.on('connection', (socket: AuthenticatedSocket) => {
-        const userId = socket.user?.user_id || socket.user?.sub;
+        const userId = socket.user?.user_id;
         const tenantId = socket.user?.tenant_id;
 
         logger.info(`[WebRTC] Client connected: ${socket.id} (User: ${userId})`);

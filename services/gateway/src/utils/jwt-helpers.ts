@@ -1,24 +1,38 @@
-import jwt, { SignOptions, VerifyOptions } from 'jsonwebtoken';
-import { config } from '../config';
+/**
+ * JWT Helpers
+ * Phase 4.5.z.x - Task 04: Public Key Infrastructure Removal
+ * 
+ * DEPRECATED: Gateway no longer signs/verifies JWTs locally.
+ * All token operations are delegated to the Auth Service.
+ * These utilities are kept only for backward compatibility during migration.
+ */
 
-// RS256 requires private key for signing, public key for verifying
-const PRIVATE_KEY = config.JWT_PRIVATE_KEY.replace(/\\n/g, '\n');
-const PUBLIC_KEY = config.JWT_PUBLIC_KEY.replace(/\\n/g, '\n');
+import jwt from 'jsonwebtoken';
 
-export const signJwt = (payload: object, options?: SignOptions): string => {
-  return jwt.sign(payload, PRIVATE_KEY, {
-    ...(options && options),
-    algorithm: 'RS256',
-  });
+/**
+ * @deprecated Use AuthServiceClient.validateToken() instead
+ * Gateway should not sign JWTs directly
+ */
+export const signJwt = (payload: object, options?: any): string => {
+  throw new Error(
+    'Gateway JWT signing is deprecated. Use Auth Service for token generation.'
+  );
 };
 
-export const verifyJwt = <T>(token: string, options?: VerifyOptions): T => {
-  return jwt.verify(token, PUBLIC_KEY, {
-    ...(options && options),
-    algorithms: ['RS256'],
-  }) as T;
+/**
+ * @deprecated Use AuthServiceClient.validateToken() instead
+ * Gateway should not verify JWTs directly
+ */
+export const verifyJwt = <T>(token: string, options?: any): T => {
+  throw new Error(
+    'Gateway JWT verification is deprecated. Use Auth Service for token validation.'
+  );
 };
 
+/**
+ * Decode JWT without verification (for logging/debugging only)
+ * This is safe as it doesn't require keys
+ */
 export const decodeJwt = (token: string) => {
   return jwt.decode(token);
 };

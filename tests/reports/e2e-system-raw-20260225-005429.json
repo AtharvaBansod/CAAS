@@ -1,0 +1,4569 @@
+{
+  "generatedAt": "2026-02-24T19:24:52.449Z",
+  "metadata": {
+    "gatewayUrl": "http://gateway:3000",
+    "authServiceUrl": "http://auth-service:3001",
+    "complianceServiceUrl": "http://compliance-service:3008",
+    "cryptoServiceUrl": "http://crypto-service:3009",
+    "searchServiceUrl": "http://search-service:3006",
+    "mediaServiceUrl": "http://media-service:3005",
+    "socketUrls": [
+      "http://socket-service-1:3001",
+      "http://socket-service-2:3001"
+    ],
+    "outPath": "/tests/reports/e2e-system-raw-20260225-005429.json",
+    "timeoutMs": 12000,
+    "socketAckTimeoutMs": 3000,
+    "serviceSecret": "dev-service-secret"
+  },
+  "summary": {
+    "total": 91,
+    "passed": 88,
+    "failed": 0,
+    "warnings": 3
+  },
+  "context": {
+    "clientA": {
+      "client_id": "274762be-170f-47f6-a549-9abeca3aac50",
+      "tenant_id": "6588e060-8dc4-4d82-85cd-c4976241b172",
+      "api_key": "caas_prod_1a08c0661212dda6dbb70b605b0cf87312c68b19dc95ae278eab45adacdde1ba",
+      "api_secret": "caas_prod_b8ea8df78b1cbd1b4a6bfc8336d968af893543d7d2944437ec67d40444732f49",
+      "message": "Registration successful. Store your API keys securely - they cannot be retrieved later."
+    },
+    "clientId": "274762be-170f-47f6-a549-9abeca3aac50",
+    "apiKey": "caas_prod_1a08c0661212dda6dbb70b605b0cf87312c68b19dc95ae278eab45adacdde1ba",
+    "clientB": {
+      "client_id": "baad7e4e-d88a-4cb8-bf85-2cc30b4734fc",
+      "tenant_id": "5dd19d11-db4d-4440-8f13-cb9d12e0f2b2",
+      "api_key": "caas_prod_ed06c349d418638672e6e12c00b5acebc146a9c2f0fb1aa86647f944ea3c2c39",
+      "api_secret": "caas_prod_9b0acd16f6537de377b45841a061f856bf2f38f691163542d9bbaceb82d58648",
+      "message": "Registration successful. Store your API keys securely - they cannot be retrieved later."
+    },
+    "apiKeyValidation": {
+      "valid": false,
+      "error": "Invalid API key"
+    },
+    "userA": {
+      "token": null,
+      "external_id": "user-a-1771961092719"
+    },
+    "userB": {
+      "token": null,
+      "external_id": "user-b-1771961092719"
+    }
+  },
+  "sections": {
+    "health": {
+      "total": 11,
+      "passed": 11,
+      "failed": 0,
+      "warnings": 0
+    },
+    "client-registration": {
+      "total": 3,
+      "passed": 3,
+      "failed": 0,
+      "warnings": 0
+    },
+    "api-key-management": {
+      "total": 2,
+      "passed": 2,
+      "failed": 0,
+      "warnings": 0
+    },
+    "internal-validation": {
+      "total": 2,
+      "passed": 1,
+      "failed": 0,
+      "warnings": 1
+    },
+    "sdk-sessions": {
+      "total": 3,
+      "passed": 1,
+      "failed": 0,
+      "warnings": 2
+    },
+    "token-validation": {
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "warnings": 0
+    },
+    "gateway-auth-routes": {
+      "total": 7,
+      "passed": 7,
+      "failed": 0,
+      "warnings": 0
+    },
+    "gateway-sdk-token": {
+      "total": 2,
+      "passed": 2,
+      "failed": 0,
+      "warnings": 0
+    },
+    "cross-service": {
+      "total": 8,
+      "passed": 8,
+      "failed": 0,
+      "warnings": 0
+    },
+    "socket-realtime": {
+      "total": 2,
+      "passed": 2,
+      "failed": 0,
+      "warnings": 0
+    },
+    "whitelist": {
+      "total": 4,
+      "passed": 4,
+      "failed": 0,
+      "warnings": 0
+    },
+    "swagger-discovery": {
+      "total": 46,
+      "passed": 46,
+      "failed": 0,
+      "warnings": 0
+    }
+  },
+  "cases": [
+    {
+      "type": "http",
+      "name": "Gateway Health",
+      "tags": [
+        "health"
+      ],
+      "startedAt": "2026-02-24T19:24:52.458Z",
+      "endedAt": "2026-02-24T19:24:52.590Z",
+      "request": {
+        "method": "GET",
+        "url": "http://gateway:3000/health",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": [
+          200
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "54",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:52 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "654b3d4e-f4b2-4ebe-aca9-75372912d5d7",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "99",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"status\":\"ok\",\"timestamp\":\"2026-02-24T19:24:52.557Z\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "health"
+    },
+    {
+      "type": "http",
+      "name": "Gateway Internal",
+      "tags": [
+        "health"
+      ],
+      "startedAt": "2026-02-24T19:24:52.590Z",
+      "endedAt": "2026-02-24T19:24:52.602Z",
+      "request": {
+        "method": "GET",
+        "url": "http://gateway:3000/internal/health",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "101",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:52 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "99666a26-c694-4ca5-bf68-c4b801baaf0d",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "98",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"status\":\"ok\",\"service\":\"caas-gateway\",\"timestamp\":\"2026-02-24T19:24:52.599Z\",\"uptime\":45.210673226}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "health"
+    },
+    {
+      "type": "http",
+      "name": "Gateway Ready",
+      "tags": [
+        "health"
+      ],
+      "startedAt": "2026-02-24T19:24:52.603Z",
+      "endedAt": "2026-02-24T19:24:52.633Z",
+      "request": {
+        "method": "GET",
+        "url": "http://gateway:3000/internal/ready",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "142",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:52 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "6ee122c3-5df2-49d1-a2af-31a344b67607",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "97",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"status\":\"healthy\",\"service\":\"caas-gateway\",\"timestamp\":\"2026-02-24T19:24:52.629Z\",\"dependencies\":{\"mongodb\":\"up\",\"redis\":\"up\",\"kafka\":\"up\"}}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "health"
+    },
+    {
+      "type": "http",
+      "name": "Auth Service",
+      "tags": [
+        "health"
+      ],
+      "startedAt": "2026-02-24T19:24:52.633Z",
+      "endedAt": "2026-02-24T19:24:52.644Z",
+      "request": {
+        "method": "GET",
+        "url": "http://auth-service:3001/health",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": [
+          200
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "connection": "keep-alive",
+          "content-length": "106",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:52 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "e9f2261f-364d-4dc4-9ace-8e51a592bf71",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "98",
+          "x-ratelimit-reset": "275",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"status\":\"healthy\",\"service\":\"auth-service\",\"timestamp\":\"2026-02-24T19:24:52.639Z\",\"uptime\":51.584009094}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "health"
+    },
+    {
+      "type": "http",
+      "name": "Compliance Service",
+      "tags": [
+        "health"
+      ],
+      "startedAt": "2026-02-24T19:24:52.644Z",
+      "endedAt": "2026-02-24T19:24:52.656Z",
+      "request": {
+        "method": "GET",
+        "url": "http://compliance-service:3008/health",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "connection": "keep-alive",
+          "content-length": "143",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:52 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "7be410e8-8a01-4728-ba9b-926db23c77de",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "96",
+          "x-ratelimit-reset": "2975",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"status\":\"healthy\",\"service\":\"compliance-service\",\"timestamp\":\"2026-02-24T19:24:52.653Z\",\"checks\":{\"mongodb\":\"connected\",\"redis\":\"connected\"}}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "health"
+    },
+    {
+      "type": "http",
+      "name": "Crypto Service",
+      "tags": [
+        "health"
+      ],
+      "startedAt": "2026-02-24T19:24:52.656Z",
+      "endedAt": "2026-02-24T19:24:52.667Z",
+      "request": {
+        "method": "GET",
+        "url": "http://crypto-service:3009/health",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": [
+          200
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "connection": "keep-alive",
+          "content-length": "139",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:52 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "c65d7fcc-463f-44d7-8c17-0b9b8f716e47",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "1000",
+          "x-ratelimit-remaining": "994",
+          "x-ratelimit-reset": "2975",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"status\":\"healthy\",\"service\":\"crypto-service\",\"timestamp\":\"2026-02-24T19:24:52.665Z\",\"checks\":{\"mongodb\":\"connected\",\"redis\":\"connected\"}}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "health"
+    },
+    {
+      "type": "http",
+      "name": "Search Service",
+      "tags": [
+        "health"
+      ],
+      "startedAt": "2026-02-24T19:24:52.668Z",
+      "endedAt": "2026-02-24T19:24:52.675Z",
+      "request": {
+        "method": "GET",
+        "url": "http://search-service:3006/health",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": [
+          200
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "connection": "keep-alive",
+          "content-length": "192",
+          "content-type": "application/json; charset=utf-8",
+          "date": "Tue, 24 Feb 2026 19:24:52 GMT",
+          "keep-alive": "timeout=72",
+          "x-correlation-id": "b427526f-2d67-4c81-8f78-cad2d7e8b2be"
+        },
+        "body": "{\"status\":\"healthy\",\"service\":\"search-service\",\"indexing\":{\"documentsIndexed\":0,\"documentsUpdated\":0,\"documentsDeleted\":0,\"errors\":0,\"lastFlush\":\"2026-02-24T19:24:04.446Z\",\"averageLatency\":0}}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "health"
+    },
+    {
+      "type": "http",
+      "name": "Media Service",
+      "tags": [
+        "health"
+      ],
+      "startedAt": "2026-02-24T19:24:52.675Z",
+      "endedAt": "2026-02-24T19:24:52.688Z",
+      "request": {
+        "method": "GET",
+        "url": "http://media-service:3005/health",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": [
+          200
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "151",
+          "content-type": "application/json; charset=utf-8",
+          "date": "Tue, 24 Feb 2026 19:24:52 GMT",
+          "keep-alive": "timeout=72",
+          "x-correlation-id": "10efc6ab-4c58-459e-8f65-3d402b84ce67"
+        },
+        "body": "{\"status\":\"healthy\",\"timestamp\":\"2026-02-24T19:24:52.686Z\",\"services\":{\"mongodb\":\"connected\",\"s3\":\"connected\",\"redis\":\"connected\",\"kafka\":\"connected\"}}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "health"
+    },
+    {
+      "type": "http",
+      "name": "Socket Service 1",
+      "tags": [
+        "health"
+      ],
+      "startedAt": "2026-02-24T19:24:52.688Z",
+      "endedAt": "2026-02-24T19:24:52.699Z",
+      "request": {
+        "method": "GET",
+        "url": "http://socket-service-1:3001/health",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": [
+          200
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "connection": "keep-alive",
+          "content-length": "244",
+          "content-type": "application/json; charset=utf-8",
+          "date": "Tue, 24 Feb 2026 19:24:52 GMT",
+          "etag": "W/\"f4-1dg63g+3XuFoGFdNdEdvjnqviSA\"",
+          "keep-alive": "timeout=5",
+          "x-powered-by": "Express"
+        },
+        "body": "{\"status\":\"healthy\",\"timestamp\":\"2026-02-24T19:24:52.696Z\",\"checks\":{\"redis\":{\"status\":\"healthy\",\"latency_ms\":1},\"memory\":{\"status\":\"healthy\"},\"uptime\":{\"status\":\"healthy\"}},\"metrics\":{\"connections\":0,\"uptime_seconds\":678,\"memory_usage_mb\":29}}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "health"
+    },
+    {
+      "type": "http",
+      "name": "Socket Service 2",
+      "tags": [
+        "health"
+      ],
+      "startedAt": "2026-02-24T19:24:52.699Z",
+      "endedAt": "2026-02-24T19:24:52.710Z",
+      "request": {
+        "method": "GET",
+        "url": "http://socket-service-2:3001/health",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": [
+          200
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "connection": "keep-alive",
+          "content-length": "244",
+          "content-type": "application/json; charset=utf-8",
+          "date": "Tue, 24 Feb 2026 19:24:52 GMT",
+          "etag": "W/\"f4-43HsAB9lcKjTghsriYl+FiO2WyM\"",
+          "keep-alive": "timeout=5",
+          "x-powered-by": "Express"
+        },
+        "body": "{\"status\":\"healthy\",\"timestamp\":\"2026-02-24T19:24:52.707Z\",\"checks\":{\"redis\":{\"status\":\"healthy\",\"latency_ms\":1},\"memory\":{\"status\":\"healthy\"},\"uptime\":{\"status\":\"healthy\"}},\"metrics\":{\"connections\":0,\"uptime_seconds\":678,\"memory_usage_mb\":29}}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "health"
+    },
+    {
+      "type": "http",
+      "name": "Gateway Ping",
+      "tags": [
+        "health",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:52.710Z",
+      "endedAt": "2026-02-24T19:24:52.718Z",
+      "request": {
+        "method": "GET",
+        "url": "http://gateway:3000/v1/ping",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": [
+          200
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "26",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:52 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "6e366882-2e6c-430c-801c-8b4c9c0e3d9f",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "96",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"message\":\"pong from v1\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "health"
+    },
+    {
+      "type": "http",
+      "name": "Register SAAS Client (Tenant A)",
+      "tags": [
+        "auth",
+        "client"
+      ],
+      "startedAt": "2026-02-24T19:24:52.719Z",
+      "endedAt": "2026-02-24T19:24:53.187Z",
+      "request": {
+        "method": "POST",
+        "url": "http://auth-service:3001/api/v1/auth/client/register",
+        "headers": {},
+        "body": {
+          "company_name": "E2E Corp 1771961092719",
+          "email": "admin-1771961092719@e2etest.com",
+          "password": "Test1234!@#$",
+          "plan": "business"
+        },
+        "acceptableStatus": [
+          200,
+          201
+        ]
+      },
+      "response": {
+        "status": 201,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "connection": "keep-alive",
+          "content-length": "380",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:53 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "970bfd14-3385-46a0-a36e-41e03de06a0c",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "97",
+          "x-ratelimit-reset": "275",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"client_id\":\"274762be-170f-47f6-a549-9abeca3aac50\",\"tenant_id\":\"6588e060-8dc4-4d82-85cd-c4976241b172\",\"api_key\":\"caas_prod_1a08c0661212dda6dbb70b605b0cf87312c68b19dc95ae278eab45adacdde1ba\",\"api_secret\":\"caas_prod_b8ea8df78b1cbd1b4a6bfc8336d968af893543d7d2944437ec67d40444732f49\",\"message\":\"Registration successful. Store your API keys securely - they cannot be retrieved later.\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "client-registration"
+    },
+    {
+      "type": "http",
+      "name": "Register SAAS Client (Tenant B)",
+      "tags": [
+        "auth",
+        "client"
+      ],
+      "startedAt": "2026-02-24T19:24:53.187Z",
+      "endedAt": "2026-02-24T19:24:53.689Z",
+      "request": {
+        "method": "POST",
+        "url": "http://auth-service:3001/api/v1/auth/client/register",
+        "headers": {},
+        "body": {
+          "company_name": "E2E Corp B 1771961092719",
+          "email": "admin-b-1771961092719@e2etest.com",
+          "password": "Test1234!@#$",
+          "plan": "free"
+        },
+        "acceptableStatus": [
+          200,
+          201
+        ]
+      },
+      "response": {
+        "status": 201,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "connection": "keep-alive",
+          "content-length": "380",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:53 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "3a789d4a-d513-402b-aa01-2fb9a63ad735",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "96",
+          "x-ratelimit-reset": "274",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"client_id\":\"baad7e4e-d88a-4cb8-bf85-2cc30b4734fc\",\"tenant_id\":\"5dd19d11-db4d-4440-8f13-cb9d12e0f2b2\",\"api_key\":\"caas_prod_ed06c349d418638672e6e12c00b5acebc146a9c2f0fb1aa86647f944ea3c2c39\",\"api_secret\":\"caas_prod_9b0acd16f6537de377b45841a061f856bf2f38f691163542d9bbaceb82d58648\",\"message\":\"Registration successful. Store your API keys securely - they cannot be retrieved later.\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "client-registration"
+    },
+    {
+      "type": "http",
+      "name": "Register SAAS Client (Duplicate)",
+      "tags": [
+        "auth",
+        "client",
+        "negative"
+      ],
+      "startedAt": "2026-02-24T19:24:53.689Z",
+      "endedAt": "2026-02-24T19:24:53.698Z",
+      "request": {
+        "method": "POST",
+        "url": "http://auth-service:3001/api/v1/auth/client/register",
+        "headers": {},
+        "body": {
+          "company_name": "E2E Corp 1771961092719",
+          "email": "admin-1771961092719@e2etest.com",
+          "password": "Test1234!@#$"
+        },
+        "acceptableStatus": [
+          400,
+          409,
+          422
+        ]
+      },
+      "response": {
+        "status": 409,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "connection": "keep-alive",
+          "content-length": "36",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:53 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "fd05514e-9ada-4ec1-a3eb-390ea3186960",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "95",
+          "x-ratelimit-reset": "274",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"error\":\"Email already registered\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "client-registration"
+    },
+    {
+      "type": "http",
+      "name": "Rotate API Key",
+      "tags": [
+        "auth",
+        "apikey"
+      ],
+      "startedAt": "2026-02-24T19:24:53.698Z",
+      "endedAt": "2026-02-24T19:24:53.726Z",
+      "request": {
+        "method": "POST",
+        "url": "http://auth-service:3001/api/v1/auth/client/api-keys/rotate",
+        "headers": {},
+        "body": {
+          "client_id": "274762be-170f-47f6-a549-9abeca3aac50"
+        },
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "connection": "keep-alive",
+          "content-length": "180",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:53 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "e3f7dd53-3901-4799-8403-070318df2370",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "94",
+          "x-ratelimit-reset": "274",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"secondary_key\":\"caas_prod_2c3a844cd0378ccd99a004cee51e4420569b7a7f128b5aefbff66a5e65e057df\",\"message\":\"New secondary key generated. Update your application and then promote it.\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "api-key-management"
+    },
+    {
+      "type": "http",
+      "name": "Promote API Key",
+      "tags": [
+        "auth",
+        "apikey"
+      ],
+      "startedAt": "2026-02-24T19:24:53.726Z",
+      "endedAt": "2026-02-24T19:24:53.758Z",
+      "request": {
+        "method": "POST",
+        "url": "http://auth-service:3001/api/v1/auth/client/api-keys/promote",
+        "headers": {},
+        "body": {
+          "client_id": "274762be-170f-47f6-a549-9abeca3aac50"
+        },
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "connection": "keep-alive",
+          "content-length": "73",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:53 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "9d0f56ab-d499-426c-8710-5a96e637f7a8",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "93",
+          "x-ratelimit-reset": "274",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"message\":\"Secondary key promoted to primary. Old primary key revoked.\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "api-key-management"
+    },
+    {
+      "type": "http",
+      "name": "Validate API Key (Internal)",
+      "tags": [
+        "auth",
+        "internal"
+      ],
+      "startedAt": "2026-02-24T19:24:53.758Z",
+      "endedAt": "2026-02-24T19:24:53.783Z",
+      "request": {
+        "method": "POST",
+        "url": "http://auth-service:3001/api/v1/auth/internal/validate-api-key",
+        "headers": {
+          "x-service-secret": "dev-service-secret"
+        },
+        "body": {
+          "api_key": "caas_prod_1a08c0661212dda6dbb70b605b0cf87312c68b19dc95ae278eab45adacdde1ba",
+          "ip_address": "127.0.0.1"
+        },
+        "acceptableStatus": [
+          200
+        ]
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "connection": "keep-alive",
+          "content-length": "41",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:53 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "947eadf6-d962-4115-a4a8-5d9cc9d1e1ff",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "92",
+          "x-ratelimit-reset": "274",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"valid\":false,\"error\":\"Invalid API key\"}",
+        "error": null
+      },
+      "outcome": "warning",
+      "section": "internal-validation"
+    },
+    {
+      "type": "http",
+      "name": "Validate API Key (Invalid)",
+      "tags": [
+        "auth",
+        "internal",
+        "negative"
+      ],
+      "startedAt": "2026-02-24T19:24:53.783Z",
+      "endedAt": "2026-02-24T19:24:53.798Z",
+      "request": {
+        "method": "POST",
+        "url": "http://auth-service:3001/api/v1/auth/internal/validate-api-key",
+        "headers": {
+          "x-service-secret": "dev-service-secret"
+        },
+        "body": {
+          "api_key": "caas_invalid_key_12345",
+          "ip_address": "127.0.0.1"
+        },
+        "acceptableStatus": [
+          401,
+          403,
+          404
+        ]
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "connection": "keep-alive",
+          "content-length": "41",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:53 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "ee3454d3-24fa-46ff-adc0-3aa2631464fa",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "91",
+          "x-ratelimit-reset": "274",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"valid\":false,\"error\":\"Invalid API key\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "internal-validation"
+    },
+    {
+      "type": "http",
+      "name": "Create SDK Session (User A)",
+      "tags": [
+        "auth",
+        "sdk"
+      ],
+      "startedAt": "2026-02-24T19:24:53.799Z",
+      "endedAt": "2026-02-24T19:24:53.816Z",
+      "request": {
+        "method": "POST",
+        "url": "http://auth-service:3001/api/v1/auth/sdk/session",
+        "headers": {
+          "x-api-key": "caas_prod_1a08c0661212dda6dbb70b605b0cf87312c68b19dc95ae278eab45adacdde1ba"
+        },
+        "body": {
+          "user_external_id": "user-a-1771961092719",
+          "user_data": {
+            "name": "Alice Tester",
+            "email": "alice-1771961092719@e2etest.com"
+          },
+          "device_info": {
+            "device_type": "web"
+          }
+        },
+        "acceptableStatus": [
+          200,
+          201
+        ]
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "connection": "keep-alive",
+          "content-length": "54",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:53 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "268514b2-7b8d-4079-a808-244e3a27b47b",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "90",
+          "x-ratelimit-reset": "274",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"error\":\"Invalid API key - client context not found\"}",
+        "error": null
+      },
+      "outcome": "warning",
+      "section": "sdk-sessions"
+    },
+    {
+      "type": "http",
+      "name": "Create SDK Session (User B)",
+      "tags": [
+        "auth",
+        "sdk"
+      ],
+      "startedAt": "2026-02-24T19:24:53.816Z",
+      "endedAt": "2026-02-24T19:24:53.831Z",
+      "request": {
+        "method": "POST",
+        "url": "http://auth-service:3001/api/v1/auth/sdk/session",
+        "headers": {
+          "x-api-key": "caas_prod_1a08c0661212dda6dbb70b605b0cf87312c68b19dc95ae278eab45adacdde1ba"
+        },
+        "body": {
+          "user_external_id": "user-b-1771961092719",
+          "user_data": {
+            "name": "Bob Tester",
+            "email": "bob-1771961092719@e2etest.com"
+          },
+          "device_info": {
+            "device_type": "mobile"
+          }
+        },
+        "acceptableStatus": [
+          200,
+          201
+        ]
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "connection": "keep-alive",
+          "content-length": "54",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:53 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "94ce4d75-2734-48ae-98dc-697bc061289b",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "89",
+          "x-ratelimit-reset": "274",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"error\":\"Invalid API key - client context not found\"}",
+        "error": null
+      },
+      "outcome": "warning",
+      "section": "sdk-sessions"
+    },
+    {
+      "type": "http",
+      "name": "Create SDK Session (No API Key)",
+      "tags": [
+        "auth",
+        "sdk",
+        "negative"
+      ],
+      "startedAt": "2026-02-24T19:24:53.831Z",
+      "endedAt": "2026-02-24T19:24:53.840Z",
+      "request": {
+        "method": "POST",
+        "url": "http://auth-service:3001/api/v1/auth/sdk/session",
+        "headers": {},
+        "body": {
+          "user_external_id": "should-fail"
+        },
+        "acceptableStatus": [
+          401,
+          403
+        ]
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "connection": "keep-alive",
+          "content-length": "54",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:53 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "e50f6622-e182-4121-9cf4-afab20e35b2b",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "88",
+          "x-ratelimit-reset": "274",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"error\":\"Invalid API key - client context not found\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "sdk-sessions"
+    },
+    {
+      "type": "http",
+      "name": "Validate Token (Invalid)",
+      "tags": [
+        "auth",
+        "internal",
+        "negative"
+      ],
+      "startedAt": "2026-02-24T19:24:53.840Z",
+      "endedAt": "2026-02-24T19:24:53.851Z",
+      "request": {
+        "method": "POST",
+        "url": "http://auth-service:3001/api/v1/auth/internal/validate",
+        "headers": {
+          "x-service-secret": "dev-service-secret"
+        },
+        "body": {
+          "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.invalid.payload"
+        },
+        "acceptableStatus": [
+          401,
+          403
+        ]
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "connection": "keep-alive",
+          "content-length": "39",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:53 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "27c82106-bdff-480f-a185-1c0dea29cab1",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "87",
+          "x-ratelimit-reset": "274",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"valid\":false,\"error\":\"Invalid token\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "token-validation"
+    },
+    {
+      "type": "http",
+      "name": "Tenant Info (Unauthorized)",
+      "tags": [
+        "gateway",
+        "negative"
+      ],
+      "startedAt": "2026-02-24T19:24:53.851Z",
+      "endedAt": "2026-02-24T19:24:53.860Z",
+      "request": {
+        "method": "GET",
+        "url": "http://gateway:3000/v1/tenant",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": [
+          401,
+          403
+        ]
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "70",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:53 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "48ce07a3-edcf-4142-845b-a0f95663b3b5",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "95",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"statusCode\":401,\"error\":\"Error\",\"message\":\"Tenant context required\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "gateway-auth-routes"
+    },
+    {
+      "type": "http",
+      "name": "Tenant Info (Authorized)",
+      "tags": [
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:53.860Z",
+      "endedAt": "2026-02-24T19:24:53.867Z",
+      "request": {
+        "method": "GET",
+        "url": "http://gateway:3000/v1/tenant",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "70",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:53 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "1f0e6327-5644-499a-9e02-76855f4cc0b7",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "94",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"statusCode\":401,\"error\":\"Error\",\"message\":\"Tenant context required\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "gateway-auth-routes"
+    },
+    {
+      "type": "http",
+      "name": "Tenant Usage",
+      "tags": [
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:53.867Z",
+      "endedAt": "2026-02-24T19:24:53.874Z",
+      "request": {
+        "method": "GET",
+        "url": "http://gateway:3000/v1/tenant/usage",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "70",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:53 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "a867b182-9db9-4cad-95ae-e40b49a8d758",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "93",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"statusCode\":401,\"error\":\"Error\",\"message\":\"Tenant context required\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "gateway-auth-routes"
+    },
+    {
+      "type": "http",
+      "name": "Tenant Settings Update",
+      "tags": [
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:53.874Z",
+      "endedAt": "2026-02-24T19:24:53.888Z",
+      "request": {
+        "method": "PUT",
+        "url": "http://gateway:3000/v1/tenant/settings",
+        "headers": {},
+        "body": {
+          "settings": {
+            "locale": "en",
+            "timezone": "UTC"
+          }
+        },
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "70",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:53 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "b421e257-5ec3-4656-9385-df31dd4dce5a",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "92",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"statusCode\":401,\"error\":\"Error\",\"message\":\"Tenant context required\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "gateway-auth-routes"
+    },
+    {
+      "type": "http",
+      "name": "Gateway Create API Key",
+      "tags": [
+        "gateway",
+        "auth"
+      ],
+      "startedAt": "2026-02-24T19:24:53.888Z",
+      "endedAt": "2026-02-24T19:24:53.899Z",
+      "request": {
+        "method": "POST",
+        "url": "http://gateway:3000/v1/auth/api-keys",
+        "headers": {},
+        "body": {
+          "name": "e2e-gateway-key",
+          "scopes": [
+            "read"
+          ]
+        },
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "70",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:53 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "c6be5a0f-dbbc-44a4-b19b-97819f4a11d4",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "91",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"statusCode\":401,\"error\":\"Error\",\"message\":\"Authentication required\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "gateway-auth-routes"
+    },
+    {
+      "type": "http",
+      "name": "Gateway List API Keys",
+      "tags": [
+        "gateway",
+        "auth"
+      ],
+      "startedAt": "2026-02-24T19:24:53.899Z",
+      "endedAt": "2026-02-24T19:24:53.905Z",
+      "request": {
+        "method": "GET",
+        "url": "http://gateway:3000/v1/auth/api-keys",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "70",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:53 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "c5cd7ecd-a13c-428a-99f3-f224b5316b94",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "90",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"statusCode\":401,\"error\":\"Error\",\"message\":\"Authentication required\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "gateway-auth-routes"
+    },
+    {
+      "type": "http",
+      "name": "Gateway Sessions List",
+      "tags": [
+        "gateway",
+        "sessions"
+      ],
+      "startedAt": "2026-02-24T19:24:53.905Z",
+      "endedAt": "2026-02-24T19:24:53.912Z",
+      "request": {
+        "method": "GET",
+        "url": "http://gateway:3000/v1/sessions",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "24",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:53 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "773125d1-6e63-4f4b-9bc9-33c3ba4c5aa1",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "89",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"error\":\"Unauthorized\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "gateway-auth-routes"
+    },
+    {
+      "type": "http",
+      "name": "Gateway SDK Token (valid)",
+      "tags": [
+        "auth",
+        "gateway",
+        "sdk"
+      ],
+      "startedAt": "2026-02-24T19:24:53.912Z",
+      "endedAt": "2026-02-24T19:24:53.930Z",
+      "request": {
+        "method": "POST",
+        "url": "http://gateway:3000/v1/auth/sdk/token",
+        "headers": {},
+        "body": {
+          "app_id": "default-tenant",
+          "app_secret": "secret",
+          "user_external_id": "sdk-1771961092719"
+        },
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 500,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "68",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:53 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "323d963a-8870-432e-842d-4e655af6c296",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "88",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"statusCode\":500,\"error\":\"Error\",\"message\":\"Internal Server Error\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "gateway-sdk-token"
+    },
+    {
+      "type": "http",
+      "name": "Gateway SDK Token (invalid secret)",
+      "tags": [
+        "auth",
+        "gateway",
+        "negative"
+      ],
+      "startedAt": "2026-02-24T19:24:53.930Z",
+      "endedAt": "2026-02-24T19:24:53.950Z",
+      "request": {
+        "method": "POST",
+        "url": "http://gateway:3000/v1/auth/sdk/token",
+        "headers": {},
+        "body": {
+          "app_id": "default-tenant",
+          "app_secret": "wrong-secret",
+          "user_external_id": "sdk-bad-1771961092719"
+        },
+        "acceptableStatus": [
+          400,
+          401
+        ]
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "78",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:53 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "9438e8c0-199f-4e3f-86bc-75cd920bbf87",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "87",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"statusCode\":401,\"error\":\"Error\",\"message\":\"Invalid application credentials\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "gateway-sdk-token"
+    },
+    {
+      "type": "http",
+      "name": "Compliance Audit Log",
+      "tags": [
+        "compliance"
+      ],
+      "startedAt": "2026-02-24T19:24:53.950Z",
+      "endedAt": "2026-02-24T19:24:53.972Z",
+      "request": {
+        "method": "POST",
+        "url": "http://compliance-service:3008/api/v1/audit/log",
+        "headers": {},
+        "body": {
+          "tenant_id": "274762be-170f-47f6-a549-9abeca3aac50",
+          "user_id": "user-a-1771961092719",
+          "action": "e2e_test",
+          "resource_type": "system"
+        },
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 201,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "connection": "keep-alive",
+          "content-length": "51",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:53 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "8879a973-581c-4791-8546-6f83f0cd3ffc",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "95",
+          "x-ratelimit-reset": "2974",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"audit_id\":\"b935df68-a666-42f5-885d-45713d2ef238\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "cross-service"
+    },
+    {
+      "type": "http",
+      "name": "Compliance Audit Log (Invalid)",
+      "tags": [
+        "compliance",
+        "negative"
+      ],
+      "startedAt": "2026-02-24T19:24:53.972Z",
+      "endedAt": "2026-02-24T19:24:53.981Z",
+      "request": {
+        "method": "POST",
+        "url": "http://compliance-service:3008/api/v1/audit/log",
+        "headers": {},
+        "body": {
+          "tenant_id": "",
+          "action": ""
+        },
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "connection": "keep-alive",
+          "content-length": "35",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:53 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "11430722-e678-43a2-bcf1-30f04b526c91",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "94",
+          "x-ratelimit-reset": "2974",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"error\":\"Missing required fields\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "cross-service"
+    },
+    {
+      "type": "http",
+      "name": "Crypto Key Generate",
+      "tags": [
+        "crypto"
+      ],
+      "startedAt": "2026-02-24T19:24:53.981Z",
+      "endedAt": "2026-02-24T19:24:54.011Z",
+      "request": {
+        "method": "POST",
+        "url": "http://crypto-service:3009/api/v1/keys/generate",
+        "headers": {},
+        "body": {
+          "tenant_id": "274762be-170f-47f6-a549-9abeca3aac50",
+          "key_type": "data"
+        },
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 201,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "connection": "keep-alive",
+          "content-length": "49",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "0fd22d17-4e00-45e5-a69e-c2c71d1085b7",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "1000",
+          "x-ratelimit-remaining": "993",
+          "x-ratelimit-reset": "2974",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"key_id\":\"57c2e661-dc19-4503-a30a-86b0049ad5e6\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "cross-service"
+    },
+    {
+      "type": "http",
+      "name": "Crypto Encrypt",
+      "tags": [
+        "crypto"
+      ],
+      "startedAt": "2026-02-24T19:24:54.011Z",
+      "endedAt": "2026-02-24T19:24:54.023Z",
+      "request": {
+        "method": "POST",
+        "url": "http://crypto-service:3009/api/v1/encrypt",
+        "headers": {},
+        "body": {
+          "key_id": "57c2e661-dc19-4503-a30a-86b0049ad5e6",
+          "plaintext": "hello end-to-end"
+        },
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "connection": "keep-alive",
+          "content-length": "110",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "c761a204-2ea1-4913-8747-6330df208a76",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "1000",
+          "x-ratelimit-remaining": "992",
+          "x-ratelimit-reset": "2974",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"ciphertext\":\"CIK5u1V2qq38c4VIJ0r8vA==\",\"iv\":\"6dgHyTgwoN6B4lC67p6kMA==\",\"authTag\":\"tpqdTLc1s9+RS0GaEX36/A==\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "cross-service"
+    },
+    {
+      "type": "http",
+      "name": "Crypto Decrypt (Valid)",
+      "tags": [
+        "crypto"
+      ],
+      "startedAt": "2026-02-24T19:24:54.023Z",
+      "endedAt": "2026-02-24T19:24:54.029Z",
+      "request": {
+        "method": "POST",
+        "url": "http://crypto-service:3009/api/v1/decrypt",
+        "headers": {},
+        "body": {
+          "key_id": "57c2e661-dc19-4503-a30a-86b0049ad5e6",
+          "ciphertext": "CIK5u1V2qq38c4VIJ0r8vA==",
+          "iv": "6dgHyTgwoN6B4lC67p6kMA==",
+          "authTag": "tpqdTLc1s9+RS0GaEX36/A=="
+        },
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "connection": "keep-alive",
+          "content-length": "32",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "ce8393a6-06ee-4369-8e99-f6a3404c7732",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "1000",
+          "x-ratelimit-remaining": "991",
+          "x-ratelimit-reset": "2974",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"plaintext\":\"hello end-to-end\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "cross-service"
+    },
+    {
+      "type": "http",
+      "name": "Crypto Decrypt (Invalid Key)",
+      "tags": [
+        "crypto",
+        "negative"
+      ],
+      "startedAt": "2026-02-24T19:24:54.029Z",
+      "endedAt": "2026-02-24T19:24:54.046Z",
+      "request": {
+        "method": "POST",
+        "url": "http://crypto-service:3009/api/v1/decrypt",
+        "headers": {},
+        "body": {
+          "key_id": "invalid-key",
+          "ciphertext": "CIK5u1V2qq38c4VIJ0r8vA==",
+          "iv": "6dgHyTgwoN6B4lC67p6kMA==",
+          "authTag": "tpqdTLc1s9+RS0GaEX36/A=="
+        },
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 500,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "connection": "keep-alive",
+          "content-length": "37",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "32477e0c-5126-48d0-b161-297644ba7557",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "1000",
+          "x-ratelimit-remaining": "990",
+          "x-ratelimit-reset": "2974",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"error\":\"Key not found or inactive\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "cross-service"
+    },
+    {
+      "type": "http",
+      "name": "Search Empty Query",
+      "tags": [
+        "search",
+        "negative"
+      ],
+      "startedAt": "2026-02-24T19:24:54.046Z",
+      "endedAt": "2026-02-24T19:24:54.057Z",
+      "request": {
+        "method": "POST",
+        "url": "http://search-service:3006/api/v1/search/messages",
+        "headers": {},
+        "body": {
+          "query": ""
+        },
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "connection": "keep-alive",
+          "content-length": "95",
+          "content-type": "application/json; charset=utf-8",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "x-correlation-id": "3f3c0ea6-6fa0-4c74-a6e5-15212c1ec421"
+        },
+        "body": "{\"message\":\"Route POST:/api/v1/search/messages not found\",\"error\":\"Not Found\",\"statusCode\":404}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "cross-service"
+    },
+    {
+      "type": "http",
+      "name": "Media Quota (No Auth)",
+      "tags": [
+        "media",
+        "negative"
+      ],
+      "startedAt": "2026-02-24T19:24:54.057Z",
+      "endedAt": "2026-02-24T19:24:54.062Z",
+      "request": {
+        "method": "GET",
+        "url": "http://media-service:3005/api/v1/media/quota",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "90",
+          "content-type": "application/json; charset=utf-8",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "x-correlation-id": "575126f6-98c4-40fd-a648-78c494e0236b"
+        },
+        "body": "{\"message\":\"Route GET:/api/v1/media/quota not found\",\"error\":\"Not Found\",\"statusCode\":404}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "cross-service"
+    },
+    {
+      "type": "socket",
+      "name": "Socket /chat joinRoom @ http://socket-service-1:3001",
+      "tags": [
+        "socket",
+        "negative"
+      ],
+      "startedAt": "2026-02-24T19:24:54.063Z",
+      "endedAt": "2026-02-24T19:24:54.121Z",
+      "request": {
+        "socketUrl": "http://socket-service-1:3001",
+        "namespace": "/chat",
+        "event": "joinRoom",
+        "payload": {
+          "conversationId": "conv-e2e"
+        },
+        "withToken": false,
+        "expectConnect": false
+      },
+      "response": {
+        "connectError": "Authentication failed: No token provided"
+      },
+      "outcome": "passed",
+      "section": "socket-realtime"
+    },
+    {
+      "type": "socket",
+      "name": "Socket /chat joinRoom @ http://socket-service-2:3001",
+      "tags": [
+        "socket",
+        "negative"
+      ],
+      "startedAt": "2026-02-24T19:24:54.121Z",
+      "endedAt": "2026-02-24T19:24:54.147Z",
+      "request": {
+        "socketUrl": "http://socket-service-2:3001",
+        "namespace": "/chat",
+        "event": "joinRoom",
+        "payload": {
+          "conversationId": "conv-e2e"
+        },
+        "withToken": false,
+        "expectConnect": false
+      },
+      "response": {
+        "connectError": "Authentication failed: No token provided"
+      },
+      "outcome": "passed",
+      "section": "socket-realtime"
+    },
+    {
+      "type": "http",
+      "name": "Get IP Whitelist",
+      "tags": [
+        "auth",
+        "whitelist"
+      ],
+      "startedAt": "2026-02-24T19:24:54.147Z",
+      "endedAt": "2026-02-24T19:24:54.158Z",
+      "request": {
+        "method": "GET",
+        "url": "http://auth-service:3001/api/v1/auth/client/ip-whitelist?client_id=274762be-170f-47f6-a549-9abeca3aac50",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "connection": "keep-alive",
+          "content-length": "10",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "9f56bbd8-baba-4341-be96-18def39424dc",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "86",
+          "x-ratelimit-reset": "273",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"ips\":[]}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "whitelist"
+    },
+    {
+      "type": "http",
+      "name": "Add IP to Whitelist",
+      "tags": [
+        "auth",
+        "whitelist"
+      ],
+      "startedAt": "2026-02-24T19:24:54.158Z",
+      "endedAt": "2026-02-24T19:24:54.174Z",
+      "request": {
+        "method": "POST",
+        "url": "http://auth-service:3001/api/v1/auth/client/ip-whitelist",
+        "headers": {},
+        "body": {
+          "client_id": "274762be-170f-47f6-a549-9abeca3aac50",
+          "ip": "10.0.0.1"
+        },
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "connection": "keep-alive",
+          "content-length": "35",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "13036f79-2436-4c88-8415-feeb73959c1b",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "85",
+          "x-ratelimit-reset": "273",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"message\":\"IP added to whitelist\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "whitelist"
+    },
+    {
+      "type": "http",
+      "name": "Get Origin Whitelist",
+      "tags": [
+        "auth",
+        "whitelist"
+      ],
+      "startedAt": "2026-02-24T19:24:54.174Z",
+      "endedAt": "2026-02-24T19:24:54.184Z",
+      "request": {
+        "method": "GET",
+        "url": "http://auth-service:3001/api/v1/auth/client/origin-whitelist?client_id=274762be-170f-47f6-a549-9abeca3aac50",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "connection": "keep-alive",
+          "content-length": "14",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "578c13aa-b6f0-41d5-a39d-0fbea8bdd74b",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "84",
+          "x-ratelimit-reset": "273",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"origins\":[]}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "whitelist"
+    },
+    {
+      "type": "http",
+      "name": "Add Origin to Whitelist",
+      "tags": [
+        "auth",
+        "whitelist"
+      ],
+      "startedAt": "2026-02-24T19:24:54.184Z",
+      "endedAt": "2026-02-24T19:24:54.199Z",
+      "request": {
+        "method": "POST",
+        "url": "http://auth-service:3001/api/v1/auth/client/origin-whitelist",
+        "headers": {},
+        "body": {
+          "client_id": "274762be-170f-47f6-a549-9abeca3aac50",
+          "origin": "https://e2etest.com"
+        },
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "connection": "keep-alive",
+          "content-length": "39",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "8ab9b07d-c8f1-4870-9cfd-fd9bfc593780",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "83",
+          "x-ratelimit-reset": "273",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"message\":\"Origin added to whitelist\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "whitelist"
+    },
+    {
+      "type": "http",
+      "name": "Gateway OpenAPI Spec",
+      "tags": [
+        "discovery"
+      ],
+      "startedAt": "2026-02-24T19:24:54.202Z",
+      "endedAt": "2026-02-24T19:24:54.230Z",
+      "request": {
+        "method": "GET",
+        "url": "http://gateway:3000/documentation/json",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": [
+          200
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "24081",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "320d56fd-0824-4a07-8e79-dfec0f3078e4",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "86",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"openapi\":\"3.0.3\",\"info\":{\"title\":\"CAAS API Gateway\",\"description\":\"API Gateway for CAAS Platform\",\"version\":\"1.0.0\"},\"components\":{\"securitySchemes\":{\"bearerAuth\":{\"type\":\"http\",\"scheme\":\"bearer\",\"bearerFormat\":\"JWT\"}},\"schemas\":{}},\"paths\":{\"/internal/health\":{\"get\":{\"responses\":{\"200\":{\"description\":\"Default Response\"}}}},\"/internal/ready\":{\"get\":{\"responses\":{\"200\":{\"description\":\"Default Response\"}}}},\"/internal/health/detailed\":{\"get\":{\"responses\":{\"200\":{\"description\":\"Default Response\"}}}},\"/internal/metrics\":{\"get\":{\"responses\":{\"200\":{\"description\":\"Default Response\"}}}},\"/health\":{\"get\":{\"responses\":{\"200\":{\"description\":\"Default Response\"}}}},\"/v1/auth/sdk/token\":{\"post\":{\"tags\":[\"Auth\"],\"description\":\"Authenticate SDK and get tokens\",\"requestBody\":{\"content\":{\"application/json\":{\"schema\":{\"_def\":{\"unknownKeys\":\"strip\",\"catchall\":{\"_def\":{\"typeName\":\"ZodNever\"},\"~standard\":{\"version\":1,\"vendor\":\"zod\"}},\"typeName\":\"ZodObject\"},\"~standard\":{\"version\":1,\"vendor\":\"zod\"},\"_cached\":{\"shape\":{\"app_id\":{\"_def\":{\"checks\":[],\"typeName\":\"ZodString\",\"coerce\":false},\"~standard\":{\"version\":1,\"vendor\":\"zod\"}},\"app_secret\":{\"_def\":{\"checks\":[],\"typeName\":\"ZodString\",\"coerce\":false},\"~standard\":{\"version\":1,\"vendor\":\"zod\"}},\"user_external_id\":{\"_def\":{\"innerType\":{\"_def\":{\"checks\":[],\"typeName\":\"ZodString\",\"coerce\":false},\"~standard\":{\"version\":1,\"vendor\":\"zod\"}},\"typeName\":\"ZodOptional\"},\"~standard\":{\"version\":1,\"vendor\":\"zod\"}},\"metadata\":{\"_def\":{\"innerType\":{\"_def\":{\"keyType\":{\"_def\":{\"checks\":[],\"typeName\":\"ZodString\",\"coerce\":false},\"~standard\":{\"version\":1,\"vendor\":\"zod\"}},\"valueType\":{\"_def\":{\"typeName\":\"ZodAny\"},\"~standard\":{\"version\":1,\"vendor\":\"zod\"},\"_any\":true},\"typeName\":\"ZodRecord\"},\"~standard\":{\"version\":1,\"vendor\":\"zod\"}},\"typeName\":\"ZodOptional\"},\"~standard\":{\"version\":1,\"vendor\":\"zod\"}}},\"keys\":[\"app_id\",\"app_secret\",\"user_external_id\",\"metadata\"]}}}}},\"responses\":{\"200\":{\"description\":\"Default Response\",\"content\":{\"application/json\":{\"schema\":{\"_def\":{\"unknownKeys\":\"strip\",\"catchall\":{\"_def\":{\"typeName\":\"ZodNever\"},\"~standard\":{\"version\":1,\"vendor\":\"zod\"}},\"typeName\":\"ZodObject\"},\"~standard\":{\"version\":1,\"vendor\":\"zod\"}}}}}}}},\"/v1/auth/logout\":{\"post\":{\"tags\":[\"Auth\"],\"description\":\"Logout and invalidate tokens\",\"requestBody\":{\"content\":{\"application/json\":{\"schema\":{\"_def\":{\"unknownKeys\":\"strip\",\"catchall\":{\"_def\":{\"typeName\":\"ZodNever\"},\"~standard\":{\"version\":1,\"vendor\":\"zod\"}},\"typeName\":\"ZodObject\"},\"~standard\":{\"version\":1,\"vendor\":\"zod\"}}}}},\"responses\":{\"204\":{\"description\":\"Default Response\",\"content\":{\"application/json\":{\"schema\":{\"_def\":{\"typeName\":\"ZodNull\"},\"~standard\":{\"version\":1,\"vendor\":\"zod\"}}}}}}}},\"/v1/auth/api-keys\":{\"post\":{\"tags\":[\"Auth\"],\"description\":\"Create a new API Key\",\"requestBody\":{\"content\":{\"application/json\":{\"schema\":{\"_def\":{\"unknownKeys\":\"strip\",\"catchall\":{\"_def\":{\"typeName\":\"ZodNever\"},\"~standard\":{\"version\":1,\"vendor\":\"zod\"}},\"typeName\":\"ZodObject\"},\"~standard\":{\"version\":1,\"vendor\":\"zod\"},\"_cached\":{\"shape\":{\"name\":{\"_def\":{\"checks\":[{\"kind\":\"min\",\"value\":1}],\"typeName\":\"ZodString\",\"coerce\":false},\"~standard\":{\"version\":1,\"vendor\":\"zod\"}},\"scopes\":{\"_def\":{\"innerType\":{\"_def\":{\"type\":{\"_def\":{\"checks\":[],\"typeName\":\"ZodString\",\"coerce\":false},\"~standard\":{\"version\":1,\"vendor\":\"zod\"}},\"typeName\":\"ZodArray\"},\"~standard\":{\"version\":1,\"vendor\":\"zod\"}},\"typeName\":\"ZodDefault\"},\"~standard\":{\"version\":1,\"vendor\":\"zod\"}}},\"keys\":[\"name\",\"scopes\"]}}}}},\"responses\":{\"201\":{\"description\":\"Default Response\",\"content\":{\"application/json\":{\"schema\":{\"_def\":{\"unknownKeys\":\"strip\",\"catchall\":{\"_def\":{\"typeName\":\"ZodNever\"},\"~standard\":{\"version\":1,\"vendor\":\"zod\"}},\"typeName\":\"ZodObject\"},\"~standard\":{\"version\":1,\"vendor\":\"zod\"}}}}}}},\"get\":{\"tags\":[\"Auth\"],\"description\":\"List API Keys\",\"responses\":{\"200\":{\"description\":\"Default Response\",\"content\":{\"application/json\":{\"schema\":{\"_def\":{\"type\":{\"_def\":{\"unknownKeys\":\"strip\",\"catchall\":{\"_def\":{\"typeName\":\"ZodNever\"},\"~standard\":{\"version\":1,\"vendor\":\"zod\"}},\"typeName\":\"ZodObject\"},\"~standard\":{\"version\":1,\"vendor\":\"zod\"}},\"typeName\":\"ZodArray\"},\"~standard\":{\"version\":1,\"vendor\":\"zod\"}}}}}}}},\"/v1/auth/api-keys/{id}\":{\"delete\":{\"tags\":[\"Auth\"],\"parameters\":[{\"schema\":{\"unknownKeys\":\"strip\",\"catchall\":{\"_def\":{\"typeName\":\"ZodNever\"},\"~standard\":{\"version\":1,\"vendor\":\"zod\"}},\"typeName\":\"ZodObject\"},\"in\":\"path\",\"name\":\"_def\",\"required\":true},{\"schema\":{\"version\":1,\"vendor\":\"zod\"},\"in\":\"path\",\"name\":\"~standard\",\"required\":true}],\"responses\":{\"200\":{\"description\":\"Default Response\"}}}},\"/v1/sessions\":{\"get\":{\"tags\":[\"sessions\"],\"description\":\"List current user sessions\",\"responses\":{\"200\":{\"description\":\"Default Response\",\"content\":{\"application/json\":{\"schema\":{\"_def\":{\"unknownKeys\":\"strip\",\"catchall\":{\"_def\":{\"typeName\":\"ZodNever\"},\"~standard\":{\"version\":1,\"vendor\":\"zod\"}},\"typeName\":\"ZodObject\"},\"~standard\":{\"version\":1,\"vendor\":\"zod\"}}}}}}}},\"/v1/sessions/{id}\":{\"delete\":{\"tags\":[\"sessions\"],\"description\":\"Revoke specific session\",\"parameters\":[{\"schema\":{\"unknownKeys\":\"strip\",\"catchall\":{\"_def\":{\"typeName\":\"ZodNever\"},\"~standard\":{\"version\":1,\"vendor\":\"zod\"}},\"typeName\":\"ZodObject\"},\"in\":\"path\",\"name\":\"_def\",\"required\":true},{\"schema\":{\"version\":1,\"vendor\":\"zod\"},\"in\":\"path\",\"name\":\"~standard\",\"required\":true}],\"responses\":{\"200\":{\"description\":\"Default Response\",\"content\":{\"application/json\":{\"schema\":{\"_def\":{\"unknownKeys\":\"strip\",\"catchall\":{\"_def\":{\"typeName\":\"ZodNever\"},\"~standard\":{\"version\":1,\"vendor\":\"zod\"}},\"typeName\":\"ZodObject\"},\"~standard\":{\"version\":1,\"vendor\":\"zod\"}}}}}}}},\"/v1/sessions/others\":{\"delete\":{\"tags\":[\"sessions\"],\"description\":\"Logout all other devices\",\"responses\":{\"200\":{\"description\":\"Default Response\",\"content\":{\"application/json\":{\"schema\":{\"_def\":{\"unknownKeys\":\"strip\",\"catchall\":{\"_def\":{\"typeName\":\"ZodNever\"},\"~standard\":{\"version\":1,\"vendor\":\"zod\"}},\"typeName\":\"ZodObject\"},\"~standard\":{\"version\":1,\"vendor\":\"zod\"}}}}}}}},\"/v1/sessions/all\":{\"delete\":{\"tags\":[\"sessio... [truncated 18081 chars]",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover GET /health",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.231Z",
+      "endedAt": "2026-02-24T19:24:54.237Z",
+      "request": {
+        "method": "GET",
+        "url": "http://gateway:3000/health",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "54",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "40e54b76-cedf-4a81-b43b-c028ffa955c8",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "85",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"status\":\"ok\",\"timestamp\":\"2026-02-24T19:24:54.235Z\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover POST /v1/auth/sdk/token",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.237Z",
+      "endedAt": "2026-02-24T19:24:54.242Z",
+      "request": {
+        "method": "POST",
+        "url": "http://gateway:3000/v1/auth/sdk/token",
+        "headers": {},
+        "body": "sample",
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "113",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "fd0c2667-b522-4385-b81a-f1e78968f45c",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "84",
+          "x-ratelimit-reset": "59",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"statusCode\":400,\"error\":\"Internal Server Error\",\"message\":\"Unexpected token 's', \\\"sample\\\" is not valid JSON\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover POST /v1/auth/logout",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.243Z",
+      "endedAt": "2026-02-24T19:24:54.249Z",
+      "request": {
+        "method": "POST",
+        "url": "http://gateway:3000/v1/auth/logout",
+        "headers": {},
+        "body": "sample",
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "113",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "55ac4f5f-6a4a-46bd-b252-65304115dbc2",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "83",
+          "x-ratelimit-reset": "59",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"statusCode\":400,\"error\":\"Internal Server Error\",\"message\":\"Unexpected token 's', \\\"sample\\\" is not valid JSON\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover POST /v1/auth/api-keys",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.249Z",
+      "endedAt": "2026-02-24T19:24:54.255Z",
+      "request": {
+        "method": "POST",
+        "url": "http://gateway:3000/v1/auth/api-keys",
+        "headers": {},
+        "body": "sample",
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "113",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "cfa627a8-e4d1-4280-a755-6af89a43c7b3",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "82",
+          "x-ratelimit-reset": "59",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"statusCode\":400,\"error\":\"Internal Server Error\",\"message\":\"Unexpected token 's', \\\"sample\\\" is not valid JSON\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover GET /v1/auth/api-keys",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.255Z",
+      "endedAt": "2026-02-24T19:24:54.263Z",
+      "request": {
+        "method": "GET",
+        "url": "http://gateway:3000/v1/auth/api-keys",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "70",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "66de6b27-f022-45a5-8a54-63a1a04767e2",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "84",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"statusCode\":401,\"error\":\"Error\",\"message\":\"Authentication required\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover DELETE /v1/auth/api-keys/sample-id",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.263Z",
+      "endedAt": "2026-02-24T19:24:54.269Z",
+      "request": {
+        "method": "DELETE",
+        "url": "http://gateway:3000/v1/auth/api-keys/sample-id",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "70",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "3597ee5d-eb58-4f0a-bd9d-eaf2aae74e98",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "83",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"statusCode\":401,\"error\":\"Error\",\"message\":\"Authentication required\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover GET /v1/sessions",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.269Z",
+      "endedAt": "2026-02-24T19:24:54.275Z",
+      "request": {
+        "method": "GET",
+        "url": "http://gateway:3000/v1/sessions",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "24",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "64d21251-91f7-4db9-a951-84c9d54f7838",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "82",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"error\":\"Unauthorized\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover DELETE /v1/sessions/sample-id",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.275Z",
+      "endedAt": "2026-02-24T19:24:54.280Z",
+      "request": {
+        "method": "DELETE",
+        "url": "http://gateway:3000/v1/sessions/sample-id",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "24",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "4a8f937f-49d0-4665-9d26-f06109b9299a",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "81",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"error\":\"Unauthorized\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover DELETE /v1/sessions/others",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.280Z",
+      "endedAt": "2026-02-24T19:24:54.287Z",
+      "request": {
+        "method": "DELETE",
+        "url": "http://gateway:3000/v1/sessions/others",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "24",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "8a9d258a-6e44-4dcc-9639-3a5c81980238",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "80",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"error\":\"Unauthorized\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover DELETE /v1/sessions/all",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.287Z",
+      "endedAt": "2026-02-24T19:24:54.292Z",
+      "request": {
+        "method": "DELETE",
+        "url": "http://gateway:3000/v1/sessions/all",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "24",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "f885389e-1e45-4407-824b-7c6348af56ff",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "79",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"error\":\"Unauthorized\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover POST /v1/mfa/mfa/challenge",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.292Z",
+      "endedAt": "2026-02-24T19:24:54.298Z",
+      "request": {
+        "method": "POST",
+        "url": "http://gateway:3000/v1/mfa/mfa/challenge",
+        "headers": {},
+        "body": "sample",
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "113",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "f83d0079-9cc5-4348-9824-90a1c38983a5",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "75",
+          "x-ratelimit-reset": "59",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"statusCode\":400,\"error\":\"Internal Server Error\",\"message\":\"Unexpected token 's', \\\"sample\\\" is not valid JSON\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover POST /v1/mfa/mfa/verify",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.298Z",
+      "endedAt": "2026-02-24T19:24:54.304Z",
+      "request": {
+        "method": "POST",
+        "url": "http://gateway:3000/v1/mfa/mfa/verify",
+        "headers": {},
+        "body": "sample",
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "113",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "97f37c00-7108-44bb-9ad0-b2c0cfccf4a2",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "74",
+          "x-ratelimit-reset": "59",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"statusCode\":400,\"error\":\"Internal Server Error\",\"message\":\"Unexpected token 's', \\\"sample\\\" is not valid JSON\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover POST /v1/mfa/mfa/backup",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.304Z",
+      "endedAt": "2026-02-24T19:24:54.310Z",
+      "request": {
+        "method": "POST",
+        "url": "http://gateway:3000/v1/mfa/mfa/backup",
+        "headers": {},
+        "body": "sample",
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "113",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "cd9b4afd-3285-4836-be5f-43cba295afa7",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "73",
+          "x-ratelimit-reset": "59",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"statusCode\":400,\"error\":\"Internal Server Error\",\"message\":\"Unexpected token 's', \\\"sample\\\" is not valid JSON\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover GET /v1/mfa/mfa/status",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.310Z",
+      "endedAt": "2026-02-24T19:24:54.316Z",
+      "request": {
+        "method": "GET",
+        "url": "http://gateway:3000/v1/mfa/mfa/status",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "24",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "19947857-8caa-43cc-a2c9-c2ed77404432",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "78",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"error\":\"Unauthorized\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover GET /v1/admin/dlq",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.316Z",
+      "endedAt": "2026-02-24T19:24:54.323Z",
+      "request": {
+        "method": "GET",
+        "url": "http://gateway:3000/v1/admin/dlq",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "45",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "b7ab3d1a-9086-4478-b7e8-63b5749f64a3",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "77",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"messages\":[],\"total\":0,\"limit\":50,\"skip\":0}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover GET /v1/admin/dlq/sample-id",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.323Z",
+      "endedAt": "2026-02-24T19:24:54.328Z",
+      "request": {
+        "method": "GET",
+        "url": "http://gateway:3000/v1/admin/dlq/sample-id",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "65",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "7e129a2a-c4d3-47d4-bd3f-4729c2f8941d",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "76",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"error\":\"Not Found\",\"message\":\"DLQ message sample-id not found\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover DELETE /v1/admin/dlq/sample-id",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.328Z",
+      "endedAt": "2026-02-24T19:24:54.334Z",
+      "request": {
+        "method": "DELETE",
+        "url": "http://gateway:3000/v1/admin/dlq/sample-id",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "58",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "42ce0291-9157-43b4-859d-cccb73eb48bd",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "75",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"success\":true,\"message\":\"DLQ message sample-id deleted\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover POST /v1/admin/dlq/sample-id/reprocess",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.334Z",
+      "endedAt": "2026-02-24T19:24:54.340Z",
+      "request": {
+        "method": "POST",
+        "url": "http://gateway:3000/v1/admin/dlq/sample-id/reprocess",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "74",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "5328c67a-e4c5-40bf-8b6f-e40b4ed972f9",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "74",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"success\":true,\"message\":\"DLQ message sample-id queued for reprocessing\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover POST /v1/admin/dlq/bulk/reprocess",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.340Z",
+      "endedAt": "2026-02-24T19:24:54.346Z",
+      "request": {
+        "method": "POST",
+        "url": "http://gateway:3000/v1/admin/dlq/bulk/reprocess",
+        "headers": {},
+        "body": "sample",
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "113",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "b9bf5b04-e568-4077-8fca-9ed3d299da0f",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "67",
+          "x-ratelimit-reset": "59",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"statusCode\":400,\"error\":\"Internal Server Error\",\"message\":\"Unexpected token 's', \\\"sample\\\" is not valid JSON\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover POST /v1/admin/dlq/bulk/delete",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.346Z",
+      "endedAt": "2026-02-24T19:24:54.352Z",
+      "request": {
+        "method": "POST",
+        "url": "http://gateway:3000/v1/admin/dlq/bulk/delete",
+        "headers": {},
+        "body": "sample",
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "113",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "f811d6fe-65a1-45ce-8a20-26b86feecde2",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "66",
+          "x-ratelimit-reset": "59",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"statusCode\":400,\"error\":\"Internal Server Error\",\"message\":\"Unexpected token 's', \\\"sample\\\" is not valid JSON\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover GET /v1/admin/dlq/stats",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.353Z",
+      "endedAt": "2026-02-24T19:24:54.359Z",
+      "request": {
+        "method": "GET",
+        "url": "http://gateway:3000/v1/admin/dlq/stats",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "60",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "5c0c2b3c-feee-40ad-ac43-05076eb9eb0c",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "73",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"total\":0,\"pending\":0,\"retrying\":0,\"failed\":0,\"resolved\":0}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover GET /v1/admin/dlq/stats/errors",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.359Z",
+      "endedAt": "2026-02-24T19:24:54.366Z",
+      "request": {
+        "method": "GET",
+        "url": "http://gateway:3000/v1/admin/dlq/stats/errors",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "2",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "f365786d-c347-47a4-addc-524f8d7c4b54",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "72",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "[]",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover GET /v1/admin/dlq/stats/topics",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.366Z",
+      "endedAt": "2026-02-24T19:24:54.372Z",
+      "request": {
+        "method": "GET",
+        "url": "http://gateway:3000/v1/admin/dlq/stats/topics",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "2",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "230b8303-fbf8-4342-a058-cac4650c6bb4",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "71",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "[]",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover GET /v1/admin/users/sample-user/sessions",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.372Z",
+      "endedAt": "2026-02-24T19:24:54.379Z",
+      "request": {
+        "method": "GET",
+        "url": "http://gateway:3000/v1/admin/users/sample-user/sessions",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "33",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "6a60b0e2-dcca-470c-b989-9f4a5830b2d6",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "70",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"error\":\"Admin access required\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover DELETE /v1/admin/users/sample-user/sessions",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.379Z",
+      "endedAt": "2026-02-24T19:24:54.389Z",
+      "request": {
+        "method": "DELETE",
+        "url": "http://gateway:3000/v1/admin/users/sample-user/sessions",
+        "headers": {},
+        "body": "sample",
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "113",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "d915edde-60c1-4fc6-9663-91e05f61492b",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "61",
+          "x-ratelimit-reset": "59",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"statusCode\":400,\"error\":\"Internal Server Error\",\"message\":\"Unexpected token 's', \\\"sample\\\" is not valid JSON\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover DELETE /v1/admin/sessions/sample-id",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.389Z",
+      "endedAt": "2026-02-24T19:24:54.395Z",
+      "request": {
+        "method": "DELETE",
+        "url": "http://gateway:3000/v1/admin/sessions/sample-id",
+        "headers": {},
+        "body": "sample",
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "113",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "1ab775a4-6aa3-47dd-b209-27cce37cda35",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "60",
+          "x-ratelimit-reset": "59",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"statusCode\":400,\"error\":\"Internal Server Error\",\"message\":\"Unexpected token 's', \\\"sample\\\" is not valid JSON\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover GET /v1/admin/sessions/active",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.395Z",
+      "endedAt": "2026-02-24T19:24:54.402Z",
+      "request": {
+        "method": "GET",
+        "url": "http://gateway:3000/v1/admin/sessions/active",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "33",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "6888d302-fba1-4371-9b4b-1412bed81ba4",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "69",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"error\":\"Admin access required\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover GET /v1/admin/tenant/mfa",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.402Z",
+      "endedAt": "2026-02-24T19:24:54.410Z",
+      "request": {
+        "method": "GET",
+        "url": "http://gateway:3000/v1/admin/tenant/mfa",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "33",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "f59c596b-ed09-4426-980b-6839f21a8a42",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "68",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"error\":\"Admin access required\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover PUT /v1/admin/tenant/mfa",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.410Z",
+      "endedAt": "2026-02-24T19:24:54.418Z",
+      "request": {
+        "method": "PUT",
+        "url": "http://gateway:3000/v1/admin/tenant/mfa",
+        "headers": {},
+        "body": "sample",
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "113",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "a65e3bba-f1d2-484c-a533-95def07c227c",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "57",
+          "x-ratelimit-reset": "59",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"statusCode\":400,\"error\":\"Internal Server Error\",\"message\":\"Unexpected token 's', \\\"sample\\\" is not valid JSON\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover GET /v1/admin/users/mfa-status",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.418Z",
+      "endedAt": "2026-02-24T19:24:54.423Z",
+      "request": {
+        "method": "GET",
+        "url": "http://gateway:3000/v1/admin/users/mfa-status",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "33",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "d1499858-a5a5-4fef-8f56-152d00e2cf73",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "67",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"error\":\"Admin access required\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover POST /v1/admin/users/sample-user/mfa/enforce",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.423Z",
+      "endedAt": "2026-02-24T19:24:54.429Z",
+      "request": {
+        "method": "POST",
+        "url": "http://gateway:3000/v1/admin/users/sample-user/mfa/enforce",
+        "headers": {},
+        "body": "sample",
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "113",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "6f0144cf-005b-4670-a883-08c789f385f7",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "55",
+          "x-ratelimit-reset": "59",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"statusCode\":400,\"error\":\"Internal Server Error\",\"message\":\"Unexpected token 's', \\\"sample\\\" is not valid JSON\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover POST /v1/admin/mfa/enforce-all",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.429Z",
+      "endedAt": "2026-02-24T19:24:54.434Z",
+      "request": {
+        "method": "POST",
+        "url": "http://gateway:3000/v1/admin/mfa/enforce-all",
+        "headers": {},
+        "body": "sample",
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "113",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "f0b4ee51-4d32-499d-a408-14067aa7ed8f",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "54",
+          "x-ratelimit-reset": "59",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"statusCode\":400,\"error\":\"Internal Server Error\",\"message\":\"Unexpected token 's', \\\"sample\\\" is not valid JSON\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover POST /v1/webhooks/",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.434Z",
+      "endedAt": "2026-02-24T19:24:54.443Z",
+      "request": {
+        "method": "POST",
+        "url": "http://gateway:3000/v1/webhooks/",
+        "headers": {},
+        "body": "sample",
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "113",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "13e44816-b95a-4efe-a135-1f33b5ab2c80",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "53",
+          "x-ratelimit-reset": "59",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"statusCode\":400,\"error\":\"Internal Server Error\",\"message\":\"Unexpected token 's', \\\"sample\\\" is not valid JSON\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover GET /v1/webhooks/",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.443Z",
+      "endedAt": "2026-02-24T19:24:54.449Z",
+      "request": {
+        "method": "GET",
+        "url": "http://gateway:3000/v1/webhooks/",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "70",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "739f009c-06e0-4524-b7ae-9bc507e812a8",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "66",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"statusCode\":401,\"error\":\"Error\",\"message\":\"Tenant context required\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover DELETE /v1/webhooks/sample-id",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.449Z",
+      "endedAt": "2026-02-24T19:24:54.456Z",
+      "request": {
+        "method": "DELETE",
+        "url": "http://gateway:3000/v1/webhooks/sample-id",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "70",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "61997e03-0b49-4cd1-8aa4-67652d788698",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "65",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"statusCode\":401,\"error\":\"Error\",\"message\":\"Tenant context required\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover GET /v1/webhooks/sample-id/logs",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.456Z",
+      "endedAt": "2026-02-24T19:24:54.461Z",
+      "request": {
+        "method": "GET",
+        "url": "http://gateway:3000/v1/webhooks/sample-id/logs",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "70",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "8505748d-9516-49dc-ad73-e4eaae1a8024",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "64",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"statusCode\":401,\"error\":\"Error\",\"message\":\"Tenant context required\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover GET /v1/tenant/",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.461Z",
+      "endedAt": "2026-02-24T19:24:54.467Z",
+      "request": {
+        "method": "GET",
+        "url": "http://gateway:3000/v1/tenant/",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "70",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "3589bf3e-2a61-497f-b897-df06e8478f5c",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "63",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"statusCode\":401,\"error\":\"Error\",\"message\":\"Tenant context required\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover PUT /v1/tenant/settings",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.467Z",
+      "endedAt": "2026-02-24T19:24:54.475Z",
+      "request": {
+        "method": "PUT",
+        "url": "http://gateway:3000/v1/tenant/settings",
+        "headers": {},
+        "body": "sample",
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "113",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "65cd8d91-2210-4b9b-8336-101a40a2331f",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "48",
+          "x-ratelimit-reset": "59",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"statusCode\":400,\"error\":\"Internal Server Error\",\"message\":\"Unexpected token 's', \\\"sample\\\" is not valid JSON\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover GET /v1/tenant/usage",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.475Z",
+      "endedAt": "2026-02-24T19:24:54.479Z",
+      "request": {
+        "method": "GET",
+        "url": "http://gateway:3000/v1/tenant/usage",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "70",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "61094c13-6164-4aaf-9bb0-b59f519228e3",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "62",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"statusCode\":401,\"error\":\"Error\",\"message\":\"Tenant context required\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover GET /v1/usage/usage/export",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.479Z",
+      "endedAt": "2026-02-24T19:24:54.485Z",
+      "request": {
+        "method": "GET",
+        "url": "http://gateway:3000/v1/usage/usage/export",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "50",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "4dfbcba9-0251-4f0e-90fc-dcf05ab6eee2",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "61",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"message\":\"Metric is required for usage export.\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover POST /v1/sdk/session",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.485Z",
+      "endedAt": "2026-02-24T19:24:54.489Z",
+      "request": {
+        "method": "POST",
+        "url": "http://gateway:3000/v1/sdk/session",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "62",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "30537afd-7c8a-4744-b513-1f89abdaf829",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "60",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"error\":\"API key authentication required for SDK operations\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover POST /v1/sdk/refresh",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.489Z",
+      "endedAt": "2026-02-24T19:24:54.497Z",
+      "request": {
+        "method": "POST",
+        "url": "http://gateway:3000/v1/sdk/refresh",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "35",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "0cbfebbb-b550-4de0-98d6-2d48f66d8d4a",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "59",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"error\":\"Failed to refresh token\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover POST /v1/sdk/logout",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.497Z",
+      "endedAt": "2026-02-24T19:24:54.504Z",
+      "request": {
+        "method": "POST",
+        "url": "http://gateway:3000/v1/sdk/logout",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "33",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "70312062-b644-4887-90dc-652ecca53a97",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "58",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"error\":\"Bearer token required\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover POST /v1/client/register",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.504Z",
+      "endedAt": "2026-02-24T19:24:54.535Z",
+      "request": {
+        "method": "POST",
+        "url": "http://gateway:3000/v1/client/register",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "23",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "69524312-e613-40b7-a310-618968c2c7da",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "57",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"error\":\"Bad Request\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    },
+    {
+      "type": "http",
+      "name": "Discover GET /v1/ping",
+      "tags": [
+        "discovery",
+        "gateway"
+      ],
+      "startedAt": "2026-02-24T19:24:54.535Z",
+      "endedAt": "2026-02-24T19:24:54.543Z",
+      "request": {
+        "method": "GET",
+        "url": "http://gateway:3000/v1/ping",
+        "headers": {},
+        "body": null,
+        "acceptableStatus": "any"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "26",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Tue, 24 Feb 2026 19:24:54 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "aa91f73c-1d8a-4054-9320-1295ba64a823",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "56",
+          "x-ratelimit-reset": "1771961152",
+          "x-xss-protection": "0"
+        },
+        "body": "{\"message\":\"pong from v1\"}",
+        "error": null
+      },
+      "outcome": "passed",
+      "section": "swagger-discovery"
+    }
+  ],
+  "completedAt": "2026-02-24T19:24:54.543Z"
+}

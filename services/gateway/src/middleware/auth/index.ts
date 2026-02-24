@@ -6,6 +6,8 @@ import { JwtAuthStrategy } from './jwt-auth';
 import { SdkAuthStrategy } from './sdk-auth';
 import { UnauthorizedError } from '../../errors';
 import { authDecoratorsPlugin } from './decorators';
+import { ipWhitelistValidator } from './ip-whitelist-validator';
+import { originValidator } from './origin-validator';
 
 export class AuthMiddleware {
   private strategies: AuthStrategy[] = [];
@@ -34,9 +36,9 @@ export class AuthMiddleware {
 
           // JWT/Session specific (defaulting as they might come from API Key)
           jti: 'n/a',
-          session_id: 'n/a',
+          session_id: (context.metadata?.session_id as string) || 'n/a',
           iat: Math.floor(Date.now() / 1000),
-          exp: Math.floor(Date.now() / 1000) + 3600, // Default 1 hour validity context
+          exp: (context.metadata?.exp as number) || Math.floor(Date.now() / 1000) + 3600,
 
           // Metadata
           email: (context.metadata?.email as string) || '',
@@ -45,6 +47,14 @@ export class AuthMiddleware {
         } as any;
         // We might want to attach the full context too
         (request as any).auth = context;
+
+        // Run additional validators based on auth type
+        if (context.auth_type === 'api_key') {
+          await ipWhitelistValidator(request, reply);
+        } else if (context.auth_type === 'jwt') {
+          await originValidator(request, reply);
+        }
+
         return;
       }
     }
