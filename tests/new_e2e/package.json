@@ -1,0 +1,12 @@
+{
+  "name": "caas-new-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "description": "New Docker-only E2E tests for CAAS platform",
+  "scripts": {
+    "test": "node run-all.js"
+  },
+  "dependencies": {
+    "socket.io-client": "^4.8.1"
+  }
+}

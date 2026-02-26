@@ -16,4 +16,4 @@ const SaaSClientSchema = new Schema({
   tier: { type: String, enum: ['free', 'pro', 'enterprise'], default: 'free' }
 }, { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } });
 
-export const SaaSClientModel = mongoose.model<ISaaSClient>('SaaSClient', SaaSClientSchema, 'saas_clients');
+export const SaaSClientModel = mongoose.model<ISaaSClient>('SaaSClient', SaaSClientSchema, 'clients');

@@ -1,0 +1,573 @@
+{
+    "task_group": "advanced-features",
+    "description": "Advanced console features — Password reset, MFA, Team management, Real-time monitor, Billing (requires new backend)",
+    "priority": "medium",
+    "estimated_hours": 56,
+    "phase": "6.3-6.4",
+    "feature_area": "admin-portal",
+    "tasks": [
+        {
+            "id": "PORTAL-301",
+            "task_name": "Backend: Password Reset Flow",
+            "feature_details": "Add password reset endpoints to Auth Service. POST /api/v1/auth/client/forgot-password — accepts { email }, generates a 6-digit code, stores it in Redis with 15-min TTL. In dev mode: returns code in response (no email service yet). In production: sends email via email service (future). POST /api/v1/auth/client/reset-password — accepts { email, code, new_password }, validates code from Redis, updates password hash in saas_clients collection.",
+            "feature_dependency": [
+                "PORTAL-105"
+            ],
+            "backend_apis_used": [],
+            "backend_status": "TO BE BUILT — No password reset flow exists",
+            "gap_id": "G3",
+            "testing_instructions": {
+                "unit_tests": [
+                    "Forgot password generates code and stores in Redis",
+                    "Reset password validates code correctly",
+                    "Expired code returns 400",
+                    "Invalid code returns 400",
+                    "New password is hashed before storage"
+                ],
+                "integration_tests": [
+                    "Forgot → Reset → Login with new password"
+                ],
+                "e2e_tests": []
+            },
+            "acceptance_criteria": [
+                "Forgot password endpoint generates reset code",
+                "Reset password validates code and updates password",
+                "Code expires after 15 minutes",
+                "Rate limiting on forgot password (3 per hour per email)",
+                "Dev mode returns code in response for testing"
+            ],
+            "files_to_create": [],
+            "files_to_modify": [
+                "services/auth-service/src/controllers/admin-auth.controller.ts",
+                "services/auth-service/src/services/admin-auth.service.ts",
+                "services/auth-service/src/routes/auth.routes.ts"
+            ],
+            "docker_requirements": {
+                "services": [
+                    "auth-service"
+                ],
+                "environment_variables": [],
+                "volumes": [],
+                "networks": [
+                    "caas-network"
+                ]
+            },
+            "api_endpoints": [
+                {
+                    "method": "POST",
+                    "path": "/api/v1/auth/client/forgot-password",
+                    "request_body": {
+                        "email": "string"
+                    },
+                    "response_body": {
+                        "message": "string",
+                        "code": "string (dev mode only)"
+                    },
+                    "auth": "none"
+                },
+                {
+                    "method": "POST",
+                    "path": "/api/v1/auth/client/reset-password",
+                    "request_body": {
+                        "email": "string",
+                        "code": "string",
+                        "new_password": "string"
+                    },
+                    "response_body": {
+                        "message": "string"
+                    },
+                    "auth": "none"
+                }
+            ],
+            "database_changes": {
+                "collections": [
+                    "saas_clients (update password_hash)"
+                ],
+                "indexes": [],
+                "migrations": []
+            },
+            "status": "not_started",
+            "estimated_hours": 6,
+            "tags": [
+                "backend",
+                "auth",
+                "password-reset",
+                "gap"
+            ]
+        },
+        {
+            "id": "PORTAL-302",
+            "task_name": "Forgot Password Page (Frontend)",
+            "feature_details": "Create forgot password page at /(auth)/forgot-password/page.tsx. Two-step flow: Step 1: Enter email → calls forgot-password API → redirect to code entry. Step 2: Enter 6-digit code + new password + confirm password → calls reset-password API → redirect to login with success message. Back to login link. Error handling for invalid/expired codes.",
+            "feature_dependency": [
+                "PORTAL-301",
+                "PORTAL-102"
+            ],
+            "backend_apis_used": [
+                "POST /api/v1/auth/client/forgot-password (PORTAL-301)",
+                "POST /api/v1/auth/client/reset-password (PORTAL-301)"
+            ],
+            "backend_status": "Depends on PORTAL-301",
+            "testing_instructions": {
+                "unit_tests": [
+                    "Email input validates format",
+                    "Code input accepts 6 digits",
+                    "Password confirmation matches",
+                    "Step transition works"
+                ],
+                "integration_tests": [
+                    "Full forgot → reset → login flow"
+                ],
+                "e2e_tests": []
+            },
+            "acceptance_criteria": [
+                "Two-step forgot password flow works",
+                "Error messages for invalid/expired codes",
+                "Success redirect to login",
+                "Responsive design"
+            ],
+            "files_to_create": [
+                "apps/admin-portal/src/app/(auth)/forgot-password/page.tsx",
+                "apps/admin-portal/src/components/auth/ForgotPasswordForm.tsx",
+                "apps/admin-portal/src/components/auth/ResetPasswordForm.tsx"
+            ],
+            "files_to_modify": [],
+            "docker_requirements": {
+                "services": [],
+                "environment_variables": [],
+                "volumes": [],
+                "networks": []
+            },
+            "api_endpoints": [],
+            "database_changes": {
+                "collections": [],
+                "indexes": [],
+                "migrations": []
+            },
+            "status": "not_started",
+            "estimated_hours": 4,
+            "tags": [
+                "portal",
+                "auth",
+                "password-reset",
+                "forms"
+            ]
+        },
+        {
+            "id": "PORTAL-303",
+            "task_name": "MFA Setup and Management Page",
+            "feature_details": "Add MFA section to the Security page (or standalone /(dashboard)/security/mfa). Features: Enable/disable MFA toggle. When enabling: generate TOTP secret, display QR code (using qrcode library), show manual entry code, require verification code to confirm setup. Recovery codes display (one-time view on setup). When logging in with MFA enabled: show code entry page after password. Uses existing Gateway /v1/admin/mfa and /v1/mfa/challenge routes.",
+            "feature_dependency": [
+                "PORTAL-203"
+            ],
+            "backend_apis_used": [
+                "POST /v1/admin/mfa (Gateway — EXISTS ✅, needs integration testing)",
+                "POST /v1/mfa/challenge (Gateway — EXISTS ✅, needs integration testing)"
+            ],
+            "backend_status": "Routes EXIST ✅ but need validation of full MFA flow",
+            "testing_instructions": {
+                "unit_tests": [
+                    "QR code renders from TOTP secret",
+                    "Verification code input accepts 6 digits",
+                    "Recovery codes display correctly",
+                    "MFA toggle state management"
+                ],
+                "integration_tests": [
+                    "Enable MFA → verify → login with MFA code",
+                    "Disable MFA with verification",
+                    "Recovery code works as fallback"
+                ],
+                "e2e_tests": []
+            },
+            "acceptance_criteria": [
+                "MFA can be enabled and disabled",
+                "QR code displays correctly",
+                "Verification code validates against TOTP",
+                "Recovery codes generated and displayed once",
+                "Login flow includes MFA step when enabled"
+            ],
+            "files_to_create": [
+                "apps/admin-portal/src/components/security/MfaEnableDialog.tsx",
+                "apps/admin-portal/src/components/security/MfaVerifyDialog.tsx",
+                "apps/admin-portal/src/components/security/RecoveryCodes.tsx",
+                "apps/admin-portal/src/components/auth/MfaChallenge.tsx"
+            ],
+            "files_to_modify": [
+                "apps/admin-portal/src/app/(auth)/login/page.tsx"
+            ],
+            "docker_requirements": {
+                "services": [],
+                "environment_variables": [],
+                "volumes": [],
+                "networks": []
+            },
+            "api_endpoints": [],
+            "database_changes": {
+                "collections": [],
+                "indexes": [],
+                "migrations": []
+            },
+            "status": "not_started",
+            "estimated_hours": 8,
+            "tags": [
+                "portal",
+                "mfa",
+                "security",
+                "totp"
+            ]
+        },
+        {
+            "id": "PORTAL-304",
+            "task_name": "Real-Time Monitoring Dashboard",
+            "feature_details": "Create a real-time monitoring panel at /(dashboard)/monitoring/page.tsx. Features: Live connection counter (socket connections to each instance). Active conversations count. Messages per second gauge. Typing indicators count. WebRTC call count. Data comes from a WebSocket/Socket.IO admin namespace connection to the gateway. Auto-refreshing charts (Recharts) with 5-second intervals. Error rate and latency gauges. This is an ADMIN view — different from the end-user chat monitoring.",
+            "feature_dependency": [
+                "PORTAL-201"
+            ],
+            "backend_apis_used": [
+                "GET /v1/admin/dashboard (Gateway — WORKING ✅)",
+                "Socket.IO /admin namespace (may need to be built or extended)"
+            ],
+            "backend_status": "HTTP dashboard API WORKING ✅. Socket admin namespace may need extension.",
+            "testing_instructions": {
+                "unit_tests": [
+                    "Live counters render",
+                    "Gauge components display values",
+                    "Charts update with new data",
+                    "Auto-refresh interval works"
+                ],
+                "integration_tests": [
+                    "Dashboard updates in real-time",
+                    "Multiple metrics display simultaneously"
+                ],
+                "e2e_tests": []
+            },
+            "acceptance_criteria": [
+                "Live connection counts per socket instance",
+                "Messages per second chart",
+                "Auto-refresh every 5 seconds",
+                "Gauge components for error rate and latency",
+                "Responsive layout"
+            ],
+            "files_to_create": [
+                "apps/admin-portal/src/app/(dashboard)/monitoring/page.tsx",
+                "apps/admin-portal/src/components/monitoring/LiveCounter.tsx",
+                "apps/admin-portal/src/components/monitoring/MetricGauge.tsx",
+                "apps/admin-portal/src/components/monitoring/RealtimeChart.tsx"
+            ],
+            "files_to_modify": [],
+            "docker_requirements": {
+                "services": [],
+                "environment_variables": [],
+                "volumes": [],
+                "networks": []
+            },
+            "api_endpoints": [],
+            "database_changes": {
+                "collections": [],
+                "indexes": [],
+                "migrations": []
+            },
+            "status": "not_started",
+            "estimated_hours": 8,
+            "tags": [
+                "portal",
+                "monitoring",
+                "real-time",
+                "charts",
+                "gauges"
+            ]
+        },
+        {
+            "id": "PORTAL-305",
+            "task_name": "Backend: Team Member CRUD",
+            "feature_details": "Add team management endpoints to Auth Service. Endpoints: POST /api/v1/auth/team/invite — accepts { email, role }, generates invite token, stores in team_members collection. GET /api/v1/auth/team — returns list of team members for the tenant. PUT /api/v1/auth/team/:member_id/role — updates member role. DELETE /api/v1/auth/team/:member_id — removes member. Roles: admin (full access), developer (read/write, no billing), viewer (read only). Team members share the same tenant context but have individual logins.",
+            "feature_dependency": [
+                "PORTAL-105"
+            ],
+            "backend_apis_used": [],
+            "backend_status": "TO BE BUILT — No team management exists",
+            "gap_id": "G5",
+            "testing_instructions": {
+                "unit_tests": [
+                    "Team invite creates pending member",
+                    "List team returns all members",
+                    "Role update changes member role",
+                    "Remove member deletes from collection",
+                    "Role validation rejects invalid roles"
+                ],
+                "integration_tests": [
+                    "Invite → accept → login as team member",
+                    "Role restrictions enforced on API calls"
+                ],
+                "e2e_tests": []
+            },
+            "acceptance_criteria": [
+                "Team invite endpoint works",
+                "Team list returns members with roles",
+                "Role update works",
+                "Member removal works",
+                "Role-based access enforced"
+            ],
+            "files_to_create": [
+                "services/auth-service/src/controllers/team.controller.ts",
+                "services/auth-service/src/services/team.service.ts",
+                "services/auth-service/src/routes/team.routes.ts"
+            ],
+            "files_to_modify": [
+                "services/auth-service/src/server.ts"
+            ],
+            "docker_requirements": {
+                "services": [
+                    "auth-service"
+                ],
+                "environment_variables": [],
+                "volumes": [],
+                "networks": [
+                    "caas-network"
+                ]
+            },
+            "api_endpoints": [
+                {
+                    "method": "POST",
+                    "path": "/api/v1/auth/team/invite",
+                    "request_body": {
+                        "email": "string",
+                        "role": "admin|developer|viewer"
+                    },
+                    "response_body": {
+                        "member_id": "string",
+                        "invite_token": "string"
+                    },
+                    "auth": "Bearer JWT (tenant_admin only)"
+                },
+                {
+                    "method": "GET",
+                    "path": "/api/v1/auth/team",
+                    "response_body": {
+                        "members": "TeamMember[]"
+                    },
+                    "auth": "Bearer JWT"
+                }
+            ],
+            "database_changes": {
+                "collections": [
+                    "team_members (new)"
+                ],
+                "indexes": [
+                    "{ tenant_id: 1, email: 1 } unique"
+                ],
+                "migrations": []
+            },
+            "status": "not_started",
+            "estimated_hours": 10,
+            "tags": [
+                "backend",
+                "auth",
+                "team",
+                "rbac",
+                "gap"
+            ]
+        },
+        {
+            "id": "PORTAL-306",
+            "task_name": "Team Management Page (Frontend)",
+            "feature_details": "Create Team page at /(dashboard)/team/page.tsx. Features: Team members table (Name, Email, Role, Last Active, Actions). Invite member dialog (email input, role selector). Change role dropdown. Remove member with confirmation. Pending invites section. Team activity feed from audit logs filtered by team actions. Only visible to admin role members.",
+            "feature_dependency": [
+                "PORTAL-305",
+                "PORTAL-109"
+            ],
+            "backend_apis_used": [
+                "GET /api/v1/auth/team (Auth Service — PORTAL-305)",
+                "POST /api/v1/auth/team/invite (Auth Service — PORTAL-305)",
+                "PUT /api/v1/auth/team/:member_id/role (Auth Service — PORTAL-305)",
+                "DELETE /api/v1/auth/team/:member_id (Auth Service — PORTAL-305)"
+            ],
+            "backend_status": "Depends on PORTAL-305",
+            "testing_instructions": {
+                "unit_tests": [
+                    "Team table renders members",
+                    "Invite dialog validates email",
+                    "Role selector works",
+                    "Remove confirmation modal"
+                ],
+                "integration_tests": [
+                    "Invite → appears in pending",
+                    "Change role → updated in table",
+                    "Remove → member deleted"
+                ],
+                "e2e_tests": []
+            },
+            "acceptance_criteria": [
+                "Team member list displays correctly",
+                "Invite flow works end-to-end",
+                "Role changes persist",
+                "Member removal works",
+                "Admin-only access enforced",
+                "Pending invites visible"
+            ],
+            "files_to_create": [
+                "apps/admin-portal/src/app/(dashboard)/team/page.tsx",
+                "apps/admin-portal/src/components/team/TeamTable.tsx",
+                "apps/admin-portal/src/components/team/InviteMemberDialog.tsx",
+                "apps/admin-portal/src/components/team/ChangeRoleDialog.tsx",
+                "apps/admin-portal/src/hooks/useTeam.ts"
+            ],
+            "files_to_modify": [],
+            "docker_requirements": {
+                "services": [],
+                "environment_variables": [],
+                "volumes": [],
+                "networks": []
+            },
+            "api_endpoints": [],
+            "database_changes": {
+                "collections": [],
+                "indexes": [],
+                "migrations": []
+            },
+            "status": "not_started",
+            "estimated_hours": 6,
+            "tags": [
+                "portal",
+                "team",
+                "rbac",
+                "management"
+            ]
+        },
+        {
+            "id": "PORTAL-401",
+            "task_name": "Billing Page (Stub — Awaiting Billing Service)",
+            "feature_details": "Create a Billing page at /(dashboard)/billing/page.tsx. Since the Billing Service is NOT yet implemented (Phase 5 roadmap item), this page will show: Current plan display (extracted from tenant profile). Plan comparison table (static — Free, Business, Enterprise features). 'Contact Sales' for Enterprise. Usage meter showing approximate usage against plan limits. 'Upgrade Plan' button (disabled with 'Coming Soon' tooltip). Invoice history (empty state with 'No invoices yet'). This is a STUB page that provides the UI shell ready for when the billing backend is built.",
+            "feature_dependency": [
+                "PORTAL-109"
+            ],
+            "backend_apis_used": [
+                "GET /v1/tenant (Gateway — WORKING ✅ — has plan field)"
+            ],
+            "backend_status": "Billing service NOT YET BUILT. Tenant profile has plan field.",
+            "gap_id": "G9",
+            "testing_instructions": {
+                "unit_tests": [
+                    "Current plan displays from tenant data",
+                    "Plan comparison renders all plans",
+                    "Upgrade button is disabled with tooltip",
+                    "Invoice empty state renders"
+                ],
+                "integration_tests": [
+                    "Page loads with real tenant plan data"
+                ],
+                "e2e_tests": []
+            },
+            "acceptance_criteria": [
+                "Current plan shown from tenant profile",
+                "Plan comparison table renders",
+                "Upgrade button disabled with Coming Soon",
+                "Empty invoice state",
+                "Responsive design"
+            ],
+            "files_to_create": [
+                "apps/admin-portal/src/app/(dashboard)/billing/page.tsx",
+                "apps/admin-portal/src/components/billing/PlanComparison.tsx",
+                "apps/admin-portal/src/components/billing/UsageMeter.tsx",
+                "apps/admin-portal/src/components/billing/InvoiceHistory.tsx"
+            ],
+            "files_to_modify": [],
+            "docker_requirements": {
+                "services": [],
+                "environment_variables": [],
+                "volumes": [],
+                "networks": []
+            },
+            "api_endpoints": [],
+            "database_changes": {
+                "collections": [],
+                "indexes": [],
+                "migrations": []
+            },
+            "status": "not_started",
+            "estimated_hours": 4,
+            "tags": [
+                "portal",
+                "billing",
+                "stub",
+                "plans"
+            ]
+        },
+        {
+            "id": "PORTAL-402",
+            "task_name": "End-to-End Portal Testing & Polish",
+            "feature_details": "Create comprehensive E2E tests for the admin portal. Test flows: 1) Registration → Onboarding → Dashboard. 2) Login → API Key CRUD → Logout. 3) Login → Security settings → IP Whitelist → Origin Whitelist. 4) Login → Audit Logs → Filter → Export. 5) Session management → Terminate. Performance optimization: Lighthouse audit → target >90. Image optimization. Bundle analysis. Lazy loading for documentation pages. Accessibility audit (ARIA labels, keyboard navigation). Final visual polish: animations, transitions, empty states, error boundaries.",
+            "feature_dependency": [
+                "PORTAL-201",
+                "PORTAL-202",
+                "PORTAL-203",
+                "PORTAL-204",
+                "PORTAL-205",
+                "PORTAL-206",
+                "PORTAL-207"
+            ],
+            "backend_apis_used": [
+                "All previously listed endpoints"
+            ],
+            "backend_status": "All core APIs WORKING ✅",
+            "testing_instructions": {
+                "unit_tests": [
+                    "Error boundaries catch component errors",
+                    "Loading states show skeletons",
+                    "Empty states display correctly"
+                ],
+                "integration_tests": [
+                    "All 5 E2E test flows pass"
+                ],
+                "e2e_tests": [
+                    "Playwright or Cypress test suite covering all flows",
+                    "Lighthouse CI >90 score",
+                    "Accessibility audit passes"
+                ]
+            },
+            "acceptance_criteria": [
+                "All E2E test flows pass",
+                "Lighthouse score >90",
+                "No accessibility violations",
+                "Bundle size <500KB initial",
+                "All pages have error boundaries",
+                "All pages have loading states",
+                "All pages have empty states"
+            ],
+            "files_to_create": [
+                "apps/admin-portal/tests/e2e/registration.spec.ts",
+                "apps/admin-portal/tests/e2e/api-keys.spec.ts",
+                "apps/admin-portal/tests/e2e/security.spec.ts",
+                "apps/admin-portal/tests/e2e/audit-logs.spec.ts",
+                "apps/admin-portal/tests/e2e/sessions.spec.ts",
+                "apps/admin-portal/src/components/shared/ErrorBoundary.tsx"
+            ],
+            "files_to_modify": [],
+            "docker_requirements": {
+                "services": [
+                    "admin-portal"
+                ],
+                "environment_variables": [],
+                "volumes": [],
+                "networks": [
+                    "caas-network"
+                ]
+            },
+            "api_endpoints": [],
+            "database_changes": {
+                "collections": [],
+                "indexes": [],
+                "migrations": []
+            },
+            "status": "not_started",
+            "estimated_hours": 10,
+            "tags": [
+                "portal",
+                "testing",
+                "e2e",
+                "performance",
+                "accessibility"
+            ]
+        }
+    ]
+}

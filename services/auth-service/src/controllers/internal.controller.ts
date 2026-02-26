@@ -89,12 +89,16 @@ export class InternalController {
                 valid: true,
                 payload: {
                     user_id: userId,
+                    client_id: payload.client_id || userId,
                     tenant_id: tenantId,
+                    role: payload.role,
                     external_id: payload.external_id,
                     permissions: payload.permissions || [],
                     session_id: payload.session_id,
                     exp: payload.exp,
                     email: payload.email,
+                    company_name: payload.company_name,
+                    plan: payload.plan,
                 },
             });
         } catch (error: any) {

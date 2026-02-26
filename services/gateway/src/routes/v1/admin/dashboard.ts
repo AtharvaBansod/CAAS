@@ -165,6 +165,56 @@ const dashboardRoutes: FastifyPluginAsync = async (fastify) => {
       });
     }
   );
+
+  // Unified Dashboard for Admin Portal (Phase 6)
+  fastify.get(
+    '/dashboard',
+    async (request, reply) => {
+      try {
+        // Get tenant_id from authenticated user
+        const user = (request as any).user;
+        if (!user || !user.tenant_id) {
+          return reply.code(401).send({
+            error: 'Unauthorized',
+            message: 'Authentication required',
+          });
+        }
+
+        const tenantId = user.tenant_id;
+
+        // Get MongoDB client from Fastify instance
+        const mongoClient = (fastify as any).mongo?.client;
+        if (!mongoClient) {
+          fastify.log.error('MongoDB client not available');
+          return reply.code(500).send({
+            error: 'Internal Server Error',
+            message: 'Database connection not available',
+          });
+        }
+
+        // Import and use dashboard stats service
+        const { DashboardStatsService } = await import('../../../services/dashboard-stats');
+        const statsService = new DashboardStatsService(mongoClient);
+
+        // Fetch real data
+        const [stats, recent_activity] = await Promise.all([
+          statsService.getStats(tenantId),
+          statsService.getRecentActivity(tenantId, 5),
+        ]);
+
+        return {
+          stats,
+          recent_activity,
+        };
+      } catch (error) {
+        fastify.log.error({ err: error }, 'Error fetching dashboard data');
+        return reply.code(500).send({
+          error: 'Internal Server Error',
+          message: 'Failed to fetch dashboard data',
+        });
+      }
+    }
+  );
 };
 
 export default dashboardRoutes;

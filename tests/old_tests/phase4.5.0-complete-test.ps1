@@ -118,9 +118,6 @@ Test-Endpoint -Name "Socket Service 2 Health" -Method "GET" -Url "http://localho
 Write-Host "`n=== Part 4: Service Integration Tests ===" -ForegroundColor Cyan
 Write-Host ""
 
-# Test 8: Messaging Service Health
-Write-Host "8. Messaging Service Health Check" -ForegroundColor Cyan
-Test-Endpoint -Name "Messaging Service Health" -Method "GET" -Url "http://localhost:3004/health"
 
 # Test 9: Media Service Health
 Write-Host "`n9. Media Service Health Check" -ForegroundColor Cyan
@@ -152,7 +149,7 @@ try {
 # Test 12: Redis Connection
 Write-Host "`n12. Redis Connection Test" -ForegroundColor Cyan
 try {
-    $redisTest = docker exec caas-redis redis-cli -a caas_redis_2026 ping 2>&1
+    $redisTest = docker exec caas-redis-shared redis-cli -a caas_redis_2026 ping 2>&1
     if ($redisTest -match "PONG") {
         Write-Host "  PASSED - Redis is responding" -ForegroundColor Green
         $testsPassed++

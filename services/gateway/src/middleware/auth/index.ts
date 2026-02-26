@@ -42,7 +42,12 @@ export class AuthMiddleware {
 
           // Metadata
           email: (context.metadata?.email as string) || '',
-          roles: [], // Will be filled by permissions mostly
+          roles: (() => {
+            const roleFromToken = context.metadata?.role as string | undefined;
+            if (roleFromToken && roleFromToken.trim()) return [roleFromToken];
+            if (context.auth_type === 'api_key' || context.auth_type === 'sdk') return ['tenant_admin'];
+            return [];
+          })(),
           scopes: context.permissions || [],
         } as any;
         // We might want to attach the full context too

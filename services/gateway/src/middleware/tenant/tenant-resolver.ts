@@ -41,6 +41,37 @@ export const resolveTenant = async (request: FastifyRequest, reply: FastifyReply
 
   const tenant = await tenantService.getTenant(tenantId);
   if (!tenant) {
+    // Backward compatibility path:
+    // If tenant ID is from a validated auth context but tenant registry/cache
+    // has no record yet, continue with a synthetic tenant context so admin
+    // client flows (e.g. dashboard) don't hard-fail.
+    if (authContext && authContext.tenant_id === tenantId) {
+      const metadata = (authContext.metadata || {}) as Record<string, any>;
+      const fallbackName = typeof metadata.company_name === 'string' && metadata.company_name.trim()
+        ? metadata.company_name
+        : `Tenant ${tenantId}`;
+      const allowedPlans = new Set(['free', 'startup', 'business', 'enterprise']);
+      const candidatePlan = typeof metadata.plan === 'string' ? metadata.plan : '';
+      const fallbackPlan = allowedPlans.has(candidatePlan) ? candidatePlan as 'free' | 'startup' | 'business' | 'enterprise' : 'business';
+      request.log.warn({ tenantId }, 'Tenant not found in tenant service; using auth-derived fallback context');
+      request.tenant = {
+        tenant_id: tenantId,
+        id: tenantId,
+        app_id: tenantId,
+        name: fallbackName,
+        plan: fallbackPlan,
+        settings: {},
+        limits: {
+          api_rate_limit: 1000,
+          max_users: 100,
+          storage_limit_gb: 10,
+        },
+        database_strategy: 'shared',
+        is_active: true,
+        created_at: new Date(),
+      };
+      return;
+    }
     throw new NotFoundError(`Tenant ${tenantId} not found`);
   }
 

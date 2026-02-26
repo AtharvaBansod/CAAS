@@ -1,0 +1,186 @@
+# syntax=docker/dockerfile:1.7
+# CAAS Platform - Optimized Unified Dockerfile
+# Standardized for monorepo efficiency and reliability.
+
+# ============================================
+# Stage 1: Base Runtime (Lean & Clean)
+# ============================================
+FROM node:20-slim AS base
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    dumb-init \
+    && rm -rf /var/lib/apt/lists/*
+RUN npm set progress=false && npm set loglevel=error
+ENV NODE_ENV=production
+
+# ============================================
+# Stage 2: Shared Package Builder
+# ============================================
+FROM base AS package-builder
+ENV NODE_ENV=development
+COPY packages/compliance-client/package*.json ./packages/compliance-client/
+RUN --mount=type=cache,target=/root/.npm \
+    cd packages/compliance-client && (npm ci --no-audit --no-fund --prefer-offline || npm install --no-audit --no-fund --prefer-offline)
+COPY packages/compliance-client/tsconfig.json ./packages/compliance-client/
+COPY packages/compliance-client/src ./packages/compliance-client/src
+RUN cd packages/compliance-client && npm run build
+
+# ============================================
+# Stage 3: AUTH SERVICE
+# ============================================
+FROM package-builder AS auth-builder
+WORKDIR /app/services/auth-service
+COPY services/auth-service/package*.json ./
+RUN --mount=type=cache,target=/root/.npm \
+    (npm ci --no-audit --no-fund --prefer-offline || npm install --no-audit --no-fund --prefer-offline)
+COPY services/auth-service/tsconfig.json ./
+COPY services/auth-service/src ./src
+RUN npm run build
+RUN npm prune --omit=dev
+
+FROM base AS auth-service
+WORKDIR /app/services/auth-service
+COPY --from=package-builder /app/packages/compliance-client /app/packages/compliance-client
+COPY --from=auth-builder /app/services/auth-service/dist ./dist
+COPY --from=auth-builder /app/services/auth-service/node_modules ./node_modules
+COPY --from=auth-builder /app/services/auth-service/package.json ./package.json
+USER node
+EXPOSE 3001
+CMD ["node", "dist/server.js"]
+
+# ============================================
+# Stage 4: GATEWAY SERVICE
+# ============================================
+FROM package-builder AS gateway-builder
+WORKDIR /app/services/gateway
+COPY services/gateway/package*.json ./
+RUN --mount=type=cache,target=/root/.npm \
+    (npm ci --no-audit --no-fund --prefer-offline || npm install --no-audit --no-fund --prefer-offline)
+COPY services/gateway/tsconfig.json ./
+COPY services/gateway/src ./src
+RUN npm run build
+RUN npm prune --omit=dev
+
+FROM base AS gateway-service
+WORKDIR /app/services/gateway
+COPY --from=package-builder /app/packages/compliance-client /app/packages/compliance-client
+COPY --from=gateway-builder /app/services/gateway/dist ./dist
+COPY --from=gateway-builder /app/services/gateway/node_modules ./node_modules
+COPY --from=gateway-builder /app/services/gateway/package.json ./package.json
+USER node
+EXPOSE 3000 3001
+CMD ["node", "dist/src/main.js"]
+
+# ============================================
+# Stage 5: COMPLIANCE SERVICE
+# ============================================
+FROM package-builder AS compliance-builder
+WORKDIR /app/services/compliance-service
+COPY services/compliance-service/package*.json ./
+RUN --mount=type=cache,target=/root/.npm \
+    (npm ci --no-audit --no-fund --prefer-offline || npm install --no-audit --no-fund --prefer-offline)
+COPY services/compliance-service/tsconfig.json ./
+COPY services/compliance-service/src ./src
+RUN npm run build
+RUN npm prune --omit=dev
+
+FROM base AS compliance-service
+WORKDIR /app/services/compliance-service
+COPY --from=compliance-builder /app/services/compliance-service/dist ./dist
+COPY --from=compliance-builder /app/services/compliance-service/node_modules ./node_modules
+COPY --from=compliance-builder /app/services/compliance-service/package.json ./package.json
+USER node
+EXPOSE 3008
+CMD ["node", "dist/src/server.js"]
+
+# ============================================
+# Stage 6: SEARCH SERVICE
+# ============================================
+FROM package-builder AS search-builder
+WORKDIR /app/services/search-service
+COPY services/search-service/package*.json ./
+RUN --mount=type=cache,target=/root/.npm \
+    (npm ci --no-audit --no-fund --prefer-offline || npm install --no-audit --no-fund --prefer-offline)
+COPY services/search-service/tsconfig.json ./
+COPY services/search-service/src ./src
+RUN npm run build
+RUN npm prune --omit=dev
+
+FROM base AS search-service
+WORKDIR /app/services/search-service
+COPY --from=package-builder /app/packages/compliance-client /app/packages/compliance-client
+COPY --from=search-builder /app/services/search-service/dist ./dist
+COPY --from=search-builder /app/services/search-service/node_modules ./node_modules
+COPY --from=search-builder /app/services/search-service/package.json ./package.json
+USER node
+EXPOSE 3006
+CMD ["node", "dist/index.js"]
+
+# ============================================
+# Stage 7: SOCKET SERVICE
+# ============================================
+FROM package-builder AS socket-builder
+WORKDIR /app/services/socket-service
+COPY services/socket-service/package*.json ./
+RUN --mount=type=cache,target=/root/.npm \
+    (npm ci --no-audit --no-fund --prefer-offline || npm install --no-audit --no-fund --prefer-offline)
+COPY services/socket-service/tsconfig.json ./
+COPY services/socket-service/src ./src
+RUN npm run build
+RUN npm prune --omit=dev
+
+FROM base AS socket-service
+WORKDIR /app/services/socket-service
+COPY --from=package-builder /app/packages/compliance-client /app/packages/compliance-client
+COPY --from=socket-builder /app/services/socket-service/dist ./dist
+COPY --from=socket-builder /app/services/socket-service/node_modules ./node_modules
+COPY --from=socket-builder /app/services/socket-service/package.json ./package.json
+USER node
+EXPOSE 3001
+CMD ["node", "dist/index.js"]
+
+# ============================================
+# Stage 8: MEDIA SERVICE
+# ============================================
+FROM package-builder AS media-builder
+WORKDIR /app/services/media-service
+COPY services/media-service/package*.json ./
+RUN --mount=type=cache,target=/root/.npm \
+    (npm ci --no-audit --no-fund --prefer-offline || npm install --no-audit --no-fund --prefer-offline)
+COPY services/media-service/tsconfig.json ./
+COPY services/media-service/src ./src
+RUN npm run build
+RUN npm prune --omit=dev
+
+FROM base AS media-service
+WORKDIR /app/services/media-service
+COPY --from=package-builder /app/packages/compliance-client /app/packages/compliance-client
+COPY --from=media-builder /app/services/media-service/dist ./dist
+COPY --from=media-builder /app/services/media-service/node_modules ./node_modules
+COPY --from=media-builder /app/services/media-service/package.json ./package.json
+USER node
+EXPOSE 3005
+CMD ["node", "dist/index.js"]
+
+# ============================================
+# Stage 9: CRYPTO SERVICE
+# ============================================
+FROM package-builder AS crypto-builder
+WORKDIR /app/services/crypto-service
+COPY services/crypto-service/package*.json ./
+RUN --mount=type=cache,target=/root/.npm \
+    (npm ci --no-audit --no-fund --prefer-offline || npm install --no-audit --no-fund --prefer-offline)
+COPY services/crypto-service/tsconfig.json ./
+COPY services/crypto-service/src ./src
+RUN npm run build
+RUN npm prune --omit=dev
+
+FROM base AS crypto-service
+WORKDIR /app/services/crypto-service
+COPY --from=package-builder /app/packages/compliance-client /app/packages/compliance-client
+COPY --from=crypto-builder /app/services/crypto-service/dist ./dist
+COPY --from=crypto-builder /app/services/crypto-service/node_modules ./node_modules
+COPY --from=crypto-builder /app/services/crypto-service/package.json ./package.json
+USER node
+EXPOSE 3009
+CMD ["node", "dist/src/server.js"]

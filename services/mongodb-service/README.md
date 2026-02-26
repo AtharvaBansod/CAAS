@@ -274,7 +274,7 @@ Multi-tenant platform management:
 
 | Collection | Description |
 |------------|-------------|
-| `saas_clients` | SAAS client organizations |
+| `clients` | SAAS client organizations |
 | `applications` | Applications registered by clients |
 | `api_keys` | API keys for applications |
 | `webhooks` | Webhook configurations |

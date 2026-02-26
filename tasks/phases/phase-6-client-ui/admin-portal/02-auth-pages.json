@@ -1,54 +1,158 @@
 {
   "task_group": "auth-pages",
-  "description": "Authentication pages and flow",
-  "priority": "high",
-  "estimated_hours": 12,
-  "phase": 6,
+  "description": "Authentication pages and backend gaps — tenant login, registration, password reset, auth middleware",
+  "priority": "critical",
+  "estimated_hours": 32,
+  "phase": "6.1",
   "feature_area": "admin-portal",
   "tasks": [
     {
-      "id": "PORTAL-005",
-      "task_name": "NextAuth.js Setup",
-      "feature_details": "Configure NextAuth.js for authentication.",
-      "feature_dependency": ["PORTAL-001", "AUTH-001"],
-      "ai_prompt": "Set up NextAuth.js:\n\n1. Create apps/admin-portal/src/app/api/auth/[...nextauth]/route.ts:\n   ```typescript\n   import NextAuth, { type NextAuthOptions } from 'next-auth';\n   import CredentialsProvider from 'next-auth/providers/credentials';\n   import GoogleProvider from 'next-auth/providers/google';\n\n   export const authOptions: NextAuthOptions = {\n     providers: [\n       CredentialsProvider({\n         name: 'Credentials',\n         credentials: {\n           email: { label: 'Email', type: 'email' },\n           password: { label: 'Password', type: 'password' },\n         },\n         async authorize(credentials) {\n           const response = await fetch(`${process.env.API_URL}/auth/login`, {\n             method: 'POST',\n             headers: { 'Content-Type': 'application/json' },\n             body: JSON.stringify({\n               email: credentials?.email,\n               password: credentials?.password,\n             }),\n           });\n\n           const data = await response.json();\n\n           if (response.ok && data.user) {\n             return {\n               id: data.user.id,\n               email: data.user.email,\n               name: data.user.name,\n               accessToken: data.accessToken,\n               refreshToken: data.refreshToken,\n             };\n           }\n\n           return null;\n         },\n       }),\n       GoogleProvider({\n         clientId: process.env.GOOGLE_CLIENT_ID!,\n         clientSecret: process.env.GOOGLE_CLIENT_SECRET!,\n       }),\n     ],\n     session: {\n       strategy: 'jwt',\n       maxAge: 24 * 60 * 60, // 24 hours\n     },\n     callbacks: {\n       async jwt({ token, user, account }) {\n         if (user) {\n           token.accessToken = user.accessToken;\n           token.refreshToken = user.refreshToken;\n           token.userId = user.id;\n         }\n         return token;\n       },\n       async session({ session, token }) {\n         session.accessToken = token.accessToken as string;\n         session.user.id = token.userId as string;\n         return session;\n       },\n     },\n     pages: {\n       signIn: '/login',\n       error: '/login',\n     },\n   };\n\n   const handler = NextAuth(authOptions);\n   export { handler as GET, handler as POST };\n   ```\n\n2. Create type declarations:\n   ```typescript\n   // apps/admin-portal/src/types/next-auth.d.ts\n   import { DefaultSession } from 'next-auth';\n\n   declare module 'next-auth' {\n     interface Session {\n       accessToken: string;\n       user: {\n         id: string;\n       } & DefaultSession['user'];\n     }\n\n     interface User {\n       id: string;\n       accessToken: string;\n       refreshToken: string;\n     }\n   }\n   ```\n\n3. Create auth middleware:\n   ```typescript\n   // apps/admin-portal/middleware.ts\n   import { withAuth } from 'next-auth/middleware';\n\n   export default withAuth({\n     pages: {\n       signIn: '/login',\n     },\n   });\n\n   export const config = {\n     matcher: [\n       '/dashboard/:path*',\n       '/applications/:path*',\n       '/users/:path*',\n       '/analytics/:path*',\n       '/api-keys/:path*',\n       '/billing/:path*',\n       '/settings/:path*',\n     ],\n   };\n   ```\n\n4. Create useUser hook:\n   ```typescript\n   // apps/admin-portal/src/hooks/useUser.ts\n   'use client';\n\n   import { useSession, signOut } from 'next-auth/react';\n\n   export function useUser() {\n     const { data: session, status } = useSession();\n\n     return {\n       user: session?.user,\n       accessToken: session?.accessToken,\n       isLoading: status === 'loading',\n       isAuthenticated: status === 'authenticated',\n       logout: () => signOut({ callbackUrl: '/login' }),\n     };\n   }\n   ```",
+      "id": "PORTAL-105",
+      "task_name": "Backend: Tenant Admin Login Endpoint",
+      "feature_details": "Add a new endpoint to the Auth Service for tenant admin login. POST /api/v1/auth/client/login — accepts { email, password }, validates against saas_clients collection, returns { access_token, refresh_token, tenant_id, client_id }. The access_token JWT should include claims: { sub: client_id, email, role: 'tenant_admin', tenantId, iat, exp }. Token expiry: 1 hour for access, 7 days for refresh. Store refresh token in Redis with TTL. This is DIFFERENT from SDK session — it authenticates the tenant administrator, not an end-user.",
+      "feature_dependency": [],
+      "backend_apis_used": [],
+      "backend_status": "TO BE BUILT — Auth Service currently only has client/register, no login",
+      "gap_id": "G1",
       "testing_instructions": {
         "unit_tests": [
-          "Test useUser hook"
+          "Login with valid credentials returns tokens",
+          "Login with invalid email returns 401",
+          "Login with wrong password returns 401",
+          "JWT contains correct claims (sub, tenantId, role)",
+          "Refresh token is stored in Redis"
         ],
         "integration_tests": [
-          "Test login flow",
-          "Test token refresh"
+          "Login → validate token → access protected routes",
+          "Login with rate limiting (5 attempts per 15 min)"
         ],
         "e2e_tests": [
-          "Test complete auth flow"
+          "Add to e2e-full-system.js Phase 2: tenant login after registration"
         ]
       },
       "acceptance_criteria": [
-        "NextAuth configured",
-        "Credentials provider works",
-        "Session management works",
-        "Protected routes work"
+        "POST /api/v1/auth/client/login returns access + refresh tokens",
+        "JWT contains sub, tenantId, role: tenant_admin",
+        "Invalid credentials return 401",
+        "Rate limiting prevents brute force",
+        "Refresh token stored in Redis with 7-day TTL"
       ],
       "files_to_create": [
-        "apps/admin-portal/src/app/api/auth/[...nextauth]/route.ts",
-        "apps/admin-portal/src/types/next-auth.d.ts",
-        "apps/admin-portal/middleware.ts",
-        "apps/admin-portal/src/hooks/useUser.ts"
+        "services/auth-service/src/controllers/admin-auth.controller.ts",
+        "services/auth-service/src/services/admin-auth.service.ts"
       ],
-      "files_to_modify": [],
+      "files_to_modify": [
+        "services/auth-service/src/routes/auth.routes.ts"
+      ],
       "docker_requirements": {
-        "services": [],
+        "services": [
+          "auth-service"
+        ],
         "environment_variables": [
-          "NEXTAUTH_SECRET",
-          "NEXTAUTH_URL",
-          "GOOGLE_CLIENT_ID",
-          "GOOGLE_CLIENT_SECRET"
+          "ADMIN_JWT_SECRET",
+          "ADMIN_TOKEN_EXPIRY",
+          "ADMIN_REFRESH_TOKEN_EXPIRY"
         ],
         "volumes": [],
-        "networks": []
+        "networks": [
+          "caas-network"
+        ]
       },
-      "api_endpoints": [],
+      "api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/api/v1/auth/client/login",
+          "request_body": {
+            "email": "string",
+            "password": "string"
+          },
+          "response_body": {
+            "access_token": "string",
+            "refresh_token": "string",
+            "tenant_id": "string",
+            "client_id": "string",
+            "expires_in": "number"
+          },
+          "auth": "none (public)"
+        }
+      ],
+      "database_changes": {
+        "collections": [
+          "saas_clients (existing)"
+        ],
+        "indexes": [
+          "{ email: 1 } unique (should already exist)"
+        ],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 8,
+      "tags": [
+        "backend",
+        "auth",
+        "login",
+        "critical-gap"
+      ]
+    },
+    {
+      "id": "PORTAL-106",
+      "task_name": "Backend: Tenant Admin Refresh Token Endpoint",
+      "feature_details": "Add a refresh endpoint for tenant admin tokens. POST /api/v1/auth/client/refresh — accepts { refresh_token }, validates against Redis, issues new access_token and optionally rotates refresh_token (sliding window). Invalidate old refresh token after use (one-time use pattern for security).",
+      "feature_dependency": [
+        "PORTAL-105"
+      ],
+      "backend_apis_used": [],
+      "backend_status": "TO BE BUILT — SDK has /sdk/refresh but admin refresh is separate",
+      "gap_id": "G2",
+      "testing_instructions": {
+        "unit_tests": [
+          "Valid refresh token returns new access token",
+          "Expired refresh token returns 401",
+          "Used refresh token cannot be reused",
+          "New refresh token is issued (rotation)"
+        ],
+        "integration_tests": [
+          "Login → wait → refresh → access protected route with new token"
+        ],
+        "e2e_tests": []
+      },
+      "acceptance_criteria": [
+        "POST /api/v1/auth/client/refresh returns new tokens",
+        "Old refresh token invalidated after use",
+        "Expired refresh token returns 401",
+        "New access token inherits same claims"
+      ],
+      "files_to_create": [],
+      "files_to_modify": [
+        "services/auth-service/src/controllers/admin-auth.controller.ts",
+        "services/auth-service/src/services/admin-auth.service.ts",
+        "services/auth-service/src/routes/auth.routes.ts"
+      ],
+      "docker_requirements": {
+        "services": [
+          "auth-service"
+        ],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": [
+          "caas-network"
+        ]
+      },
+      "api_endpoints": [
+        {
+          "method": "POST",
+          "path": "/api/v1/auth/client/refresh",
+          "request_body": {
+            "refresh_token": "string"
+          },
+          "response_body": {
+            "access_token": "string",
+            "refresh_token": "string",
+            "expires_in": "number"
+          },
+          "auth": "none (token in body)"
+        }
+      ],
       "database_changes": {
         "collections": [],
         "indexes": [],
@@ -56,36 +160,52 @@
       },
       "status": "not_started",
       "estimated_hours": 4,
-      "tags": ["portal", "auth", "nextauth"]
+      "tags": [
+        "backend",
+        "auth",
+        "refresh",
+        "critical-gap"
+      ]
     },
     {
-      "id": "PORTAL-006",
-      "task_name": "Login Page",
-      "feature_details": "Create login page with form validation.",
-      "feature_dependency": ["PORTAL-005"],
-      "ai_prompt": "Create login page:\n\n1. Create apps/admin-portal/src/app/(auth)/login/page.tsx:\n   ```tsx\n   import { LoginForm } from './LoginForm';\n\n   export default function LoginPage() {\n     return (\n       <div className=\"flex min-h-screen items-center justify-center bg-gray-50\">\n         <div className=\"w-full max-w-md space-y-8 rounded-xl bg-white p-8 shadow-lg\">\n           <div className=\"text-center\">\n             <h1 className=\"text-3xl font-bold\">Welcome back</h1>\n             <p className=\"mt-2 text-gray-600\">Sign in to your account</p>\n           </div>\n           <LoginForm />\n         </div>\n       </div>\n     );\n   }\n   ```\n\n2. Create apps/admin-portal/src/app/(auth)/login/LoginForm.tsx:\n   ```tsx\n   'use client';\n\n   import { useState } from 'react';\n   import { signIn } from 'next-auth/react';\n   import { useRouter, useSearchParams } from 'next/navigation';\n   import { useForm } from 'react-hook-form';\n   import { zodResolver } from '@hookform/resolvers/zod';\n   import { z } from 'zod';\n   import { Button } from '@/components/ui/Button';\n   import { Input } from '@/components/ui/Input';\n   import Link from 'next/link';\n\n   const loginSchema = z.object({\n     email: z.string().email('Please enter a valid email'),\n     password: z.string().min(8, 'Password must be at least 8 characters'),\n   });\n\n   type LoginFormData = z.infer<typeof loginSchema>;\n\n   export function LoginForm() {\n     const router = useRouter();\n     const searchParams = useSearchParams();\n     const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';\n     const [error, setError] = useState<string | null>(null);\n\n     const {\n       register,\n       handleSubmit,\n       formState: { errors, isSubmitting },\n     } = useForm<LoginFormData>({\n       resolver: zodResolver(loginSchema),\n     });\n\n     const onSubmit = async (data: LoginFormData) => {\n       setError(null);\n       \n       const result = await signIn('credentials', {\n         redirect: false,\n         email: data.email,\n         password: data.password,\n       });\n\n       if (result?.error) {\n         setError('Invalid email or password');\n         return;\n       }\n\n       router.push(callbackUrl);\n     };\n\n     return (\n       <form onSubmit={handleSubmit(onSubmit)} className=\"space-y-6\">\n         {error && (\n           <div className=\"rounded-lg bg-red-50 p-4 text-sm text-red-600\">\n             {error}\n           </div>\n         )}\n\n         <Input\n           id=\"email\"\n           label=\"Email\"\n           type=\"email\"\n           autoComplete=\"email\"\n           error={errors.email?.message}\n           {...register('email')}\n         />\n\n         <Input\n           id=\"password\"\n           label=\"Password\"\n           type=\"password\"\n           autoComplete=\"current-password\"\n           error={errors.password?.message}\n           {...register('password')}\n         />\n\n         <div className=\"flex items-center justify-between\">\n           <label className=\"flex items-center\">\n             <input type=\"checkbox\" className=\"h-4 w-4 rounded border-gray-300\" />\n             <span className=\"ml-2 text-sm text-gray-600\">Remember me</span>\n           </label>\n           <Link href=\"/forgot-password\" className=\"text-sm text-primary hover:underline\">\n             Forgot password?\n           </Link>\n         </div>\n\n         <Button type=\"submit\" className=\"w-full\" loading={isSubmitting}>\n           Sign in\n         </Button>\n\n         <div className=\"relative\">\n           <div className=\"absolute inset-0 flex items-center\">\n             <div className=\"w-full border-t\" />\n           </div>\n           <div className=\"relative flex justify-center text-sm\">\n             <span className=\"bg-white px-4 text-gray-500\">Or continue with</span>\n           </div>\n         </div>\n\n         <Button\n           type=\"button\"\n           variant=\"outline\"\n           className=\"w-full\"\n           onClick={() => signIn('google', { callbackUrl })}\n         >\n           <GoogleIcon className=\"mr-2 h-5 w-5\" />\n           Google\n         </Button>\n\n         <p className=\"text-center text-sm text-gray-600\">\n           Don't have an account?{' '}\n           <Link href=\"/register\" className=\"text-primary hover:underline\">\n             Sign up\n           </Link>\n         </p>\n       </form>\n     );\n   }\n   ```\n\n3. Create auth layout:\n   ```tsx\n   // apps/admin-portal/src/app/(auth)/layout.tsx\n   export default function AuthLayout({\n     children,\n   }: {\n     children: React.ReactNode;\n   }) {\n     return <div className=\"min-h-screen bg-gray-50\">{children}</div>;\n   }\n   ```",
+      "id": "PORTAL-107",
+      "task_name": "Registration Page (Frontend)",
+      "feature_details": "Create the tenant registration page at /register. Multi-step form: Step 1: Company Name, Email, Password, Confirm Password. Step 2: Plan selection (Free/Business/Enterprise) with feature comparison cards. Step 3: Terms of Service acceptance. On submit, calls POST /api/v1/auth/client/register (EXISTING ✅). On success: stores returned client_id and api_key, redirects to onboarding wizard. On error: shows validation messages. Includes link to /login. Clean, premium design with gradient background.",
+      "feature_dependency": [
+        "PORTAL-102"
+      ],
+      "backend_apis_used": [
+        "POST /api/v1/auth/client/register (Auth Service — via gateway proxy or direct)"
+      ],
+      "backend_status": "WORKING ✅ — E2E tested, returns client_id + api_key",
       "testing_instructions": {
         "unit_tests": [
-          "Test form validation",
-          "Test error display"
+          "Form validates required fields",
+          "Password confirmation matches",
+          "Email format validation",
+          "Plan selection updates state"
         ],
         "integration_tests": [
-          "Test login submission",
-          "Test redirect after login"
+          "Successful registration redirects to onboarding",
+          "Duplicate email shows error",
+          "Server errors display toast notification"
         ],
         "e2e_tests": [
-          "Test complete login flow"
+          "Complete registration flow end-to-end"
         ]
       },
       "acceptance_criteria": [
-        "Login form renders",
-        "Validation works",
-        "Error messages shown",
-        "Successful login redirects"
+        "Multi-step registration form works",
+        "Connects to /api/v1/auth/client/register",
+        "Shows API key after successful registration",
+        "Validation errors displayed inline",
+        "Responsive on mobile"
       ],
       "files_to_create": [
-        "apps/admin-portal/src/app/(auth)/login/page.tsx",
-        "apps/admin-portal/src/app/(auth)/login/LoginForm.tsx",
+        "apps/admin-portal/src/app/(auth)/register/page.tsx",
+        "apps/admin-portal/src/app/(auth)/register/components/StepCompany.tsx",
+        "apps/admin-portal/src/app/(auth)/register/components/StepPlan.tsx",
+        "apps/admin-portal/src/app/(auth)/register/components/StepTerms.tsx",
         "apps/admin-portal/src/app/(auth)/layout.tsx"
       ],
       "files_to_modify": [],
@@ -102,37 +222,54 @@
         "migrations": []
       },
       "status": "not_started",
-      "estimated_hours": 4,
-      "tags": ["portal", "auth", "login"]
+      "estimated_hours": 6,
+      "tags": [
+        "portal",
+        "registration",
+        "forms",
+        "auth"
+      ]
     },
     {
-      "id": "PORTAL-007",
-      "task_name": "Registration Page",
-      "feature_details": "Create registration page with multi-step form.",
-      "feature_dependency": ["PORTAL-005"],
-      "ai_prompt": "Create registration page:\n\n1. Create apps/admin-portal/src/app/(auth)/register/page.tsx:\n   ```tsx\n   import { RegisterForm } from './RegisterForm';\n\n   export default function RegisterPage() {\n     return (\n       <div className=\"flex min-h-screen items-center justify-center bg-gray-50\">\n         <div className=\"w-full max-w-md space-y-8 rounded-xl bg-white p-8 shadow-lg\">\n           <div className=\"text-center\">\n             <h1 className=\"text-3xl font-bold\">Create your account</h1>\n             <p className=\"mt-2 text-gray-600\">Start building with CAAS</p>\n           </div>\n           <RegisterForm />\n         </div>\n       </div>\n     );\n   }\n   ```\n\n2. Create apps/admin-portal/src/app/(auth)/register/RegisterForm.tsx:\n   ```tsx\n   'use client';\n\n   import { useState } from 'react';\n   import { useRouter } from 'next/navigation';\n   import { useForm } from 'react-hook-form';\n   import { zodResolver } from '@hookform/resolvers/zod';\n   import { z } from 'zod';\n   import { Button } from '@/components/ui/Button';\n   import { Input } from '@/components/ui/Input';\n   import Link from 'next/link';\n   import { api } from '@/lib/api';\n\n   const registerSchema = z.object({\n     name: z.string().min(2, 'Name must be at least 2 characters'),\n     email: z.string().email('Please enter a valid email'),\n     password: z\n       .string()\n       .min(8, 'Password must be at least 8 characters')\n       .regex(/[A-Z]/, 'Password must contain an uppercase letter')\n       .regex(/[0-9]/, 'Password must contain a number'),\n     confirmPassword: z.string(),\n     companyName: z.string().min(2, 'Company name is required'),\n     acceptTerms: z.boolean().refine(val => val, 'You must accept the terms'),\n   }).refine(data => data.password === data.confirmPassword, {\n     message: 'Passwords do not match',\n     path: ['confirmPassword'],\n   });\n\n   type RegisterFormData = z.infer<typeof registerSchema>;\n\n   export function RegisterForm() {\n     const router = useRouter();\n     const [step, setStep] = useState(1);\n     const [error, setError] = useState<string | null>(null);\n\n     const {\n       register,\n       handleSubmit,\n       trigger,\n       formState: { errors, isSubmitting },\n     } = useForm<RegisterFormData>({\n       resolver: zodResolver(registerSchema),\n     });\n\n     const nextStep = async () => {\n       const fieldsToValidate = step === 1 \n         ? ['name', 'email'] \n         : ['password', 'confirmPassword'];\n       \n       const isValid = await trigger(fieldsToValidate as any);\n       if (isValid) setStep(step + 1);\n     };\n\n     const onSubmit = async (data: RegisterFormData) => {\n       setError(null);\n\n       try {\n         await api.post('/auth/register', {\n           name: data.name,\n           email: data.email,\n           password: data.password,\n           companyName: data.companyName,\n         });\n\n         router.push('/login?registered=true');\n       } catch (err: any) {\n         setError(err.message || 'Registration failed');\n       }\n     };\n\n     return (\n       <form onSubmit={handleSubmit(onSubmit)} className=\"space-y-6\">\n         {/* Progress indicator */}\n         <div className=\"flex justify-center gap-2\">\n           {[1, 2, 3].map(i => (\n             <div\n               key={i}\n               className={`h-2 w-16 rounded-full ${\n                 i <= step ? 'bg-primary' : 'bg-gray-200'\n               }`}\n             />\n           ))}\n         </div>\n\n         {error && (\n           <div className=\"rounded-lg bg-red-50 p-4 text-sm text-red-600\">\n             {error}\n           </div>\n         )}\n\n         {step === 1 && (\n           <>\n             <Input\n               id=\"name\"\n               label=\"Full Name\"\n               error={errors.name?.message}\n               {...register('name')}\n             />\n             <Input\n               id=\"email\"\n               label=\"Email\"\n               type=\"email\"\n               error={errors.email?.message}\n               {...register('email')}\n             />\n             <Button type=\"button\" className=\"w-full\" onClick={nextStep}>\n               Continue\n             </Button>\n           </>\n         )}\n\n         {step === 2 && (\n           <>\n             <Input\n               id=\"password\"\n               label=\"Password\"\n               type=\"password\"\n               error={errors.password?.message}\n               {...register('password')}\n             />\n             <Input\n               id=\"confirmPassword\"\n               label=\"Confirm Password\"\n               type=\"password\"\n               error={errors.confirmPassword?.message}\n               {...register('confirmPassword')}\n             />\n             <div className=\"flex gap-4\">\n               <Button type=\"button\" variant=\"outline\" onClick={() => setStep(1)}>\n                 Back\n               </Button>\n               <Button type=\"button\" className=\"flex-1\" onClick={nextStep}>\n                 Continue\n               </Button>\n             </div>\n           </>\n         )}\n\n         {step === 3 && (\n           <>\n             <Input\n               id=\"companyName\"\n               label=\"Company Name\"\n               error={errors.companyName?.message}\n               {...register('companyName')}\n             />\n             <label className=\"flex items-start gap-2\">\n               <input\n                 type=\"checkbox\"\n                 className=\"mt-1 h-4 w-4 rounded border-gray-300\"\n                 {...register('acceptTerms')}\n               />\n               <span className=\"text-sm text-gray-600\">\n                 I agree to the{' '}\n                 <Link href=\"/terms\" className=\"text-primary hover:underline\">\n                   Terms of Service\n                 </Link>{' '}\n                 and{' '}\n                 <Link href=\"/privacy\" className=\"text-primary hover:underline\">\n                   Privacy Policy\n                 </Link>\n               </span>\n             </label>\n             {errors.acceptTerms && (\n               <p className=\"text-sm text-red-600\">{errors.acceptTerms.message}</p>\n             )}\n             <div className=\"flex gap-4\">\n               <Button type=\"button\" variant=\"outline\" onClick={() => setStep(2)}>\n                 Back\n               </Button>\n               <Button type=\"submit\" className=\"flex-1\" loading={isSubmitting}>\n                 Create Account\n               </Button>\n             </div>\n           </>\n         )}\n\n         <p className=\"text-center text-sm text-gray-600\">\n           Already have an account?{' '}\n           <Link href=\"/login\" className=\"text-primary hover:underline\">\n             Sign in\n           </Link>\n         </p>\n       </form>\n     );\n   }\n   ```",
+      "id": "PORTAL-108",
+      "task_name": "Login Page (Frontend)",
+      "feature_details": "Create the tenant admin login page at /login. Fields: Email, Password, Remember Me checkbox. On submit, calls POST /api/v1/auth/client/login (from PORTAL-105). On success: stores tokens (httpOnly cookie via Next.js API route recommended for security), redirects to /dashboard. On error: shows 'Invalid credentials' message. Includes links to /register and /forgot-password. Rate limiting feedback: 'Too many attempts, please try again in X minutes'. Clean, premium design matching registration page.",
+      "feature_dependency": [
+        "PORTAL-102",
+        "PORTAL-105"
+      ],
+      "backend_apis_used": [
+        "POST /api/v1/auth/client/login (Auth Service — PORTAL-105 builds this)"
+      ],
+      "backend_status": "TO BE BUILT — depends on PORTAL-105",
       "testing_instructions": {
         "unit_tests": [
-          "Test form validation",
-          "Test step navigation"
+          "Form validates required fields",
+          "Login button disabled during submission",
+          "Error message displays on failure"
         ],
         "integration_tests": [
-          "Test registration submission",
-          "Test error handling"
+          "Successful login redirects to /dashboard",
+          "Invalid credentials show error",
+          "Remember Me persists session"
         ],
         "e2e_tests": [
-          "Test complete registration flow"
+          "Register → Login → Dashboard flow"
         ]
       },
       "acceptance_criteria": [
-        "Multi-step form works",
-        "Validation per step",
-        "Password requirements shown",
-        "Successful registration redirects"
+        "Login page connects to tenant login API",
+        "Tokens stored securely (httpOnly cookies)",
+        "Auto-redirect authenticated users away from login",
+        "Error handling for invalid credentials and rate limits",
+        "Responsive on mobile"
       ],
       "files_to_create": [
-        "apps/admin-portal/src/app/(auth)/register/page.tsx",
-        "apps/admin-portal/src/app/(auth)/register/RegisterForm.tsx"
+        "apps/admin-portal/src/app/(auth)/login/page.tsx",
+        "apps/admin-portal/src/app/api/auth/login/route.ts",
+        "apps/admin-portal/src/app/api/auth/refresh/route.ts",
+        "apps/admin-portal/src/app/api/auth/logout/route.ts",
+        "apps/admin-portal/src/lib/auth.ts"
       ],
       "files_to_modify": [],
       "docker_requirements": {
@@ -148,8 +285,77 @@
         "migrations": []
       },
       "status": "not_started",
-      "estimated_hours": 4,
-      "tags": ["portal", "auth", "registration"]
+      "estimated_hours": 6,
+      "tags": [
+        "portal",
+        "login",
+        "auth",
+        "cookies"
+      ]
+    },
+    {
+      "id": "PORTAL-109",
+      "task_name": "Auth Middleware & Route Protection",
+      "feature_details": "Create Next.js middleware that protects all /dashboard/* routes. Middleware checks for valid JWT in cookies. If expired, attempts silent refresh via /api/auth/refresh API route. If refresh fails, redirect to /login. Create useAuth() hook that exposes: user (tenant info from JWT), isAuthenticated, isLoading, logout(). Unauthenticated users accessing protected routes get redirected to /login with return URL preserved. Authenticated users accessing /login or /register get redirected to /dashboard.",
+      "feature_dependency": [
+        "PORTAL-108"
+      ],
+      "backend_apis_used": [
+        "POST /api/v1/auth/client/refresh (PORTAL-106)",
+        "POST /api/v1/auth/validate (Auth Service — EXISTING ✅)"
+      ],
+      "backend_status": "Token validation is WORKING ✅, refresh depends on PORTAL-106",
+      "testing_instructions": {
+        "unit_tests": [
+          "Middleware redirects unauthenticated users",
+          "Middleware allows authenticated users",
+          "useAuth() returns correct user data",
+          "Silent refresh works transparently"
+        ],
+        "integration_tests": [
+          "Protected routes redirect to login",
+          "Login redirects back to original page",
+          "Token expiry triggers refresh"
+        ],
+        "e2e_tests": [
+          "Complete auth flow: register → login → access protected → logout → redirect to login"
+        ]
+      },
+      "acceptance_criteria": [
+        "Next.js middleware protects /dashboard/* routes",
+        "Silent token refresh works",
+        "useAuth() hook provides user context",
+        "Return URL preserved on login redirect",
+        "Logout clears all tokens and redirects"
+      ],
+      "files_to_create": [
+        "apps/admin-portal/src/middleware.ts",
+        "apps/admin-portal/src/hooks/useAuth.ts",
+        "apps/admin-portal/src/components/providers/AuthProvider.tsx"
+      ],
+      "files_to_modify": [
+        "apps/admin-portal/src/app/(dashboard)/layout.tsx"
+      ],
+      "docker_requirements": {
+        "services": [],
+        "environment_variables": [],
+        "volumes": [],
+        "networks": []
+      },
+      "api_endpoints": [],
+      "database_changes": {
+        "collections": [],
+        "indexes": [],
+        "migrations": []
+      },
+      "status": "not_started",
+      "estimated_hours": 8,
+      "tags": [
+        "portal",
+        "auth",
+        "middleware",
+        "route-protection"
+      ]
     }
   ]
 }

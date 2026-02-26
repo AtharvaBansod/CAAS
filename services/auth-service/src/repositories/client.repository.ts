@@ -82,7 +82,12 @@ export class ClientRepository {
     // Check cache first
     const cached = await redis.get(`${this.CACHE_PREFIX}${client_id}`);
     if (cached) {
-      return JSON.parse(cached);
+      try {
+        return JSON.parse(cached);
+      } catch (e) {
+        console.error(`Failed to parse cached client ${client_id}:`, e);
+        // Continue to DB if cache is corrupted
+      }
     }
 
     const db = MongoDBConnection.getDb();
@@ -208,6 +213,23 @@ export class ClientRepository {
       {
         $set: {
           origin_whitelist: origins,
+          updated_at: new Date(),
+        },
+      }
+    );
+
+    await redis.del(`${this.CACHE_PREFIX}${client_id}`);
+  }
+
+  async updatePassword(client_id: string, passwordHash: string): Promise<void> {
+    const db = MongoDBConnection.getDb();
+    const redis = RedisConnection.getClient();
+
+    await db.collection(this.COLLECTION).updateOne(
+      { client_id },
+      {
+        $set: {
+          password_hash: passwordHash,
           updated_at: new Date(),
         },
       }

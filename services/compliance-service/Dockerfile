@@ -1,46 +1,39 @@
-# Multi-stage build for compliance service
-FROM node:20-alpine AS builder
+# Compliance Service Dockerfile - Optimized
+# Stage 1: Builder
+FROM node:20 AS builder
 
 WORKDIR /app
 
-# Copy service files
+# Copy package files separately for better caching
 COPY services/compliance-service/package*.json ./
-COPY services/compliance-service/tsconfig.json ./
-
-# Install dependencies
 RUN npm install
 
-# Copy source code
+# Copy source and build
 COPY services/compliance-service/src ./src
-
-# Build TypeScript
+COPY services/compliance-service/tsconfig.json ./
 RUN npm run build
+RUN npm prune --production
 
-# Production stage
-FROM node:20-alpine
-
+# Stage 2: Production final image
+FROM node:20-slim AS runner
 WORKDIR /app
+ENV NODE_ENV=production
 
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init
+# Install dumb-init
+RUN apt-get update && apt-get install -y dumb-init && rm -rf /var/lib/apt/lists/*
 
-# Copy package files and install production dependencies
-COPY services/compliance-service/package*.json ./
-RUN npm install --only=production
-
-# Copy built files from builder
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
+# Non-root user
+RUN groupadd -g 1001 nodejs && useradd -m -u 1001 -g nodejs nodejs
+RUN chown -R nodejs:nodejs /app
 USER nodejs
 
-# Expose port
 EXPOSE 3008
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3008/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
-# Start service with dumb-init
-CMD ["dumb-init", "node", "dist/src/server.js"]
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["node", "dist/src/index.js"]

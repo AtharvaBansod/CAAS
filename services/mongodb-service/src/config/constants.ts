@@ -16,7 +16,7 @@ export const DB_NAMES = {
  * Platform Collections (for SAAS management)
  */
 export const PLATFORM_COLLECTIONS = {
-  SAAS_CLIENTS: 'saas_clients',
+  clients: 'clients',
   APPLICATIONS: 'applications',
   API_KEYS: 'api_keys',
   WEBHOOKS: 'webhooks',

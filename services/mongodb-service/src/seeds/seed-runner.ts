@@ -32,7 +32,7 @@ export class SeedRunner {
    */
   async runAll(): Promise<void> {
     console.log('🌱 Starting database seeding...');
-    
+
     try {
       // Ensure connection is established
       if (!this.connection.isConnected()) {
@@ -53,7 +53,7 @@ export class SeedRunner {
       // Generate tenant data for each client
       for (const client of platformData.clients) {
         console.log(`\n👥 Generating data for tenant: ${client.name}...`);
-        
+
         // Generate users
         const userGenerator = new UserGenerator();
         const users = await userGenerator.generate(client.id, this.config.usersPerTenant);
@@ -67,9 +67,9 @@ export class SeedRunner {
         // Generate conversations
         const conversationGenerator = new ConversationGenerator();
         const conversations = await conversationGenerator.generate(
-          client.id, 
-          this.config.conversationsPerUser, 
-          users, 
+          client.id,
+          this.config.conversationsPerUser,
+          users,
           groups
         );
         console.log(`✅ Generated ${conversations.length} conversations`);
@@ -77,8 +77,8 @@ export class SeedRunner {
         // Generate messages
         const messageGenerator = new MessageGenerator();
         const messages = await messageGenerator.generate(
-          conversations, 
-          this.config.messagesPerConversation, 
+          conversations,
+          this.config.messagesPerConversation,
           users
         );
         console.log(`✅ Generated ${messages.length} messages`);
@@ -86,15 +86,15 @@ export class SeedRunner {
         // Generate files
         const fileGenerator = new FileGenerator();
         const files = await fileGenerator.generate(
-          client.id, 
-          this.config.filesPerTenant, 
+          client.id,
+          this.config.filesPerTenant,
           users
         );
         console.log(`✅ Generated ${files.length} files`);
       }
 
       console.log('\n🎉 Database seeding completed successfully!');
-      
+
       // Print summary
       await this.printSummary();
 
@@ -109,9 +109,9 @@ export class SeedRunner {
    */
   async clearData(): Promise<void> {
     console.log('🧹 Clearing existing seed data...');
-    
+
     const db = this.connection.getConnection();
-    
+
     // Clear in dependency order
     const collections = [
       'messages',
@@ -122,7 +122,7 @@ export class SeedRunner {
       'users',
       'api_keys',
       'applications',
-      'saas_clients',
+      'clients',
     ];
 
     for (const collectionName of collections) {
@@ -143,7 +143,7 @@ export class SeedRunner {
    */
   async runPlatformOnly(): Promise<void> {
     console.log('🏢 Generating platform data only...');
-    
+
     try {
       if (!this.connection.isConnected()) {
         await this.connection.connect();
@@ -151,11 +151,11 @@ export class SeedRunner {
 
       const platformGenerator = new PlatformGenerator();
       const platformData = await platformGenerator.generate();
-      
+
       console.log(`✅ Generated ${platformData.clients.length} SAAS clients`);
       console.log(`✅ Generated ${platformData.applications.length} applications`);
       console.log(`✅ Generated ${platformData.apiKeys.length} API keys`);
-      
+
     } catch (error) {
       console.error('❌ Platform seeding failed:', error);
       throw error;
@@ -167,7 +167,7 @@ export class SeedRunner {
    */
   async runForTenant(tenantId: string): Promise<void> {
     console.log(`👥 Generating data for tenant: ${tenantId}...`);
-    
+
     try {
       if (!this.connection.isConnected()) {
         await this.connection.connect();
@@ -186,9 +186,9 @@ export class SeedRunner {
       // Generate conversations
       const conversationGenerator = new ConversationGenerator();
       const conversations = await conversationGenerator.generate(
-        tenantId, 
-        this.config.conversationsPerUser, 
-        users, 
+        tenantId,
+        this.config.conversationsPerUser,
+        users,
         groups
       );
       console.log(`✅ Generated ${conversations.length} conversations`);
@@ -196,8 +196,8 @@ export class SeedRunner {
       // Generate messages
       const messageGenerator = new MessageGenerator();
       const messages = await messageGenerator.generate(
-        conversations, 
-        this.config.messagesPerConversation, 
+        conversations,
+        this.config.messagesPerConversation,
         users
       );
       console.log(`✅ Generated ${messages.length} messages`);
@@ -206,7 +206,7 @@ export class SeedRunner {
       const fileGenerator = new FileGenerator();
       const files = await fileGenerator.generate(tenantId, this.config.filesPerTenant, users);
       console.log(`✅ Generated ${files.length} files`);
-      
+
     } catch (error) {
       console.error('❌ Tenant seeding failed:', error);
       throw error;
@@ -218,13 +218,13 @@ export class SeedRunner {
    */
   private async printSummary(): Promise<void> {
     const db = this.connection.getConnection();
-    
+
     console.log('\n📊 Seeding Summary:');
     console.log('==================');
-    
+
     const collections = [
-      'saas_clients',
-      'applications', 
+      'clients',
+      'applications',
       'api_keys',
       'users',
       'groups',
@@ -242,7 +242,7 @@ export class SeedRunner {
         console.log(`  ${collectionName}: Error counting documents`);
       }
     }
-    
+
     console.log('==================');
   }
 
@@ -251,28 +251,28 @@ export class SeedRunner {
    */
   async validate(): Promise<boolean> {
     console.log('🔍 Validating seed data integrity...');
-    
+
     try {
       const db = this.connection.getConnection();
-      
+
       // Check if required collections exist and have data
-      const requiredCollections = ['saas_clients', 'users', 'conversations', 'messages'];
-      
+      const requiredCollections = ['clients', 'users', 'conversations', 'messages'];
+
       for (const collectionName of requiredCollections) {
         const collection = db.collection(collectionName);
         const count = await collection.countDocuments();
-        
+
         if (count === 0) {
           console.error(`❌ Collection ${collectionName} is empty`);
           return false;
         }
-        
+
         console.log(`✅ ${collectionName}: ${count} documents`);
       }
-      
+
       console.log('✅ Seed data validation passed');
       return true;
-      
+
     } catch (error) {
       console.error('❌ Seed data validation failed:', error);
       return false;

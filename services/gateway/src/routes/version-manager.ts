@@ -16,7 +16,8 @@ export class VersionManager {
   static getVersion(request: FastifyRequest): VersionInfo {
     // 1. Path (highest priority)
     // /v1/some/path -> v1
-    const pathMatch = request.url.match(/^\/(v\d+)\//);
+    // /api/v1/some/path -> v1
+    const pathMatch = request.url.match(/^\/(?:api\/)?(v\d+)\//);
     if (pathMatch && this.isValidVersion(pathMatch[1])) {
       return { version: pathMatch[1] as ApiVersion, source: 'path' };
     }

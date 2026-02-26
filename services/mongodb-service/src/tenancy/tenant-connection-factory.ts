@@ -29,7 +29,7 @@ export class TenantConnectionFactory {
   }
 
   async getStrategyForTenant(tenantId: string): Promise<IsolationStrategy> {
-    // In real app, look up tenant config from Platform DB (saas_clients)
+    // In real app, look up tenant config from Platform DB (clients)
     // For now, default to shared or env config
     const strategyName = process.env.DEFAULT_ISOLATION_STRATEGY || 'shared';
     return this.strategies.get(strategyName) || this.defaultStrategy;

@@ -3,13 +3,58 @@
 
 param(
     [switch]$Clean,
-    [switch]$Build
+    [switch]$Build,
+    [switch]$NoCache
 )
 
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "CAAS Platform - Starting Services" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
+
+# Enable BuildKit for faster cached multi-stage builds
+$env:DOCKER_BUILDKIT = "1"
+$env:COMPOSE_DOCKER_CLI_BUILD = "1"
+
+function Wait-ContainerHealthy {
+    param(
+        [string]$ContainerName,
+        [int]$MaxWaitSeconds = 60,
+        [int]$IntervalSeconds = 3
+    )
+
+    $waited = 0
+    while ($waited -lt $MaxWaitSeconds) {
+        $state = (docker inspect $ContainerName --format='{{.State.Status}}' 2>$null | Out-String).Trim()
+        $health = (docker inspect $ContainerName --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' 2>$null | Out-String).Trim()
+
+        if ($state -eq "running" -and ($health -eq "healthy" -or $health -eq "none")) {
+            return $true
+        }
+
+        if ($state -eq "exited" -or $state -eq "dead") {
+            return $false
+        }
+
+        Start-Sleep -Seconds $IntervalSeconds
+        $waited += $IntervalSeconds
+    }
+
+    return $false
+}
+
+function Reset-KafkaState {
+    Write-Host "  Resetting Kafka/Zookeeper state due to cluster ID mismatch..." -ForegroundColor Yellow
+    docker compose stop kafka-1 kafka-2 kafka-3 zookeeper 2>&1 | Out-Null
+    docker compose rm -f kafka-1 kafka-2 kafka-3 zookeeper 2>&1 | Out-Null
+
+    $kafkaVolumes = docker volume ls --format "{{.Name}}" | Where-Object { $_ -match "^caas_(kafka1_data|kafka2_data|kafka3_data|zookeeper_data)$" }
+    if ($kafkaVolumes) {
+        $kafkaVolumes | ForEach-Object { docker volume rm $_ 2>&1 | Out-Null }
+    }
+
+    docker compose up -d zookeeper kafka-1 kafka-2 kafka-3 2>&1 | Out-Null
+}
 
 # Phase 4.5.z.x: JWT_SECRET (HMAC) is used instead of RSA keys.
 # No key files are needed. JWT_SECRET and SERVICE_SECRET are set in .env
@@ -28,6 +73,28 @@ try {
     exit 1
 }
 
+# Pull third-party images up front to avoid mid-start stalls
+Write-Host "Pre-pulling infrastructure images (if needed)..." -ForegroundColor Yellow
+docker compose pull `
+    mongodb-primary `
+    mongodb-secondary-1 `
+    mongodb-secondary-2 `
+    redis-gateway `
+    redis-socket `
+    redis-shared `
+    redis-compliance `
+    redis-crypto `
+    zookeeper `
+    kafka-1 `
+    kafka-2 `
+    kafka-3 `
+    schema-registry `
+    elasticsearch `
+    minio `
+    kafka-ui `
+    mongo-express `
+    redis-commander 2>&1 | Out-Null
+
 # Clean volumes if requested
 if ($Clean) {
     Write-Host "Cleaning up existing volumes..." -ForegroundColor Yellow
@@ -39,7 +106,11 @@ if ($Clean) {
 # Build if requested
 if ($Build) {
     Write-Host "Building services..." -ForegroundColor Yellow
-    docker compose build --no-cache
+    $buildArgs = @("compose", "build", "--parallel")
+    if ($NoCache) {
+        $buildArgs += "--no-cache"
+    }
+    docker @buildArgs
     if ($LASTEXITCODE -ne 0) {
         Write-Host "Error: Build failed!" -ForegroundColor Red
         exit 1
@@ -143,17 +214,22 @@ try {
     
     # Wait for Kafka to be healthy
     Write-Host "  Waiting for Kafka to be healthy..." -ForegroundColor Gray
-    $maxWait = 60
-    $waited = 0
-    while ($waited -lt $maxWait) {
-        $status = docker inspect caas-kafka-1 --format='{{.State.Health.Status}}' 2>&1
-        if ($status -eq "healthy") {
-            Write-Host "  Kafka is healthy" -ForegroundColor Green
-            break
+    if (-not (Wait-ContainerHealthy -ContainerName "caas-kafka-1" -MaxWaitSeconds 90 -IntervalSeconds 3)) {
+        $kafkaLogs = docker compose logs --tail=120 kafka-1 kafka-2 kafka-3 2>&1 | Out-String
+        if ($kafkaLogs -match "InconsistentClusterIdException") {
+            Reset-KafkaState
+            if (-not (Wait-ContainerHealthy -ContainerName "caas-kafka-1" -MaxWaitSeconds 120 -IntervalSeconds 3)) {
+                Write-Host "Error: Kafka failed to become healthy after state reset." -ForegroundColor Red
+                docker compose logs --tail=100 kafka-1 kafka-2 kafka-3
+                exit 1
+            }
+        } else {
+            Write-Host "Error: Kafka failed to become healthy." -ForegroundColor Red
+            docker compose logs --tail=100 kafka-1 kafka-2 kafka-3
+            exit 1
         }
-        Start-Sleep -Seconds 3
-        $waited += 3
     }
+    Write-Host "  Kafka is healthy" -ForegroundColor Green
     
     Write-Host ""
     
@@ -161,18 +237,12 @@ try {
     Write-Host "  Starting Schema Registry..." -ForegroundColor Gray
     docker compose up -d schema-registry 2>&1 | Out-Null
     
-    # Wait for schema registry
-    $maxWait = 60
-    $waited = 0
-    while ($waited -lt $maxWait) {
-        $status = docker inspect caas-schema-registry --format='{{.State.Health.Status}}' 2>&1
-        if ($status -eq "healthy") {
-            Write-Host "  Schema Registry is healthy" -ForegroundColor Green
-            break
-        }
-        Start-Sleep -Seconds 3
-        $waited += 3
+    if (-not (Wait-ContainerHealthy -ContainerName "caas-schema-registry" -MaxWaitSeconds 90 -IntervalSeconds 3)) {
+        Write-Host "Error: Schema Registry failed to become healthy." -ForegroundColor Red
+        docker compose logs --tail=100 schema-registry
+        exit 1
     }
+    Write-Host "  Schema Registry is healthy" -ForegroundColor Green
     
     # Create Kafka topics using service script
     Write-Host "  Creating Kafka topics..." -ForegroundColor Gray
@@ -200,24 +270,12 @@ try {
     
     # Wait for Elasticsearch to be healthy
     Write-Host "  Waiting for Elasticsearch to be healthy..." -ForegroundColor Gray
-    $maxWait = 120
-    $waited = 0
-    while ($waited -lt $maxWait) {
-        $status = docker inspect caas-elasticsearch --format='{{.State.Health.Status}}' 2>&1
-        if ($status -eq "healthy") {
-            Write-Host "  Elasticsearch is healthy" -ForegroundColor Green
-            break
-        }
-        if ($waited % 10 -eq 0 -and $waited -gt 0) {
-            Write-Host "    Still waiting... ($waited/$maxWait seconds)" -ForegroundColor Gray
-        }
-        Start-Sleep -Seconds 5
-        $waited += 5
+    if (-not (Wait-ContainerHealthy -ContainerName "caas-elasticsearch" -MaxWaitSeconds 180 -IntervalSeconds 5)) {
+        Write-Host "Error: Elasticsearch failed to become healthy." -ForegroundColor Red
+        docker compose logs --tail=120 elasticsearch
+        exit 1
     }
-    
-    if ($waited -ge $maxWait) {
-        Write-Host "  Warning: Elasticsearch health check timeout" -ForegroundColor Yellow
-    }
+    Write-Host "  Elasticsearch is healthy" -ForegroundColor Green
     
     Write-Host ""
     
@@ -232,17 +290,12 @@ try {
     
     # Wait for MinIO to be healthy
     Write-Host "  Waiting for MinIO to be healthy..." -ForegroundColor Gray
-    $maxWait = 60
-    $waited = 0
-    while ($waited -lt $maxWait) {
-        $status = docker inspect caas-minio --format='{{.State.Health.Status}}' 2>&1
-        if ($status -eq "healthy") {
-            Write-Host "  MinIO is healthy" -ForegroundColor Green
-            break
-        }
-        Start-Sleep -Seconds 3
-        $waited += 3
+    if (-not (Wait-ContainerHealthy -ContainerName "caas-minio" -MaxWaitSeconds 90 -IntervalSeconds 3)) {
+        Write-Host "Error: MinIO failed to become healthy." -ForegroundColor Red
+        docker compose logs --tail=100 minio
+        exit 1
     }
+    Write-Host "  MinIO is healthy" -ForegroundColor Green
     
     # Initialize MinIO bucket (minio/minio image does not have mc - use minio/mc container)
     Write-Host "  Creating MinIO bucket..." -ForegroundColor Gray
@@ -250,9 +303,20 @@ try {
     $minioUser = if ($env:MINIO_ROOT_USER) { $env:MINIO_ROOT_USER } else { "minioadmin" }
     $minioPass = if ($env:MINIO_ROOT_PASSWORD) { $env:MINIO_ROOT_PASSWORD } else { "minioadmin" }
     $mcHost = "http://${minioUser}:${minioPass}@minio:9000"
-    $minioResult = docker run --rm --network caas_caas-network -e "MC_HOST_myminio=$mcHost" minio/mc mb myminio/caas-media --ignore-existing 2>&1 | Out-String
+    $minioNetwork = docker inspect caas-minio --format='{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}' 2>&1 | Out-String
+    $minioNetwork = $minioNetwork.Trim()
+    if (-not $minioNetwork) {
+        Write-Host "  Warning: Could not resolve MinIO network, using default compose network name" -ForegroundColor Yellow
+        $minioNetwork = "caas_caas-network"
+    }
+    $minioResult = docker run --rm --network $minioNetwork -e "MC_HOST_myminio=$mcHost" minio/mc mb myminio/caas-media --ignore-existing 2>&1 | Out-String
     
-    if ($minioResult -match "Error" -and $minioResult -notmatch "already exists" -and $minioResult -notmatch "BucketAlreadyExists") {
+    if (
+        $minioResult -match "Error" -and
+        $minioResult -notmatch "already exists" -and
+        $minioResult -notmatch "BucketAlreadyExists" -and
+        $minioResult -notmatch "Unable to find image 'minio/mc:latest' locally"
+    ) {
         Write-Host "  Warning during MinIO initialization: $minioResult" -ForegroundColor Yellow
     } else {
         Write-Host "  MinIO bucket initialized" -ForegroundColor Green
@@ -262,7 +326,7 @@ try {
     
     # Start remaining services
     Write-Host "  Starting remaining services..." -ForegroundColor Gray
-    docker compose up -d 2>&1 | Out-Null
+    docker compose up -d --remove-orphans 2>&1 | Out-Null
     
     if ($LASTEXITCODE -ne 0) {
         Write-Host "Error: Failed to start services!" -ForegroundColor Red
@@ -373,12 +437,12 @@ try {
     Write-Host "  Socket Service 2:   http://localhost:3003/health" -ForegroundColor White
     Write-Host "  Elasticsearch:      http://localhost:9200" -ForegroundColor White
     Write-Host "  MinIO Console:      http://localhost:9001" -ForegroundColor White
+    Write-Host "  Admin Portal:       http://localhost:3100" -ForegroundColor White
     Write-Host "  Kafka UI:           http://localhost:8080" -ForegroundColor White
     Write-Host "  Mongo Express:      http://localhost:8082" -ForegroundColor White
     Write-Host "  Redis Commander:    http://localhost:8083" -ForegroundColor White
     Write-Host ""
-    Write-Host "Run './tests/phase4.5.0-complete-test.ps1' to test Phase 4.5.0" -ForegroundColor Yellow
-    Write-Host "Run './tests/phase4.5.1-compliance-test.ps1' to test Phase 4.5.1" -ForegroundColor Yellow
+    Write-Host "Use Docker-based e2e tests under tests/new_e2e once generated." -ForegroundColor Yellow
     Write-Host ""
     
 } catch {

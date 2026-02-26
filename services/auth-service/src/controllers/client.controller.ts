@@ -47,8 +47,8 @@ export class ClientController {
                 });
             }
 
-            // Hash password
-            const passwordHash = await bcrypt.hash(password, 12);
+            // Hash password (10 rounds for balance of security and performance)
+            const passwordHash = await bcrypt.hash(password, 10);
 
             // Create client
             const client = await this.clientRepository.createClient({

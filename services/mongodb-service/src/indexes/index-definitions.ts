@@ -1,5 +1,5 @@
 export const PlatformIndexes = {
-  saas_clients: [
+  clients: [
     { key: { company_name: 1 }, options: { unique: true } },
     { key: { status: 1 } }
   ],

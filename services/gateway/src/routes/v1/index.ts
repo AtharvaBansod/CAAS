@@ -38,7 +38,7 @@ export const registerV1Routes = async (app: FastifyInstance) => {
   await app.register(sdkRoutes, { prefix: '/sdk' });
 
   // Phase 4.5.z.x: Client Management Routes
-  await app.register(clientRoutes, { prefix: '/client' });
+  await app.register(clientRoutes, { prefix: '/auth/client' });
 
   // Phase 4.5.z Task 06: Messaging routes removed
   // Conversations and Messages are now handled by socket-service

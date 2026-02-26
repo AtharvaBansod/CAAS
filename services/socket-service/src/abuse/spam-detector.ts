@@ -1,4 +1,4 @@
-﻿import { RedisClientType } from 'redis';
+import { RedisClientType } from 'redis';
 import { getLogger } from '../utils/logger';
 
 const logger = getLogger('SpamDetector');

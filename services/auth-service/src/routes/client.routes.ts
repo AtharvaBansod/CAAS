@@ -11,9 +11,68 @@
 
 import { FastifyInstance } from 'fastify';
 import { ClientController } from '../controllers/client.controller';
+import { AdminAuthController } from '../controllers/admin-auth.controller';
 
 export async function clientRoutes(server: FastifyInstance) {
     const clientController = new ClientController();
+    const adminAuthController = new AdminAuthController();
+
+    // ─── Admin Auth Routes (Public) — PORTAL-105, 106, 301 ───
+
+    // Login
+    server.post('/login', {
+        schema: {
+            body: {
+                type: 'object',
+                required: ['email', 'password'],
+                properties: {
+                    email: { type: 'string', format: 'email' },
+                    password: { type: 'string', minLength: 1 },
+                },
+            },
+        },
+    }, adminAuthController.login.bind(adminAuthController));
+
+    // Refresh token
+    server.post('/refresh', {
+        schema: {
+            body: {
+                type: 'object',
+                required: ['refresh_token'],
+                properties: {
+                    refresh_token: { type: 'string' },
+                },
+            },
+        },
+    }, adminAuthController.refresh.bind(adminAuthController));
+
+    // Forgot password
+    server.post('/forgot-password', {
+        schema: {
+            body: {
+                type: 'object',
+                required: ['email'],
+                properties: {
+                    email: { type: 'string', format: 'email' },
+                },
+            },
+        },
+    }, adminAuthController.forgotPassword.bind(adminAuthController));
+
+    // Reset password
+    server.post('/reset-password', {
+        schema: {
+            body: {
+                type: 'object',
+                required: ['email', 'code', 'new_password'],
+                properties: {
+                    email: { type: 'string', format: 'email' },
+                    code: { type: 'string', minLength: 6, maxLength: 6 },
+                    new_password: { type: 'string', minLength: 8 },
+                },
+            },
+        },
+    }, adminAuthController.resetPassword.bind(adminAuthController));
 
     // ─── Registration (Public for E2E) ───
     server.post('/register', {

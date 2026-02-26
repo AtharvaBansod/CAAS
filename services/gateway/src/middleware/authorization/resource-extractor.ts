@@ -13,12 +13,12 @@ export class ResourceExtractor {
   constructor() {
     // Map route patterns to resource types
     this.resourceTypeMap = new Map([
-      ['/v1/messages', 'message'],
-      ['/v1/conversations', 'conversation'],
-      ['/v1/groups', 'group'],
-      ['/v1/users', 'user'],
-      ['/v1/files', 'file'],
-      ['/v1/admin', 'admin'],
+      ['/api/v1/messages', 'message'],
+      ['/api/v1/conversations', 'conversation'],
+      ['/api/v1/groups', 'group'],
+      ['/api/v1/users', 'user'],
+      ['/api/v1/files', 'file'],
+      ['/api/v1/admin', 'admin'],
     ]);
   }
 

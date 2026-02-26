@@ -161,7 +161,7 @@ export class MFAEnforcement {
   ): Promise<TenantMFAPolicy | null> {
     try {
       const db = (request.server as any).mongo.db;
-      const collection = db.collection('saas_clients');
+      const collection = db.collection('clients');
 
       const tenant = await collection.findOne({ _id: tenantId });
 

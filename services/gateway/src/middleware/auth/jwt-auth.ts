@@ -44,7 +44,11 @@ export class JwtAuthStrategy extends AuthStrategy {
         permissions: payload.permissions || [],
         rate_limit_tier: 'business', // Determined by tenant plan
         metadata: {
+          client_id: (payload as any).client_id,
           email: payload.email,
+          role: (payload as any).role,
+          company_name: (payload as any).company_name,
+          plan: (payload as any).plan,
           session_id: payload.session_id,
           external_id: payload.external_id,
           exp: payload.exp,

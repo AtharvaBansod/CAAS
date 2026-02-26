@@ -55,12 +55,16 @@ export interface ValidateTokenResponse {
   valid: boolean;
   payload?: {
     user_id: string;
+    client_id?: string;
     tenant_id: string;
+    role?: string;
     external_id?: string;
     permissions: string[];
     session_id?: string;
     exp: number;
     email?: string;
+    company_name?: string;
+    plan?: string;
   };
   session?: any;
   error?: string;
@@ -437,6 +441,153 @@ export class AuthServiceClient {
   }): Promise<any> {
     return this.circuitBreaker.execute(async () => {
       const response = await this.client.post('/api/v1/auth/client/register', data);
+      return response.data;
+    });
+  }
+
+  /**
+   * Login for SAAS client admin
+   */
+  async loginClient(data: {
+    email: string;
+    password: string;
+  }): Promise<any> {
+    return this.circuitBreaker.execute(async () => {
+      const response = await this.client.post('/api/v1/auth/client/login', data);
+      return response.data;
+    });
+  }
+
+  /**
+   * Refresh client access token
+   */
+  async refreshClientToken(data: {
+    refresh_token: string;
+  }): Promise<any> {
+    return this.circuitBreaker.execute(async () => {
+      const response = await this.client.post('/api/v1/auth/client/refresh', data);
+      return response.data;
+    });
+  }
+
+  /**
+   * Initiate password recovery for SAAS client
+   */
+  async forgotPassword(data: { email: string }): Promise<any> {
+    return this.circuitBreaker.execute(async () => {
+      const response = await this.client.post('/api/v1/auth/client/forgot-password', data);
+      return response.data;
+    });
+  }
+
+  /**
+   * Reset password for SAAS client
+   */
+  async resetPassword(data: {
+    email: string;
+    code: string;
+    new_password: string;
+  }): Promise<any> {
+    return this.circuitBreaker.execute(async () => {
+      const response = await this.client.post('/api/v1/auth/client/reset-password', data);
+      return response.data;
+    });
+  }
+
+  /**
+   * Rotate client secondary API key
+   */
+  async rotateClientApiKey(data: { client_id: string }): Promise<any> {
+    return this.circuitBreaker.execute(async () => {
+      const response = await this.client.post('/api/v1/auth/client/api-keys/rotate', data);
+      return response.data;
+    });
+  }
+
+  /**
+   * Promote client secondary API key to primary
+   */
+  async promoteClientApiKey(data: { client_id: string }): Promise<any> {
+    return this.circuitBreaker.execute(async () => {
+      const response = await this.client.post('/api/v1/auth/client/api-keys/promote', data);
+      return response.data;
+    });
+  }
+
+  /**
+   * Revoke client API key by type
+   */
+  async revokeClientApiKey(data: { client_id: string; key_type: 'primary' | 'secondary' }): Promise<any> {
+    return this.circuitBreaker.execute(async () => {
+      const response = await this.client.post('/api/v1/auth/client/api-keys/revoke', data);
+      return response.data;
+    });
+  }
+
+  /**
+   * Get client IP whitelist
+   */
+  async getClientIpWhitelist(clientId: string): Promise<any> {
+    return this.circuitBreaker.execute(async () => {
+      const response = await this.client.get('/api/v1/auth/client/ip-whitelist', {
+        params: { client_id: clientId },
+      });
+      return response.data;
+    });
+  }
+
+  /**
+   * Add IP to client whitelist
+   */
+  async addClientIpWhitelist(data: { client_id: string; ip: string }): Promise<any> {
+    return this.circuitBreaker.execute(async () => {
+      const response = await this.client.post('/api/v1/auth/client/ip-whitelist', data);
+      return response.data;
+    });
+  }
+
+  /**
+   * Remove IP from client whitelist
+   */
+  async removeClientIpWhitelist(clientId: string, ip: string): Promise<any> {
+    return this.circuitBreaker.execute(async () => {
+      const response = await this.client.delete(`/api/v1/auth/client/ip-whitelist/${encodeURIComponent(ip)}`, {
+        params: { client_id: clientId },
+      });
+      return response.data;
+    });
+  }
+
+  /**
+   * Get client origin whitelist
+   */
+  async getClientOriginWhitelist(clientId: string): Promise<any> {
+    return this.circuitBreaker.execute(async () => {
+      const response = await this.client.get('/api/v1/auth/client/origin-whitelist', {
+        params: { client_id: clientId },
+      });
+      return response.data;
+    });
+  }
+
+  /**
+   * Add origin to client whitelist
+   */
+  async addClientOriginWhitelist(data: { client_id: string; origin: string }): Promise<any> {
+    return this.circuitBreaker.execute(async () => {
+      const response = await this.client.post('/api/v1/auth/client/origin-whitelist', data);
+      return response.data;
+    });
+  }
+
+  /**
+   * Remove origin from client whitelist
+   */
+  async removeClientOriginWhitelist(clientId: string, origin: string): Promise<any> {
+    return this.circuitBreaker.execute(async () => {
+      const response = await this.client.delete(`/api/v1/auth/client/origin-whitelist/${encodeURIComponent(origin)}`, {
+        params: { client_id: clientId },
+      });
       return response.data;
     });
   }

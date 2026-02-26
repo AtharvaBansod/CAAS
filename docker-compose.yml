@@ -398,7 +398,8 @@ services:
   auth-service:
     build:
       context: .
-      dockerfile: ./services/auth-service/Dockerfile
+      dockerfile: ./Dockerfile.common
+      target: auth-service
     container_name: caas-auth-service
     hostname: auth-service
     ports:
@@ -452,7 +453,8 @@ services:
   compliance-service:
     build:
       context: .
-      dockerfile: ./services/compliance-service/Dockerfile
+      dockerfile: ./Dockerfile.common
+      target: compliance-service
     container_name: caas-compliance-service
     hostname: compliance-service
     ports:
@@ -490,7 +492,8 @@ services:
   crypto-service:
     build:
       context: .
-      dockerfile: ./services/crypto-service/Dockerfile
+      dockerfile: ./Dockerfile.common
+      target: crypto-service
     container_name: caas-crypto-service
     hostname: crypto-service
     ports:
@@ -529,7 +532,8 @@ services:
   gateway:
     build:
       context: .
-      dockerfile: ./services/gateway/Dockerfile
+      dockerfile: ./Dockerfile.common
+      target: gateway-service
     container_name: caas-gateway
     hostname: gateway
     ports:
@@ -587,6 +591,36 @@ services:
       start_period: 40s
     restart: unless-stopped
     command: node dist/src/main.js
+
+  # ============================================
+  # ADMIN PORTAL (CLIENT UI)
+  # ============================================
+
+  admin-portal:
+    build:
+      context: ./apps/admin-portal
+      dockerfile: ./Dockerfile
+    container_name: caas-admin-portal
+    hostname: admin-portal
+    ports:
+      - "3100:3100"
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - NEXT_PUBLIC_API_URL=http://localhost:3000
+      - API_URL=http://gateway:3000
+    depends_on:
+      gateway:
+        condition: service_healthy
+    networks:
+      caas-network:
+        ipv4_address: 172.28.6.2
+    healthcheck:
+      test: ["CMD", "node", "-e", "const http = require('http'); http.get('http://127.0.0.1:3100/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
 
   # ============================================
   # DEVELOPMENT & MONITORING TOOLS
@@ -652,7 +686,8 @@ services:
   socket-service-1:
     build:
       context: .
-      dockerfile: services/socket-service/Dockerfile
+      dockerfile: ./Dockerfile.common
+      target: socket-service
     container_name: caas-socket-1
     ports:
       - "3002:3001"
@@ -689,7 +724,8 @@ services:
   socket-service-2:
     build:
       context: .
-      dockerfile: services/socket-service/Dockerfile
+      dockerfile: ./Dockerfile.common
+      target: socket-service
     container_name: caas-socket-2
     ports:
       - "3003:3001"
@@ -726,19 +762,44 @@ services:
   # TEST SERVICES
   # ============================================
 
-  phase3-test:
+  e2e-new:
     build:
-      context: ./tests
-      dockerfile: Dockerfile.phase3-test
-    container_name: caas-phase3-test
+      context: ./tests/new_e2e
+      dockerfile: ./Dockerfile
+    container_name: caas-e2e-new
     environment:
-      - SOCKET_SERVICE_1=http://socket-service-1:3001
-      - SOCKET_SERVICE_2=http://socket-service-2:3001
+      - GATEWAY_URL=http://gateway:3000
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - COMPLIANCE_SERVICE_URL=http://compliance-service:3008
+      - CRYPTO_SERVICE_URL=http://crypto-service:3009
+      - SEARCH_SERVICE_URL=http://search-service:3006
+      - MEDIA_SERVICE_URL=http://media-service:3005
+      - SOCKET1_URL=http://socket-service-1:3001
+      - SOCKET2_URL=http://socket-service-2:3001
+      - ADMIN_PORTAL_URL=http://admin-portal:3100
     depends_on:
-      - socket-service-1
-      - socket-service-2
+      gateway:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+      compliance-service:
+        condition: service_healthy
+      crypto-service:
+        condition: service_healthy
+      search-service:
+        condition: service_healthy
+      media-service:
+        condition: service_healthy
+      socket-service-1:
+        condition: service_started
+      socket-service-2:
+        condition: service_started
+      admin-portal:
+        condition: service_started
     networks:
       - caas-network
+    volumes:
+      - ./tests/new_e2e/reports:/tests/new_e2e/reports
     restart: "no"
     profiles:
       - test
@@ -774,7 +835,8 @@ services:
   search-service:
     build:
       context: .
-      dockerfile: services/search-service/Dockerfile
+      dockerfile: ./Dockerfile.common
+      target: search-service
     container_name: caas-search-service
     ports:
       - "3006:3006"
@@ -840,7 +902,8 @@ services:
   media-service:
     build:
       context: .
-      dockerfile: services/media-service/Dockerfile
+      dockerfile: ./Dockerfile.common
+      target: media-service
     container_name: caas-media-service
     ports:
       - "3005:3005"

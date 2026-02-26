@@ -45,7 +45,7 @@ export async function adminMFARoutes(fastify: FastifyInstance) {
 
     try {
       const db = fastify.mongo.db;
-      const collection = db.collection('saas_clients');
+      const collection = db.collection('clients');
 
       const tenant = await collection.findOne({
         $or: [
@@ -106,7 +106,7 @@ export async function adminMFARoutes(fastify: FastifyInstance) {
 
     try {
       const db = fastify.mongo.db;
-      const collection = db.collection('saas_clients');
+      const collection = db.collection('clients');
 
       // Update tenant MFA config
       const tenantFilter = ObjectId.isValid(tenantId) ? { _id: new ObjectId(tenantId) } : { tenant_id: tenantId };

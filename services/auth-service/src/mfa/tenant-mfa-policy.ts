@@ -96,7 +96,7 @@ export class TenantMFAPolicy {
    */
   async getTenantPolicy(tenantId: string): Promise<TenantMFAPolicy | null> {
     try {
-      const collection = this.db.collection('saas_clients');
+      const collection = this.db.collection('clients');
       const tenant = await collection.findOne({ _id: tenantId });
 
       if (!tenant || !tenant.mfa_config) {
@@ -215,7 +215,7 @@ export class TenantMFAPolicy {
    */
   async setUserExemption(tenantId: string, userId: string, exempt: boolean): Promise<void> {
     try {
-      const collection = this.db.collection('saas_clients');
+      const collection = this.db.collection('clients');
 
       if (exempt) {
         await collection.updateOne(
@@ -241,7 +241,7 @@ export class TenantMFAPolicy {
    */
   async updateTenantPolicy(tenantId: string, config: MFAConfig): Promise<void> {
     try {
-      const collection = this.db.collection('saas_clients');
+      const collection = this.db.collection('clients');
 
       await collection.updateOne(
         { _id: tenantId },

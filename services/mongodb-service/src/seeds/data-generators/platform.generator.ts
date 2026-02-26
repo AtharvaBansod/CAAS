@@ -13,16 +13,16 @@ export class PlatformGenerator {
    */
   async generate() {
     const db = this.connection.getConnection();
-    
+
     // Generate SAAS clients
     const clients = await this.generateClients();
-    
+
     // Generate applications for each client
     const applications = await this.generateApplications(clients);
-    
+
     // Generate API keys for each application
     const apiKeys = await this.generateApiKeys(applications);
-    
+
     return {
       clients,
       applications,
@@ -35,8 +35,8 @@ export class PlatformGenerator {
    */
   private async generateClients() {
     const db = this.connection.getConnection();
-    const clientsCollection = db.collection('saas_clients');
-    
+    const clientsCollection = db.collection('clients');
+
     const clientData = [
       {
         _id: uuidv4(),
@@ -110,12 +110,12 @@ export class PlatformGenerator {
   private async generateApplications(clients: any[]) {
     const db = this.connection.getConnection();
     const applicationsCollection = db.collection('applications');
-    
+
     const applications = [];
-    
+
     for (const client of clients) {
       const appCount = client.tier === 'enterprise' ? 3 : client.tier === 'pro' ? 2 : 1;
-      
+
       for (let i = 0; i < appCount; i++) {
         const application = {
           _id: uuidv4(),
@@ -134,7 +134,7 @@ export class PlatformGenerator {
           createdAt: new Date(),
           updatedAt: new Date(),
         };
-        
+
         applications.push(application);
       }
     }
@@ -149,9 +149,9 @@ export class PlatformGenerator {
   private async generateApiKeys(applications: any[]) {
     const db = this.connection.getConnection();
     const apiKeysCollection = db.collection('api_keys');
-    
+
     const apiKeys = [];
-    
+
     for (const app of applications) {
       // Generate primary and secondary API keys
       for (let i = 0; i < 2; i++) {
@@ -171,7 +171,7 @@ export class PlatformGenerator {
           createdAt: new Date(),
           updatedAt: new Date(),
         };
-        
+
         apiKeys.push(apiKey);
       }
     }
@@ -186,11 +186,11 @@ export class PlatformGenerator {
   private generateApiKeyHash(): string {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     let result = '';
-    
+
     for (let i = 0; i < 32; i++) {
       result += chars.charAt(Math.floor(Math.random() * chars.length));
     }
-    
+
     return result;
   }
 }
