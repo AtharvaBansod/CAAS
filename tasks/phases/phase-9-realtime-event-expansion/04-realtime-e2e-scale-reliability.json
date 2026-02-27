@@ -1,0 +1,62 @@
+{
+  "phase_id": "phase-9-realtime-event-expansion",
+  "stream_id": "RT-4",
+  "stream_title": "Realtime E2E, Scale, And Reliability",
+  "status": "planned",
+  "tasks": [
+    {
+      "task_id": "RT-QA-001",
+      "title": "Comprehensive Realtime E2E Matrix",
+      "deliverables": [
+        "Positive and negative test matrix for socket events, acks, and auth headers/tokens.",
+        "Cross-service flow assertions from socket ingress to kafka to persistence.",
+        "Tenant isolation and project isolation stress tests."
+      ],
+      "acceptance_criteria": [
+        "Core event families pass both happy-path and invalid-input scenarios.",
+        "Isolation violations are caught by automated tests."
+      ]
+    },
+    {
+      "task_id": "RT-QA-002",
+      "title": "Load, Backpressure, And Recovery Tests",
+      "deliverables": [
+        "Load scenarios for burst messaging, concurrent room joins, read-receipt floods, and presence spikes.",
+        "Backpressure behavior verification for socket emit queues and kafka producer throughput limits.",
+        "Recovery tests for broker downtime, consumer crashes, and reconnect storms."
+      ],
+      "acceptance_criteria": [
+        "System degrades predictably under load without silent data loss.",
+        "Recovery flows restore stable operation within defined windows."
+      ]
+    },
+    {
+      "task_id": "RT-QA-003",
+      "title": "Operational Guardrails For Realtime Reliability",
+      "deliverables": [
+        "Runtime feature flags for staged event rollout and emergency disable.",
+        "SLO-linked realtime alerts and incident playbooks.",
+        "Post-incident forensic checklist using trace/log/correlation data."
+      ],
+      "acceptance_criteria": [
+        "Realtime incidents can be mitigated without full platform downtime.",
+        "Post-incident analysis has sufficient telemetry for root-cause isolation."
+      ]
+    },
+    {
+      "task_id": "RT-QA-004",
+      "title": "Canary Rollout, Chaos Validation, And Automated Rollback Criteria",
+      "deliverables": [
+        "Canary rollout strategy by namespace/event-family with progressive traffic percentages and rollback triggers.",
+        "Chaos scenarios covering broker partition, Redis degradation, auth validation latency spikes, and reconnect storms.",
+        "Automated rollback criteria based on SLO burn rate, error envelopes, and data consistency indicators.",
+        "Reliability scorecard per event family before promotion to broad rollout."
+      ],
+      "acceptance_criteria": [
+        "Canary deployments can be rolled back without full platform restart.",
+        "Chaos tests produce repeatable reports and remediation backlog entries.",
+        "Promotion gates enforce reliability score thresholds before wider enablement."
+      ]
+    }
+  ]
+}

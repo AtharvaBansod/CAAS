@@ -1,0 +1,67 @@
+{
+  "phase_id": "phase-5-observability",
+  "stream_id": "OBS-4",
+  "stream_title": "Structured Logs And Audit Correlation",
+  "status": "planned",
+  "tasks": [
+    {
+      "task_id": "OBS-LOG-001",
+      "title": "Unify Structured Logging Contracts",
+      "deliverables": [
+        "Standard JSON log schema across gateway, auth-service, socket-service, kafka-service.",
+        "Required fields: timestamp, level, service, env, request_id, correlation_id, tenant_id, project_id, client_id, user_id.",
+        "Logger wrappers and serializers for consistent field names."
+      ],
+      "acceptance_criteria": [
+        "No mixed key naming (tenantId vs tenant_id) in structured logs.",
+        "All error logs include correlation and causality context."
+      ]
+    },
+    {
+      "task_id": "OBS-LOG-002",
+      "title": "Audit Stream Integration For Admin Views",
+      "problem": "Admin audit pages currently use mock data while backend audit routes are partially stubbed.",
+      "current_state_evidence": [
+        "apps/admin-portal/src/app/dashboard/audit-logs/page.tsx",
+        "services/gateway/src/routes/v1/admin/audit-logs.ts"
+      ],
+      "deliverables": [
+        "Audit event transport contract from services to analytics/audit store.",
+        "Gateway audit query endpoints aligned to UI consumption contract.",
+        "Immutability/hash-chain verification metadata exposed for verification actions."
+      ],
+      "acceptance_criteria": [
+        "Audit page can display real events for authenticated tenant admins.",
+        "Audit events include actor, action, target, and trace/correlation references."
+      ]
+    },
+    {
+      "task_id": "OBS-LOG-003",
+      "title": "Log Aggregation And Retention Policy",
+      "deliverables": [
+        "Container-native log shipping plan (stdout aggregation) with retention classes.",
+        "Security and privacy retention tiers for audit vs operational logs.",
+        "Query index strategy for high-frequency socket/kafka logs."
+      ],
+      "acceptance_criteria": [
+        "Log search can filter by correlation_id, tenant_id, and service in seconds.",
+        "Retention policy is enforced and validated in operations checklist."
+      ]
+    },
+    {
+      "task_id": "OBS-LOG-004",
+      "title": "Audit Export Contract, Tamper Evidence, And Query Performance",
+      "deliverables": [
+        "Canonical audit export/query contract with cursor pagination, time-window filtering, and tenant/project scoping fields.",
+        "Tamper-evidence metadata strategy (hash-chain anchors, verification status, export signature metadata).",
+        "UI-safe audit field masking policy for sensitive actor/resource metadata.",
+        "Performance budget for common audit filters and correlation-driven investigations."
+      ],
+      "acceptance_criteria": [
+        "Audit exports are reproducible and include integrity-verification metadata.",
+        "Audit queries support correlation_id and tenant/project scoped filters with predictable pagination.",
+        "Sensitive fields in audit responses follow documented masking/redaction rules."
+      ]
+    }
+  ]
+}

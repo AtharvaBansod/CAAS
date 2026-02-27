@@ -1,0 +1,68 @@
+{
+  "phase_id": "phase-6-client-ui",
+  "workstream_id": "UIV2",
+  "task_group": "Admin UI v2 - UX System Refactor",
+  "status": "planned",
+  "tasks": [
+    {
+      "task_id": "UIV2-UX-001",
+      "title": "Design A Distinct Brand-Grade Sidebar And Shell",
+      "problem": "Current dashboard shell feels generic and inconsistent with a strong platform identity.",
+      "deliverables": [
+        "Sidebar information architecture with section headings, grouped links, and explicit visual hierarchy.",
+        "Account block pattern with avatar, role, tenant/project context, settings entry, and logout actions.",
+        "Interaction specifications for collapsed/expanded states, keyboard navigation, and focus handling."
+      ],
+      "implementation_targets": [
+        "apps/admin-portal/src/components/layout",
+        "apps/admin-portal/src/app/dashboard/layout.tsx"
+      ],
+      "acceptance_criteria": [
+        "Sidebar renders clearly on desktop and mobile breakpoints without overlap.",
+        "Logout and account actions are accessible from consistent shell controls.",
+        "Style language is not raw template cloning and avoids default component-library look."
+      ]
+    },
+    {
+      "task_id": "UIV2-UX-002",
+      "title": "Create UI Design Tokens And Motion Baseline",
+      "deliverables": [
+        "Token set for spacing, radius, typography scale, elevation, and semantic color usage.",
+        "Motion guidelines for page entry, state transitions, and loading placeholders.",
+        "Component-level usage rules to enforce consistent look across dashboard modules."
+      ],
+      "acceptance_criteria": [
+        "All dashboard pages consume shared tokens and avoid one-off hardcoded values.",
+        "Visual consistency checks pass across API Keys, Security, Settings, Team, Billing, Monitoring, and Docs."
+      ]
+    },
+    {
+      "task_id": "UIV2-UX-003",
+      "title": "Quality Gates For Production UX",
+      "deliverables": [
+        "Accessibility checklist (keyboard, contrast, aria labels, focus order).",
+        "Responsive QA matrix for wide monitors, laptops, tablets, and mobile.",
+        "UI regression screenshot baselines for core navigation and dashboard states."
+      ],
+      "acceptance_criteria": [
+        "Critical routes pass defined accessibility gates.",
+        "No shell-level layout breakage across supported viewport matrix."
+      ]
+    },
+    {
+      "task_id": "UIV2-UX-004",
+      "title": "Navigation Governance And Visual Quality Automation",
+      "deliverables": [
+        "Sidebar taxonomy model with section groups (Operations, Security, Workspace, Revenue, Documentation) and role-aware visibility.",
+        "Design lint rules that prohibit one-off hardcoded colors/radius/shadows outside token system.",
+        "Visual regression automation for collapsed/expanded/mobile shell states and active-route highlights.",
+        "Navigation metadata contract supporting future project switcher breadcrumbs and deep-link context."
+      ],
+      "acceptance_criteria": [
+        "Unauthorized navigation entries are hidden or disabled with explicit policy-driven behavior.",
+        "Visual regression suite detects shell regressions before merge.",
+        "Token lint checks block style drift from the shared UI system."
+      ]
+    }
+  ]
+}

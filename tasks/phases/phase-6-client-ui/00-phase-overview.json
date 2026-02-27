@@ -1,0 +1,71 @@
+{
+  "phase_id": "phase-6-client-ui",
+  "phase_title": "Client UI And SDK Platform Refresh",
+  "status": "planned",
+  "last_updated": "2026-02-27",
+  "goal": "Replace outdated phase 6 tasks with a production-aligned plan for admin-ui v2, backend language SDKs, frontend/API SDKs, and project-centric tenant experience.",
+  "constraints": [
+    "Planning artifacts only in this phase output. No feature implementation in this task pack.",
+    "All implementation assumes docker-based build/test/runtime.",
+    "Do not remove UI mocks unless matching backend API contracts exist or are explicitly delivered in dependent phases.",
+    "Privileged tenant/client context must be derived from authenticated token or validated API key context; do not trust mutable client_id/tenant_id from browser request bodies.",
+    "Project-aware rollout must include backward-compatible migration/backfill from existing application records before hard enforcement."
+  ],
+  "current_state_evidence": [
+    "apps/admin-portal/src/app/dashboard/api-keys/page.tsx",
+    "apps/admin-portal/src/app/dashboard/security/page.tsx",
+    "apps/admin-portal/src/app/dashboard/settings/page.tsx",
+    "apps/admin-portal/src/app/dashboard/audit-logs/page.tsx",
+    "apps/admin-portal/src/app/dashboard/team/page.tsx",
+    "apps/admin-portal/src/app/dashboard/billing/page.tsx",
+    "apps/admin-portal/src/app/dashboard/monitoring/page.tsx",
+    "services/gateway/src/routes/v1/tenant/index.ts",
+    "services/auth-service/src/repositories/client.repository.ts",
+    "services/mongodb-service/src/schemas/platform/application.schema.ts",
+    "services/gateway/src/services/tenant-service.ts",
+    "apps/admin-portal/src/app/api/auth/login/route.ts"
+  ],
+  "workstreams": [
+    {
+      "workstream_id": "UIV2",
+      "name": "Admin UI v2",
+      "tasks_path": "admin-ui-v2"
+    },
+    {
+      "workstream_id": "SDK-BE",
+      "name": "Tenant Backend SDKs",
+      "tasks_path": "backend-sdks"
+    },
+    {
+      "workstream_id": "SDK-FE",
+      "name": "Tenant Frontend/API SDKs",
+      "tasks_path": "frontend-sdks"
+    }
+  ],
+  "future_code_locations_guidance": {
+    "backend_sdks": [
+      "apps/sdk-node-ts",
+      "apps/sdk-python",
+      "apps/sdk-java",
+      "apps/sdk-dotnet",
+      "apps/sdk-ruby",
+      "apps/sdk-rust"
+    ],
+    "frontend_sdks": [
+      "apps/sdk-web-core",
+      "apps/sdk-react",
+      "apps/sdk-angular",
+      "apps/sdk-flutter",
+      "apps/sdk-kotlin",
+      "apps/sdk-csharp-game"
+    ],
+    "admin_ui": [
+      "apps/admin-portal"
+    ]
+  },
+  "delivery_quality_gates": [
+    "Every dashboard module declares capability state: real, degraded, or blocked-by-backend.",
+    "No production mutation route accepts tenant/client identity solely from UI-supplied body fields.",
+    "Browser auth/session handling follows environment-aware cookie security policy and CSRF model."
+  ]
+}

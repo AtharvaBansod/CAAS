@@ -1,0 +1,66 @@
+{
+  "phase_id": "phase-6-client-ui",
+  "workstream_id": "SDK-FE",
+  "task_group": "Frontend SDKs - Framework Adapters",
+  "status": "planned",
+  "frameworks": [
+    "react",
+    "angular"
+  ],
+  "tasks": [
+    {
+      "task_id": "SDKFE-FRAME-001",
+      "title": "React Adapter (Hooks + Providers + Components Bridge)",
+      "deliverables": [
+        "Provider for auth/session/socket lifecycle wiring.",
+        "Hooks for conversation/message/presence/call state with suspense-safe loading states.",
+        "Error boundaries and fallback UIs for invalid token and disconnection flows."
+      ],
+      "acceptance_criteria": [
+        "React adapter wraps core SDK without duplicating transport logic.",
+        "Adapters expose typed events and stable hook signatures."
+      ]
+    },
+    {
+      "task_id": "SDKFE-FRAME-002",
+      "title": "Angular Adapter (Services + Signals/Observables)",
+      "deliverables": [
+        "Angular services for session, chat, presence, and webrtc domains.",
+        "Observable/signal wrappers for real-time updates and reconnect status.",
+        "AOT-friendly package structure and strict typing."
+      ],
+      "acceptance_criteria": [
+        "Angular adapter can run in modern Angular apps without custom webpack hacks.",
+        "Real-time event updates remain in sync with socket namespace contracts."
+      ]
+    },
+    {
+      "task_id": "SDKFE-FRAME-003",
+      "title": "Cross-Framework Parity And Docs",
+      "deliverables": [
+        "Feature parity matrix for react vs angular adapters.",
+        "Integration recipes for guarded routes, auth handoff, and token refresh errors.",
+        "Version compatibility matrix with core web sdk."
+      ],
+      "acceptance_criteria": [
+        "Framework adapters ship with equivalent baseline capabilities.",
+        "Parity regression is tracked in release gates."
+      ]
+    },
+    {
+      "task_id": "SDKFE-FRAME-004",
+      "title": "Theming, SSR Safety, And Hydration Consistency",
+      "deliverables": [
+        "Adapter-level bridge for host application design tokens/theme overrides without forking core SDK.",
+        "SSR-safe initialization patterns that avoid window-dependent logic during server render.",
+        "Hydration consistency guards for auth/session/socket startup state in React and Angular.",
+        "Reference integration tests for SSR-first app setups."
+      ],
+      "acceptance_criteria": [
+        "Adapters work in SSR/hybrid rendering setups without hydration mismatch warnings.",
+        "Theme overrides are applied through documented token interface.",
+        "Framework wrappers remain transport-logic thin and delegate networking to core SDK."
+      ]
+    }
+  ]
+}

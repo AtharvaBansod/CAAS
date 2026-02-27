@@ -1,0 +1,110 @@
+{
+  "phase_id": "phase-6-client-ui",
+  "workstream_id": "SDK-FE",
+  "task_group": "Frontend SDKs - Feature Component Roadmap",
+  "status": "planned",
+  "notes": [
+    "Scope includes planning for requested chat/social/planner feature surface.",
+    "Implementation should follow progressive waves to keep platform stable."
+  ],
+  "waves": [
+    {
+      "wave_id": "W1-core-chat",
+      "features": [
+        "chat window",
+        "message input with attachments and mic hooks",
+        "chat list",
+        "search",
+        "user profile basics",
+        "group create/add/remove",
+        "group settings baseline",
+        "save/forward basic actions"
+      ]
+    },
+    {
+      "wave_id": "W2-social-media",
+      "features": [
+        "posts and reels feed blocks",
+        "nested comments",
+        "likes and saves",
+        "stories and highlights",
+        "archive and media viewer"
+      ]
+    },
+    {
+      "wave_id": "W3-collaboration",
+      "features": [
+        "planner board",
+        "task assignment from chat or group actions",
+        "calendar integration model",
+        "role-aware task actions"
+      ]
+    },
+    {
+      "wave_id": "W4-governance-and-presence",
+      "features": [
+        "presence visibility controls",
+        "last seen rules",
+        "mute/block/report",
+        "group rules and moderation controls",
+        "notification preferences"
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "task_id": "SDKFE-COMP-001",
+      "title": "Component Contract Catalog",
+      "deliverables": [
+        "Component-by-component API contract (props/events/theme tokens/accessibility requirements).",
+        "Data and socket event dependencies for each component.",
+        "Fallback behavior for unavailable backend capabilities."
+      ],
+      "acceptance_criteria": [
+        "Every component is linked to explicit backend/API/socket requirements.",
+        "No hidden dependency on undocumented events."
+      ]
+    },
+    {
+      "task_id": "SDKFE-COMP-002",
+      "title": "Responsive Layout Standards",
+      "deliverables": [
+        "Responsive constraints for large monitors, desktop, laptop, tablet, and mobile.",
+        "Gesture/keyboard parity guidelines where applicable.",
+        "Performance budgets for high-density chat timelines and media cards."
+      ],
+      "acceptance_criteria": [
+        "Primary component layouts are validated for all required viewports.",
+        "Interaction parity and accessibility baseline are documented."
+      ]
+    },
+    {
+      "task_id": "SDKFE-COMP-003",
+      "title": "Feature Dependency And Rollout Governance",
+      "deliverables": [
+        "Feature flag and compatibility model for incremental rollout.",
+        "Dependency graph between component waves and socket/kafka/schema readiness.",
+        "Rollback plan for event-schema mismatch incidents."
+      ],
+      "acceptance_criteria": [
+        "Large feature sets can be enabled progressively without breaking core chat.",
+        "Rollout risk is bounded through feature gating and observability hooks."
+      ]
+    },
+    {
+      "task_id": "SDKFE-COMP-004",
+      "title": "Component Certification Gates And Release Readiness Scoring",
+      "deliverables": [
+        "Per-component certification checklist: accessibility, i18n, RTL, performance budget, and test coverage thresholds.",
+        "Contract-test generation rules that bind component events to canonical socket/API schemas.",
+        "Wave readiness scoring model combining dependency status, quality gates, and operational risk.",
+        "Escalation policy when component dependencies lag behind planned feature wave."
+      ],
+      "acceptance_criteria": [
+        "Components cannot enter stable release without certification checklist completion.",
+        "Wave promotion requires dependency and contract-test pass criteria.",
+        "Readiness score and blocking reasons are visible to implementation teams."
+      ]
+    }
+  ]
+}

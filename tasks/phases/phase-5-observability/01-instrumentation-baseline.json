@@ -1,0 +1,101 @@
+{
+  "phase_id": "phase-5-observability",
+  "stream_id": "OBS-1",
+  "stream_title": "Instrumentation Baseline",
+  "status": "planned",
+  "tasks": [
+    {
+      "task_id": "OBS-INS-001",
+      "title": "Create Service Instrumentation Inventory",
+      "problem": "Instrumentation is partial and inconsistent across services, making cross-service debugging unreliable.",
+      "deliverables": [
+        "Inventory matrix for gateway/auth/socket/kafka/admin-portal with current telemetry status and missing spans/metrics/log fields.",
+        "Canonical trace attributes list: tenant_id, client_id, project_id, user_id, conversation_id, correlation_id, request_id.",
+        "Telemetry naming convention document embedded in JSON task artifacts."
+      ],
+      "implementation_targets": [
+        "services/gateway/src",
+        "services/auth-service/src",
+        "services/socket-service/src",
+        "services/kafka-service/src",
+        "apps/admin-portal/src"
+      ],
+      "acceptance_criteria": [
+        "All critical request paths are mapped from ingress to persistence.",
+        "Field naming is uniform across logs, traces, and metrics labels."
+      ]
+    },
+    {
+      "task_id": "OBS-INS-002",
+      "title": "Add OpenTelemetry Bootstrap To Core Services",
+      "problem": "No shared otel bootstrap layer exists for the currently running containerized service set.",
+      "deliverables": [
+        "Bootstrap module per service with OTEL SDK init, exporter setup, and graceful shutdown hooks.",
+        "HTTP server/client instrumentation for Fastify and outbound auth/gateway clients.",
+        "Socket event instrumentation wrapper for namespace handlers (chat, presence, webrtc).",
+        "Kafka producer/consumer span wrappers in kafka-service and socket-service message producer paths."
+      ],
+      "dependencies": [
+        "OBS-INS-001"
+      ],
+      "acceptance_criteria": [
+        "Service startup logs confirm telemetry initialization in docker logs.",
+        "At least one span is emitted for each major flow: admin login, sdk session creation, socket sendMessage, kafka persistence."
+      ]
+    },
+    {
+      "task_id": "OBS-INS-003",
+      "title": "Enforce Correlation Id Propagation End-To-End",
+      "problem": "Correlation middleware exists but propagation is not guaranteed for all async boundaries.",
+      "current_state_evidence": [
+        "services/gateway/src/middleware/correlation.middleware.ts",
+        "services/socket-service/src/middleware/correlation.middleware.ts"
+      ],
+      "deliverables": [
+        "Gateway forwards x-correlation-id to auth-service and downstream internal calls.",
+        "Socket namespace handlers attach correlation id to kafka metadata and compliance events.",
+        "Kafka consumers preserve and emit correlation id in persistence logs and failure paths."
+      ],
+      "acceptance_criteria": [
+        "Given one correlation id, operators can query logs/traces and reconstruct full flow.",
+        "Dead-letter queue entries preserve original correlation id."
+      ]
+    },
+    {
+      "task_id": "OBS-INS-004",
+      "title": "Telemetry Security And PII Redaction",
+      "problem": "Observability fields risk leaking secrets, api keys, tokens, and sensitive identity data.",
+      "deliverables": [
+        "Shared redaction policy for logs/traces/metrics tags.",
+        "Automated deny-list checks for token/api key/secret fields before emit.",
+        "PII-safe sampling profile for production and verbose profile for local dev."
+      ],
+      "acceptance_criteria": [
+        "No raw secrets appear in emitted telemetry payloads.",
+        "Security review checklist passes before rollout."
+      ]
+    },
+    {
+      "task_id": "OBS-INS-005",
+      "title": "Instrument Admin-Portal Auth Proxy And Browser Journey",
+      "problem": "Current telemetry focuses on backend services and misses visibility through Next.js auth proxy handlers and browser-to-socket correlation handoff.",
+      "current_state_evidence": [
+        "apps/admin-portal/src/app/api/auth/login/route.ts",
+        "apps/admin-portal/src/app/api/auth/refresh/route.ts",
+        "apps/admin-portal/src/lib/api-client.ts",
+        "services/socket-service/src/middleware/correlation.middleware.ts"
+      ],
+      "deliverables": [
+        "Instrumentation contract for /api/auth/login, /api/auth/refresh, and /api/auth/logout proxy routes with secure attribute redaction.",
+        "Browser journey telemetry for route transitions, auth refresh attempts, and gateway request latency grouped by tenant/client context-safe identifiers.",
+        "Correlation propagation plan from browser request to gateway headers and socket handshake metadata.",
+        "PII-safe telemetry payload examples for frontend and BFF layers."
+      ],
+      "acceptance_criteria": [
+        "Login and refresh journeys appear in trace/log views without exposing raw access tokens or refresh tokens.",
+        "Correlation id continuity is preserved from browser ingress through gateway and first socket namespace event.",
+        "Failed refresh loops are observable with explicit error-class labeling."
+      ]
+    }
+  ]
+}

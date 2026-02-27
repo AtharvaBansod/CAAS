@@ -1,0 +1,70 @@
+{
+  "phase_id": "phase-6-client-ui",
+  "workstream_id": "SDK-BE",
+  "task_group": "Backend SDKs - Shared Contract And Auth Model",
+  "status": "planned",
+  "tasks": [
+    {
+      "task_id": "SDKBE-CONTRACT-001",
+      "title": "Define Canonical Backend SDK API Surface",
+      "deliverables": [
+        "Unified SDK contract for session.create, session.refresh, session.logout, health, and capability discovery.",
+        "Request header policy: x-api-key, x-correlation-id, idempotency-key, user-agent, optional x-project-id.",
+        "Typed error model with stable codes for auth, validation, rate-limit, and upstream failure classes."
+      ],
+      "target_gateway_routes": [
+        "/api/v1/sdk/session",
+        "/api/v1/sdk/refresh",
+        "/api/v1/sdk/logout"
+      ],
+      "acceptance_criteria": [
+        "All language SDKs are generated/implemented from one canonical contract.",
+        "Error code behavior is consistent across languages."
+      ]
+    },
+    {
+      "task_id": "SDKBE-CONTRACT-002",
+      "title": "Project-Aware Token And Session Extensions",
+      "deliverables": [
+        "Contract extension for optional project_id in sdk session creation.",
+        "Validation rules for tenant/project relationship and isolation checks.",
+        "Backward-compatible behavior when project_id is omitted by legacy clients."
+      ],
+      "dependencies": [
+        "UIV2-PROJ-002"
+      ],
+      "acceptance_criteria": [
+        "Project context can be attached to end-user sessions without breaking existing integrations.",
+        "Cross-project misuse attempts return explicit authorization errors."
+      ]
+    },
+    {
+      "task_id": "SDKBE-CONTRACT-003",
+      "title": "SDK Security Baselines",
+      "deliverables": [
+        "Built-in retries with jitter for transient 5xx/timeout classes only.",
+        "Request signing/nonce hooks for replay protection where required.",
+        "Secret handling policy: never log api keys or bearer tokens."
+      ],
+      "acceptance_criteria": [
+        "SDKs ship with safe-by-default transport and logging behavior.",
+        "Security checklist passes for each language implementation."
+      ]
+    },
+    {
+      "task_id": "SDKBE-CONTRACT-004",
+      "title": "Server-Derived Identity Context And Anti-Spoofing Rules",
+      "deliverables": [
+        "Contract rule set that privileged context (tenant_id, client_id, project_id) is derived from validated token/API-key context on server side.",
+        "Canonical mismatch error codes (identity_context_mismatch, context_missing, project_scope_violation).",
+        "Header canonicalization and signed timestamp/nonce extension points for replay-resistant requests.",
+        "Contract examples for safe idempotency keys and correlation-id propagation."
+      ],
+      "acceptance_criteria": [
+        "SDK-guided requests cannot escalate scope by injecting client_id/tenant_id values in mutable body/query fields.",
+        "All language SDKs expose consistent typed errors for context validation failures.",
+        "Replay-protection extension points are testable through shared conformance suite."
+      ]
+    }
+  ]
+}

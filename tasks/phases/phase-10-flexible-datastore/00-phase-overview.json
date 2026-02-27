@@ -1,0 +1,40 @@
+{
+  "phase_id": "phase-10-flexible-datastore",
+  "phase_title": "Flexible Datastore And Tenant DB Connectivity",
+  "status": "planned",
+  "last_updated": "2026-02-27",
+  "goal": "Introduce a secure multi-provider datastore model supporting in-house MongoDB, tenant-managed databases, and selected cloud NoSQL providers with clear isolation and operational controls.",
+  "scope": {
+    "in_scope": [
+      "Database access abstraction layer for write/read paths",
+      "Tenant-level datastore configuration and credential lifecycle",
+      "Initial cloud NoSQL drivers for selected providers",
+      "Migration, fallback, and security controls",
+      "Datastore control-plane APIs for profile validation, connectivity testing, activation, and rollback.",
+      "Data residency and compliance policy enforcement for tenant/project datastore routing decisions."
+    ],
+    "out_of_scope": [
+      "Full relational SQL support in this phase",
+      "Automatic migration for every historical tenant dataset without opt-in",
+      "Provider-specific custom query dialect optimization beyond baseline"
+    ]
+  },
+  "current_state_evidence": [
+    "services/mongodb-service/src/schemas/platform/application.schema.ts",
+    "services/mongodb-service/src/repositories/platform.repository.ts",
+    "services/gateway/src/services/tenant-service.ts"
+  ],
+  "delivery_streams": [
+    "01-data-access-abstraction.json",
+    "02-tenant-db-connection-orchestration.json",
+    "03-cloud-nosql-drivers-wave1.json",
+    "04-migration-security-and-ops.json"
+  ],
+  "global_acceptance_criteria": [
+    "Tenant data path can be routed by policy to internal or external datastore targets.",
+    "Credential handling and auditability satisfy security baseline before tenant DB onboarding.",
+    "Fallback path to internal datastore is available when external provider is degraded.",
+    "Datastore routing decisions are observable by tenant/project context with immutable audit records.",
+    "Provider credentials and connection secrets never appear in logs, traces, or user-facing error payloads."
+  ]
+}

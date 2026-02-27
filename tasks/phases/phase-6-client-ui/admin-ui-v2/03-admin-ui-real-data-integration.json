@@ -1,0 +1,107 @@
+{
+  "phase_id": "phase-6-client-ui",
+  "workstream_id": "UIV2",
+  "task_group": "Admin UI v2 - Real Data Integration",
+  "status": "planned",
+  "tasks": [
+    {
+      "task_id": "UIV2-DATA-001",
+      "title": "Build Page Capability Matrix (Real vs Mock vs Missing API)",
+      "problem": "Current admin pages mix real integrations with mock payloads and placeholder routes.",
+      "current_state_evidence": [
+        "apps/admin-portal/src/app/dashboard/audit-logs/page.tsx",
+        "apps/admin-portal/src/app/dashboard/team/page.tsx",
+        "apps/admin-portal/src/app/dashboard/billing/page.tsx",
+        "apps/admin-portal/src/app/dashboard/monitoring/page.tsx",
+        "apps/admin-portal/src/lib/api/tenant.ts",
+        "services/gateway/src/routes/v1/tenant/index.ts",
+        "services/gateway/src/routes/v1/admin/index.ts"
+      ],
+      "deliverables": [
+        "Page-by-page integration matrix with statuses: integrated, partial, blocked by backend.",
+        "Explicit API ownership map for each dashboard module.",
+        "Migration sequence minimizing user-visible breakages."
+      ],
+      "acceptance_criteria": [
+        "Every UI card/table field is linked to a real API field or marked as pending backend dependency.",
+        "No silent hardcoded fallback for production routes."
+      ]
+    },
+    {
+      "task_id": "UIV2-DATA-002",
+      "title": "Replace Hardcoded Tenant Defaults With Real Tenant Context",
+      "problem": "Settings and tenant identity values can show default labels (for example Acme) due to mock/fallback path mismatch.",
+      "deliverables": [
+        "Single source of truth for tenant/company name from authenticated context + tenant API response.",
+        "Consistent mapping for tenant_id and client_id across auth payload decode and API hooks.",
+        "Fallback behavior that is explicit and logged when backend data is unavailable."
+      ],
+      "acceptance_criteria": [
+        "Company name shown in settings/dashboard always matches current authenticated tenant state.",
+        "Tenant-not-found paths provide actionable UI and backend diagnostic references."
+      ]
+    },
+    {
+      "task_id": "UIV2-DATA-003",
+      "title": "Integrate Real Data Modules Where APIs Exist",
+      "deliverables": [
+        "API Keys: real rotate/promote/revoke lifecycle with status updates and non-retrievable key behavior.",
+        "Security: real IP/origin whitelist CRUD plus clear MFA/session integration status.",
+        "Dashboard: real stats and activity cards from stable endpoint contracts.",
+        "Settings: real update/get settings with feature toggles persisted."
+      ],
+      "acceptance_criteria": [
+        "Modules with available backend APIs do not use local mock arrays.",
+        "Error handling is consistent and non-destructive on partial backend failures."
+      ]
+    },
+    {
+      "task_id": "UIV2-DATA-004",
+      "title": "Preserve Placeholders For Missing APIs With Explicit UX",
+      "deliverables": [
+        "Team, Billing, and advanced Monitoring sections show dependency state when backend APIs are not ready.",
+        "No fabricated production numbers for usage, invoices, or team roster when API is absent.",
+        "Developer-facing telemetry log when placeholder mode is rendered."
+      ],
+      "acceptance_criteria": [
+        "Mock data is removed from production behavior for unsupported modules.",
+        "Users can distinguish unavailable backend features from runtime errors."
+      ]
+    },
+    {
+      "task_id": "UIV2-DATA-005",
+      "title": "Monitoring And Audit Real-Data Cutover Plan",
+      "current_state_evidence": [
+        "apps/admin-portal/src/app/dashboard/monitoring/page.tsx",
+        "apps/admin-portal/src/app/dashboard/audit-logs/page.tsx",
+        "services/gateway/src/routes/v1/admin/dashboard.ts",
+        "services/kafka-service/src/monitoring/metrics-collector.ts"
+      ],
+      "deliverables": [
+        "Monitoring card-to-endpoint contract mapping with data freshness timestamps and stale-state behavior.",
+        "Audit logs page migration from local mock arrays to paginated backend query contract.",
+        "Explicit degraded mode UX when metrics/audit backends are unavailable.",
+        "Removal checklist to ensure production builds do not ship with hardcoded monitoring/audit sample values."
+      ],
+      "acceptance_criteria": [
+        "Monitoring and audit pages do not render fabricated operational values in production mode.",
+        "Every card/table shows source freshness and error/degraded state when applicable.",
+        "Cutover includes route-level diagnostics for failed backend calls."
+      ]
+    },
+    {
+      "task_id": "UIV2-DATA-006",
+      "title": "Feature Capability Manifest For Placeholder Modules",
+      "deliverables": [
+        "Capability manifest contract from gateway/admin endpoints describing module readiness and allowed actions.",
+        "UI resolver that binds Team/Billing/advanced Monitoring controls to capability flags instead of hardcoded toggles.",
+        "Telemetry events emitted when users hit blocked capabilities, with ownership tags for backlog triage."
+      ],
+      "acceptance_criteria": [
+        "Placeholder modules clearly state backend dependency status and expected rollout scope.",
+        "User actions against unavailable capabilities are non-destructive and fully observable.",
+        "Capability flags can be changed without rebuilding the admin portal."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,78 @@
+{
+  "phase_id": "phase-6-client-ui",
+  "workstream_id": "UIV2",
+  "task_group": "Admin UI v2 - Project-Centric Architecture",
+  "status": "planned",
+  "tasks": [
+    {
+      "task_id": "UIV2-PROJ-001",
+      "title": "Project Capability Verification Gate",
+      "problem": "Requirement mandates project-first onboarding, but current exposed gateway/auth routes do not clearly provide project CRUD APIs.",
+      "current_state_evidence": [
+        "services/gateway/src/routes/v1/index.ts",
+        "services/gateway/src/routes/v1/client/index.ts",
+        "services/auth-service/src/repositories/client.repository.ts",
+        "services/mongodb-service/src/schemas/platform/application.schema.ts"
+      ],
+      "deliverables": [
+        "Verified capability matrix: existing endpoints vs missing endpoints for project create/list/update/archive.",
+        "Decision record on whether to reuse applications model or introduce dedicated project model.",
+        "Contract-first API spec for project operations and error codes."
+      ],
+      "acceptance_criteria": [
+        "No UI implementation starts without endpoint contract sign-off.",
+        "Project identifier ownership is explicit across tenant, client, and user scopes."
+      ]
+    },
+    {
+      "task_id": "UIV2-PROJ-002",
+      "title": "Project-Aware Identity And Token Contract",
+      "deliverables": [
+        "JWT payload extension plan: project_id (and optional project_role) for tenant-admin and sdk user tokens.",
+        "Session and revocation model update plan to include project context.",
+        "Backward compatibility strategy for existing tokens without project_id."
+      ],
+      "domino_effect_areas": [
+        "services/auth-service token generation/validation",
+        "services/gateway auth context mapping",
+        "services/socket-service auth middleware and room naming",
+        "mongodb indexes and tenant/project query filters"
+      ],
+      "acceptance_criteria": [
+        "Auth context includes project identity where required and remains backward compatible.",
+        "Cross-project access is denied by default unless explicitly authorized."
+      ]
+    },
+    {
+      "task_id": "UIV2-PROJ-003",
+      "title": "Project Onboarding UX For Tech Stack Intent",
+      "deliverables": [
+        "Onboarding flow step for selecting integration stack (node, python, java, dotnet, ruby, rust, react, angular, flutter, kotlin, csharp).",
+        "Project metadata schema for target platform and integration goals.",
+        "Project switcher UX in dashboard shell with clear active project context.",
+        "Project metadata includes environment stage (development/staging/production) and intended deployment scope for safer key/token partitioning."
+      ],
+      "acceptance_criteria": [
+        "New tenants can create at least one project before generating integration credentials.",
+        "All project-aware screens show active project context and prevent accidental cross-project edits.",
+        "Project context shown in UI includes stack + environment and is used to prevent accidental cross-environment credential usage."
+      ]
+    },
+    {
+      "task_id": "UIV2-PROJ-004",
+      "title": "Project Model Migration, Backfill, And Compatibility Window",
+      "deliverables": [
+        "Migration plan from current applications records to canonical project records with deterministic id mapping.",
+        "Backfill/rollback workflow for existing tenants, including default project creation policy.",
+        "Index strategy for tenant_id + project_id/project_slug uniqueness and query performance.",
+        "Compatibility window definition for legacy tokens/requests before project_id becomes mandatory.",
+        "Backfill logic explicitly maps existing applications fields (app_id, environment, allowed_origins) into project records without losing governance metadata."
+      ],
+      "acceptance_criteria": [
+        "Existing tenant data is migrated without breaking current admin login and dashboard flows.",
+        "Legacy integrations continue to function during compatibility window with explicit deprecation telemetry.",
+        "Cross-project authorization boundaries remain deny-by-default during and after migration."
+      ]
+    }
+  ]
+}

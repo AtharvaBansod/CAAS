@@ -1,0 +1,70 @@
+{
+  "phase_id": "phase-6-client-ui",
+  "workstream_id": "SDK-BE",
+  "task_group": "Backend SDKs - Multi-Language Delivery",
+  "status": "planned",
+  "languages": [
+    "typescript-node",
+    "python",
+    "java",
+    "dotnet-csharp",
+    "ruby",
+    "rust"
+  ],
+  "tasks": [
+    {
+      "task_id": "SDKBE-LANG-001",
+      "title": "Repository And Package Layout Plan",
+      "deliverables": [
+        "Per-language package structure and versioning strategy under apps/ paths defined in phase overview.",
+        "Shared contract artifacts location for generated types and test fixtures.",
+        "Release channel policy (alpha, beta, stable) across package managers."
+      ],
+      "acceptance_criteria": [
+        "All SDK packages follow consistent naming and semantic versioning.",
+        "No language SDK is blocked by missing base contract artifacts."
+      ]
+    },
+    {
+      "task_id": "SDKBE-LANG-002",
+      "title": "Per-Language Feature Parity Milestones",
+      "deliverables": [
+        "Milestone A: auth/session core parity for all six languages.",
+        "Milestone B: advanced options (timeouts, retries, middleware/interceptors).",
+        "Milestone C: observability hooks and structured error metadata."
+      ],
+      "acceptance_criteria": [
+        "Core auth/session behavior is functionally equivalent across all languages.",
+        "Parity matrix is updated with pass/fail coverage evidence."
+      ]
+    },
+    {
+      "task_id": "SDKBE-LANG-003",
+      "title": "Cross-Language Conformance Tests",
+      "deliverables": [
+        "Shared docker test harness that runs language-specific SDK suites against same gateway/auth environment.",
+        "Contract tests for headers, token refresh, invalid api key handling, whitelist rejection, and rate limit responses.",
+        "Snapshot outputs for standardized error payloads per scenario."
+      ],
+      "acceptance_criteria": [
+        "Every language SDK passes the same canonical contract test set.",
+        "Conformance failures block release promotion."
+      ]
+    },
+    {
+      "task_id": "SDKBE-LANG-004",
+      "title": "Runtime Support, Security Maintenance, And Transport Matrix",
+      "deliverables": [
+        "Per-language runtime support matrix (minimum and target versions) with deprecation timelines.",
+        "Dependency update and vulnerability remediation cadence for each SDK package ecosystem.",
+        "Transport capability matrix covering proxy support, TLS/mTLS options, timeout behavior, and retry semantics.",
+        "Cross-platform CI matrix (Windows/Linux/macOS where applicable) for package smoke validation."
+      ],
+      "acceptance_criteria": [
+        "Runtime compatibility matrix is published and validated in CI for each release channel.",
+        "Critical dependency vulnerabilities block promotion to stable release.",
+        "Transport behavior documentation is consistent across all language SDKs."
+      ]
+    }
+  ]
+}

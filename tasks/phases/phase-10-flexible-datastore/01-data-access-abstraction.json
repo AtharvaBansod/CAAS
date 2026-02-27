@@ -1,0 +1,62 @@
+{
+  "phase_id": "phase-10-flexible-datastore",
+  "stream_id": "FDB-1",
+  "stream_title": "Data Access Abstraction Layer",
+  "status": "planned",
+  "tasks": [
+    {
+      "task_id": "FDB-ABS-001",
+      "title": "Unified Repository Contract",
+      "deliverables": [
+        "Provider-agnostic repository interfaces for core entities (users, conversations, messages, settings, audit indices).",
+        "Capability flags for provider support differences (ttl, transactions, secondary indexes, batch semantics).",
+        "Error normalization model across providers."
+      ],
+      "acceptance_criteria": [
+        "Service code can target abstraction contracts instead of direct provider SDKs.",
+        "Provider-specific errors map to stable platform error categories."
+      ]
+    },
+    {
+      "task_id": "FDB-ABS-002",
+      "title": "Routing Policy Engine For Data Operations",
+      "deliverables": [
+        "Policy resolver that selects datastore target by tenant/project/workload class.",
+        "Read/write consistency mode configuration (strong, eventual, cached).",
+        "Observability hooks for routing decisions and latency per provider."
+      ],
+      "acceptance_criteria": [
+        "Each request path can explain why a provider target was selected.",
+        "Routing decisions are traceable in logs/traces with tenant and project context."
+      ]
+    },
+    {
+      "task_id": "FDB-ABS-003",
+      "title": "Fallback And Circuit-Breaker Controls",
+      "deliverables": [
+        "Provider health probes with fail-open/fail-closed policy by data class.",
+        "Controlled fallback to internal MongoDB for approved workloads.",
+        "Data consistency guardrails and replay queue for failed writes."
+      ],
+      "acceptance_criteria": [
+        "External provider outages do not silently drop critical writes.",
+        "Fallback behavior is auditable and reversible."
+      ]
+    },
+    {
+      "task_id": "FDB-ABS-004",
+      "title": "Query Portability And Capability Negotiation",
+      "deliverables": [
+        "Portable query contract subset for core entities with explicit unsupported-operation signaling.",
+        "Capability negotiation mechanism between abstraction layer and provider adapters at startup/runtime.",
+        "Fallback strategy rules when requested semantics exceed provider capabilities.",
+        "Portability test matrix ensuring equivalent behavior for supported query patterns across providers."
+      ],
+      "acceptance_criteria": [
+        "Unsupported provider capabilities fail with explicit deterministic error codes.",
+        "Portable query suite passes for wave-1 providers on shared fixtures.",
+        "Fallback behavior is predictable, documented, and observable."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "phase_id": "phase-10-flexible-datastore",
+  "stream_id": "FDB-4",
+  "stream_title": "Migration, Security, And Operations",
+  "status": "planned",
+  "tasks": [
+    {
+      "task_id": "FDB-OPS-001",
+      "title": "Migration Strategy For Existing Tenants",
+      "deliverables": [
+        "Opt-in migration workflow from internal MongoDB to configured external providers.",
+        "Dual-write/verification plan with cutover criteria and rollback path.",
+        "Data integrity validation checksums and sample reconciliation reports."
+      ],
+      "acceptance_criteria": [
+        "Migration can be rolled back without data loss in approved rollback window.",
+        "Cutover requires automated integrity validation pass."
+      ]
+    },
+    {
+      "task_id": "FDB-OPS-002",
+      "title": "Security And Compliance Controls",
+      "deliverables": [
+        "Encryption-at-rest and in-transit requirements per provider profile.",
+        "Access control boundaries for platform operators vs tenant-owned credentials.",
+        "Audit events for datastore routing, credential actions, and migration steps."
+      ],
+      "acceptance_criteria": [
+        "Security model is enforceable and observable for every provider.",
+        "Compliance-relevant actions are auditable with immutable logs."
+      ]
+    },
+    {
+      "task_id": "FDB-OPS-003",
+      "title": "Operational Playbooks And Cost Governance",
+      "deliverables": [
+        "Runbooks for provider outage, throttling, and credential expiry incidents.",
+        "Cost telemetry model by tenant/project/provider for capacity planning.",
+        "Guardrails for runaway query/write costs with automated protection controls."
+      ],
+      "acceptance_criteria": [
+        "Operators can triage datastore incidents using documented runbooks.",
+        "Cost anomalies trigger alerts and mitigation actions."
+      ]
+    },
+    {
+      "task_id": "FDB-OPS-004",
+      "title": "Data Residency, Legal Hold, And Tenant Consent Governance",
+      "deliverables": [
+        "Residency policy model (allowed regions/providers) enforced during datastore profile activation and routing.",
+        "Tenant consent/change-approval workflow for moving data between internal and external stores.",
+        "Legal-hold and retention-guard behavior during migration, rollback, and delete operations.",
+        "Compliance evidence package template for datastore migration audits."
+      ],
+      "acceptance_criteria": [
+        "Residency-violating configuration changes are rejected before activation.",
+        "Legal-hold protected data is excluded from destructive migration/delete actions.",
+        "Consent and compliance evidence is retained for every datastore migration workflow."
+      ]
+    }
+  ]
+}

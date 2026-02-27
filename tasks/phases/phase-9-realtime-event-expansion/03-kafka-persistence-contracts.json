@@ -1,0 +1,62 @@
+{
+  "phase_id": "phase-9-realtime-event-expansion",
+  "stream_id": "RT-3",
+  "stream_title": "Kafka Persistence Contracts And Schema Updates",
+  "status": "planned",
+  "tasks": [
+    {
+      "task_id": "RT-KAF-001",
+      "title": "Event-To-Topic Routing Strategy",
+      "deliverables": [
+        "Routing table from socket event families to Kafka topics and partitioning keys.",
+        "Tenant/project-aware partition strategy to balance ordering and throughput.",
+        "DLQ and retry topic policy per event category."
+      ],
+      "acceptance_criteria": [
+        "Every persisted realtime event maps to deterministic Kafka topic and key.",
+        "Retry/DLQ paths preserve original event metadata and correlation id."
+      ]
+    },
+    {
+      "task_id": "RT-KAF-002",
+      "title": "Schema Registry Expansion For New Event Families",
+      "deliverables": [
+        "Avro/JSON schema definitions for expanded chat, social, planner, and moderation events.",
+        "Compatibility validation workflow integrated into CI.",
+        "Consumer deserialization fallback strategy for staged rollouts."
+      ],
+      "acceptance_criteria": [
+        "Schema validation blocks incompatible producer payloads.",
+        "Consumers handle expected schema version windows without data loss."
+      ]
+    },
+    {
+      "task_id": "RT-KAF-003",
+      "title": "Persistence And Read-Model Consistency Plan",
+      "deliverables": [
+        "Write model update plan for mongodb collections touched by new events.",
+        "Idempotency strategy for duplicate event delivery and replay.",
+        "Cache invalidation strategy for redis projections and unread counters."
+      ],
+      "acceptance_criteria": [
+        "Duplicate events do not create inconsistent data states.",
+        "Read models converge after retries and replay cycles."
+      ]
+    },
+    {
+      "task_id": "RT-KAF-004",
+      "title": "Canonical Realtime Envelope And Replay Governance",
+      "deliverables": [
+        "Canonical Kafka envelope fields: event_id, event_type, schema_version, tenant_id, project_id(optional), correlation_id, occurred_at, producer_id.",
+        "Schema subject/version governance and compatibility checks tied to CI policy.",
+        "Replay governance plan with dedupe keys, replay audit events, and bounded replay windows.",
+        "Consumer contract for unknown-event handling and dead-letter enrichment metadata."
+      ],
+      "acceptance_criteria": [
+        "Persisted events include required envelope metadata for traceability and routing.",
+        "Replay operations preserve idempotency and emit auditable replay metadata.",
+        "Unknown/incompatible payloads route to DLQ with actionable diagnostics."
+      ]
+    }
+  ]
+}

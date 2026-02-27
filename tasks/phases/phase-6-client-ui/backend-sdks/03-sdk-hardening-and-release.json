@@ -1,0 +1,62 @@
+{
+  "phase_id": "phase-6-client-ui",
+  "workstream_id": "SDK-BE",
+  "task_group": "Backend SDKs - Hardening, Docs, And Release Operations",
+  "status": "planned",
+  "tasks": [
+    {
+      "task_id": "SDKBE-REL-001",
+      "title": "Robust Error Handling And Recovery",
+      "deliverables": [
+        "Typed exception hierarchy for network, auth, validation, and throttling errors.",
+        "Retry/backoff policy with idempotency-safe guards.",
+        "Circuit-breaker style fail-fast option for sustained upstream failures."
+      ],
+      "acceptance_criteria": [
+        "SDK consumers can branch on stable error codes without parsing raw message strings.",
+        "Retries never duplicate non-idempotent operations."
+      ]
+    },
+    {
+      "task_id": "SDKBE-REL-002",
+      "title": "Documentation And Quickstart Quality Bar",
+      "deliverables": [
+        "Per-language quickstart and secure configuration guide.",
+        "Operational guidance for api key rotation and incident handling.",
+        "Migration notes for future project_id requirement rollout."
+      ],
+      "acceptance_criteria": [
+        "Quickstart guides are validated by runnable examples in docker CI.",
+        "Docs explicitly explain api key purpose, scope, and secure usage."
+      ]
+    },
+    {
+      "task_id": "SDKBE-REL-003",
+      "title": "Release Pipeline And Compatibility Governance",
+      "deliverables": [
+        "Automated publishing workflow per ecosystem with signing/checksum support where applicable.",
+        "Compatibility matrix by gateway/auth API version.",
+        "Deprecation policy for breaking contract changes."
+      ],
+      "acceptance_criteria": [
+        "Release artifacts are reproducible and traceable to commit and contract version.",
+        "Breaking changes require explicit major-version workflow."
+      ]
+    },
+    {
+      "task_id": "SDKBE-REL-004",
+      "title": "Supply Chain Security, Provenance, And Compliance Packaging",
+      "deliverables": [
+        "SBOM generation and artifact provenance attestations for each language package release.",
+        "Artifact signing/checksum verification policy and distribution integrity checks.",
+        "Automated secret/license scanning gates in SDK release pipelines.",
+        "Security advisory workflow for vulnerability disclosure and patched release coordination."
+      ],
+      "acceptance_criteria": [
+        "Release artifacts are verifiable against signed provenance metadata.",
+        "Stable release pipeline fails on unresolved critical security or license violations.",
+        "Consumers have documented process to verify package integrity before adoption."
+      ]
+    }
+  ]
+}

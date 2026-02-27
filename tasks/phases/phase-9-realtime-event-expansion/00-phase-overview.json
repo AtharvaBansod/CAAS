@@ -1,0 +1,33 @@
+{
+  "phase_id": "phase-9-realtime-event-expansion",
+  "phase_title": "Realtime Event Platform Expansion",
+  "status": "planned",
+  "last_updated": "2026-02-27",
+  "goal": "Expand socket and Kafka event architecture to support broader end-user interaction patterns while preserving tenant isolation, reliability, and persistence consistency.",
+  "current_state_evidence": [
+    "services/socket-service/src/namespaces/chat.ts",
+    "services/socket-service/src/namespaces/presence.ts",
+    "services/socket-service/src/namespaces/webrtc.ts",
+    "services/kafka-service/src/types/events",
+    "services/kafka-service/src/consumers/message-persistence-consumer.ts",
+    "services/socket-service/src/middleware/auth-middleware.ts",
+    "services/socket-service/src/middleware/correlation.middleware.ts"
+  ],
+  "dependencies": [
+    "phase-6-client-ui frontend component event requirements",
+    "phase-5-observability correlation and telemetry contracts"
+  ],
+  "delivery_streams": [
+    "01-event-catalog-and-versioning.json",
+    "02-socket-namespace-expansion.json",
+    "03-kafka-persistence-contracts.json",
+    "04-realtime-e2e-scale-reliability.json"
+  ],
+  "global_acceptance_criteria": [
+    "Every supported socket event has versioned schema, validation, and persistence routing strategy.",
+    "Realtime flows remain tenant/project isolated with explicit authz checks.",
+    "High-volume scenarios are covered by rate-limit, backpressure, and DLQ handling.",
+    "Canonical realtime envelopes include event_id, event_type, schema_version, tenant_id, correlation_id, and project_id when scope is project-bound.",
+    "Socket ack/error payloads follow one standard contract across namespaces and handlers."
+  ]
+}

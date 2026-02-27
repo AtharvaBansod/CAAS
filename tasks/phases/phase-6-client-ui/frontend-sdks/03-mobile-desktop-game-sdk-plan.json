@@ -1,0 +1,68 @@
+{
+  "phase_id": "phase-6-client-ui",
+  "workstream_id": "SDK-FE",
+  "task_group": "Frontend SDKs - Mobile, Desktop, And Game Clients",
+  "status": "planned",
+  "targets": [
+    "kotlin-android",
+    "java-android",
+    "flutter",
+    "csharp-unity"
+  ],
+  "tasks": [
+    {
+      "task_id": "SDKFE-PLAT-001",
+      "title": "Mobile Platform Contract Adapters",
+      "deliverables": [
+        "Platform-specific transport adapters for websocket, reconnect, and background handling.",
+        "Token lifecycle integration patterns for secure mobile storage.",
+        "Push/notification event hooks aligned with presence/message flows."
+      ],
+      "acceptance_criteria": [
+        "Mobile SDK adapters preserve core event semantics and auth flow.",
+        "Background/foreground transitions do not corrupt session state."
+      ]
+    },
+    {
+      "task_id": "SDKFE-PLAT-002",
+      "title": "Flutter Unified Client",
+      "deliverables": [
+        "Dart package mapping core chat/presence/webrtc events.",
+        "Interop-safe model serialization aligned with backend schemas.",
+        "Minimal UI binding helpers for common chat list and message stream rendering."
+      ],
+      "acceptance_criteria": [
+        "Flutter client supports token refresh and socket reconnect flows.",
+        "Type/schema mismatches are caught in contract tests."
+      ]
+    },
+    {
+      "task_id": "SDKFE-PLAT-003",
+      "title": "C# Game/Realtime Adapter",
+      "deliverables": [
+        "C# SDK profile optimized for game loop constraints and predictable allocations.",
+        "Event buffering and dispatch strategy for frame-safe processing.",
+        "Realtime state synchronization guidance for multiplayer/chat overlays."
+      ],
+      "acceptance_criteria": [
+        "Unity-targeted adapter handles high-frequency event streams without frame spikes.",
+        "Connection state transitions are deterministic and inspectable."
+      ]
+    },
+    {
+      "task_id": "SDKFE-PLAT-004",
+      "title": "Secure Local Persistence And Background Reliability Policies",
+      "deliverables": [
+        "Platform-specific secure storage policy for tokens/session cache (encrypted at rest, keychain/keystore usage).",
+        "Background/foreground reconnect and backoff policy with jitter and network-awareness controls.",
+        "Battery/network mode behavior guidelines for presence and realtime subscriptions.",
+        "Data purge policy for logout/session revoke events across platform caches."
+      ],
+      "acceptance_criteria": [
+        "Sensitive session artifacts are never persisted in plaintext in supported platform profiles.",
+        "Background resume does not produce inconsistent session state or duplicate event sends.",
+        "Logout/revoke actions clear local sensitive caches deterministically."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "phase_id": "phase-9-realtime-event-expansion",
+  "stream_id": "RT-1",
+  "stream_title": "Event Catalog And Versioning",
+  "status": "planned",
+  "tasks": [
+    {
+      "task_id": "RT-EVT-001",
+      "title": "Canonical Socket Event Registry",
+      "deliverables": [
+        "Full inventory of existing events by namespace (chat, presence, webrtc, media, search).",
+        "Classification by domain: messaging, moderation, collaboration, social, notification, planner.",
+        "Deprecation map for legacy/non-standard event naming."
+      ],
+      "acceptance_criteria": [
+        "Registry references exact payload schemas and response contracts.",
+        "No new event can ship without registry entry."
+      ]
+    },
+    {
+      "task_id": "RT-EVT-002",
+      "title": "Versioned Schema Strategy",
+      "deliverables": [
+        "Schema versioning convention for socket payloads and kafka envelopes.",
+        "Backward compatibility rules and translation handlers for vN to vN+1 transitions.",
+        "Validation layer integration points for socket-service and kafka-service."
+      ],
+      "acceptance_criteria": [
+        "Breaking event changes require explicit version bump and migration notes.",
+        "Consumer services can parse both active and previous schema versions during rollout."
+      ]
+    },
+    {
+      "task_id": "RT-EVT-003",
+      "title": "Access Control Matrix Per Event",
+      "deliverables": [
+        "Role/permission matrix for each event type including tenant_admin, member, moderator, viewer.",
+        "Cross-tenant and cross-project denial rules for event execution.",
+        "Rate-limit profile mapping by event sensitivity and abuse risk."
+      ],
+      "acceptance_criteria": [
+        "Security checks are explicit and testable for every event.",
+        "Unauthorized event attempts yield stable, observable error codes."
+      ]
+    },
+    {
+      "task_id": "RT-EVT-004",
+      "title": "Event Ownership, RFC Workflow, And Automated Changeloging",
+      "deliverables": [
+        "Owner assignment matrix per event namespace and event family with escalation contacts.",
+        "RFC/change-request template for new events, breaking schema changes, and deprecations.",
+        "Automated changelog generation from registry deltas with migration notes for consumers.",
+        "Governance rule that links each event definition to test cases and rollout flags."
+      ],
+      "acceptance_criteria": [
+        "Every active event has an explicit technical owner and lifecycle status.",
+        "Breaking event changes are blocked unless RFC and migration notes are approved.",
+        "Registry deltas automatically produce consumer-facing change documentation."
+      ]
+    }
+  ]
+}

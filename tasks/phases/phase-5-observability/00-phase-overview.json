@@ -1,0 +1,69 @@
+{
+  "phase_id": "phase-5-observability",
+  "phase_title": "Observability Refresh For Current Microservices",
+  "status": "planned",
+  "last_updated": "2026-02-27",
+  "goal": "Deliver production-grade metrics, tracing, logs, and operational alerting aligned to the currently implemented gateway, auth-service, socket-service, kafka-service, and admin-portal flows.",
+  "scope": {
+    "in_scope": [
+      "OpenTelemetry instrumentation baseline for HTTP, socket, and Kafka paths",
+      "Prometheus metrics with SLO-driven dashboards and alert rules",
+      "Jaeger trace pipeline with cross-service correlation",
+      "Structured log pipeline and audit/event correlation",
+      "Runbooks, on-call workflows, and verification gates",
+      "Frontend and BFF telemetry for admin-portal auth/session journeys (login, refresh, logout, protected navigation).",
+      "Synthetic probes for critical tenant-admin browser flows with freshness and stale-data signaling."
+    ],
+    "out_of_scope": [
+      "New product endpoints or business features unrelated to observability",
+      "Replacing existing messaging domain logic",
+      "Vendor lock-in to a single cloud monitoring provider"
+    ]
+  },
+  "current_state_evidence": [
+    "services/gateway/src/middleware/correlation.middleware.ts",
+    "services/socket-service/src/middleware/correlation.middleware.ts",
+    "services/socket-service/src/index.ts",
+    "services/socket-service/src/metrics/socket-metrics.ts",
+    "services/kafka-service/src/monitoring/metrics-collector.ts",
+    "services/kafka-service/src/monitoring/health-dashboard-data.ts",
+    "apps/admin-portal/src/app/dashboard/monitoring/page.tsx",
+    "apps/admin-portal/src/app/api/auth/login/route.ts",
+    "apps/admin-portal/src/app/api/auth/refresh/route.ts",
+    "services/gateway/src/services/tenant-service.ts"
+  ],
+  "delivery_streams": [
+    {
+      "stream_id": "OBS-1",
+      "name": "Instrumentation Baseline",
+      "tasks_file": "01-instrumentation-baseline.json"
+    },
+    {
+      "stream_id": "OBS-2",
+      "name": "Metrics And SLOs",
+      "tasks_file": "02-metrics-and-slos.json"
+    },
+    {
+      "stream_id": "OBS-3",
+      "name": "Distributed Tracing",
+      "tasks_file": "03-distributed-tracing-otel-jaeger.json"
+    },
+    {
+      "stream_id": "OBS-4",
+      "name": "Logs And Audit Correlation",
+      "tasks_file": "04-log-pipeline-and-audit-correlation.json"
+    },
+    {
+      "stream_id": "OBS-5",
+      "name": "Alerting And Runbooks",
+      "tasks_file": "05-ops-runbooks-and-alerting.json"
+    }
+  ],
+  "global_acceptance_criteria": [
+    "Every inbound request/socket event can be traced across gateway, auth, socket, and kafka boundaries with correlation ids.",
+    "Monitoring page in admin-portal consumes real metrics endpoints for implemented widgets or clearly labels unavailable cards.",
+    "No synthetic Math.random-based infrastructure metrics remain in runtime APIs used for operations.",
+    "Auth cookie/session proxy routes expose telemetry without leaking secrets and preserve correlation id continuity.",
+    "Synthetic user-journey checks detect admin login/dashboard/api-key/security regressions within defined detection windows."
+  ]
+}

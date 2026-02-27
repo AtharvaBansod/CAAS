@@ -1,0 +1,62 @@
+{
+  "phase_id": "phase-10-flexible-datastore",
+  "stream_id": "FDB-2",
+  "stream_title": "Tenant DB Connection Orchestration",
+  "status": "planned",
+  "tasks": [
+    {
+      "task_id": "FDB-CONN-001",
+      "title": "Tenant Datastore Configuration Model",
+      "deliverables": [
+        "Tenant-level datastore profile schema: provider, region, endpoint, auth mode, encryption mode, allowed collections/domains.",
+        "Project-level override model when project-specific datastore is required.",
+        "Validation rules for safe onboarding and configuration updates."
+      ],
+      "acceptance_criteria": [
+        "Config schema supports both tenant-wide and project-specific provider mapping.",
+        "Invalid configs are rejected before runtime usage."
+      ]
+    },
+    {
+      "task_id": "FDB-CONN-002",
+      "title": "Credential Lifecycle And Secret Management",
+      "deliverables": [
+        "Secret storage strategy for provider credentials and key rotation.",
+        "Short-lived credential/session token support where provider allows it.",
+        "Audit logging for credential create/update/revoke operations."
+      ],
+      "acceptance_criteria": [
+        "Credentials are never stored in plaintext in tenant-facing collections.",
+        "Credential rotation can occur without full service restarts."
+      ]
+    },
+    {
+      "task_id": "FDB-CONN-003",
+      "title": "Connection Pooling And Throttling Controls",
+      "deliverables": [
+        "Provider-aware connection pool manager with tenant quotas.",
+        "Rate-limit controls to protect external tenant-managed databases.",
+        "Health and saturation metrics for each provider pool."
+      ],
+      "acceptance_criteria": [
+        "Connection exhaustion in one tenant does not impact others.",
+        "Pool metrics are visible in observability dashboards."
+      ]
+    },
+    {
+      "task_id": "FDB-CONN-004",
+      "title": "Datastore Control-Plane APIs, RBAC, And Preflight Validation",
+      "deliverables": [
+        "Gateway/admin control-plane API contract for datastore profile create/test/activate/deactivate operations.",
+        "RBAC policy requiring tenant-admin authorization and optional step-up controls for credential-sensitive changes.",
+        "Preflight validation workflow covering connectivity, auth, schema prerequisites, and latency sanity checks.",
+        "Audit event model for every control-plane change and activation decision."
+      ],
+      "acceptance_criteria": [
+        "Only authorized operators can mutate active datastore profiles.",
+        "Profile activation is blocked until preflight validation passes.",
+        "Control-plane mutations are fully auditable with actor and correlation context."
+      ]
+    }
+  ]
+}

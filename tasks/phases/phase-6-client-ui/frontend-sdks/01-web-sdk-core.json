@@ -1,0 +1,67 @@
+{
+  "phase_id": "phase-6-client-ui",
+  "workstream_id": "SDK-FE",
+  "task_group": "Frontend SDKs - Web Core",
+  "status": "planned",
+  "tasks": [
+    {
+      "task_id": "SDKFE-CORE-001",
+      "title": "Core Web SDK Contract (API + Socket)",
+      "deliverables": [
+        "Framework-agnostic web core SDK for session bootstrap, token refresh, and socket connect lifecycle.",
+        "State machine for unauthenticated, token-refresh, connected, degraded, and disconnected states.",
+        "Standard event emitter mapping aligned to current socket namespaces and events."
+      ],
+      "current_state_evidence": [
+        "services/socket-service/src/namespaces/chat.ts",
+        "services/socket-service/src/namespaces/presence.ts",
+        "services/socket-service/src/namespaces/webrtc.ts"
+      ],
+      "acceptance_criteria": [
+        "SDK handles missing/invalid token paths gracefully with deterministic callbacks.",
+        "Socket reconnect and refresh behavior is idempotent."
+      ]
+    },
+    {
+      "task_id": "SDKFE-CORE-002",
+      "title": "Transport And Security Guards",
+      "deliverables": [
+        "Strict header and token handling policy for browser and SSR contexts.",
+        "Origin/cors-safe request behavior and clear error reporting.",
+        "Optional offline queue hooks for queued user actions."
+      ],
+      "acceptance_criteria": [
+        "SDK does not expose api keys in client-side runtime intended for end users.",
+        "Session tokens are handled with secure storage guidance and rotation support."
+      ]
+    },
+    {
+      "task_id": "SDKFE-CORE-003",
+      "title": "Web SDK Contract Tests",
+      "deliverables": [
+        "Contract tests for auth/session, joinRoom/sendMessage/read receipts, and call signaling baseline.",
+        "Negative tests for malformed payloads and unsupported event names.",
+        "Browser integration tests in dockerized environment against gateway + socket."
+      ],
+      "acceptance_criteria": [
+        "Core SDK pass rate is enforced in CI before package publish.",
+        "Event schema drift is detected by contract test snapshots."
+      ]
+    },
+    {
+      "task_id": "SDKFE-CORE-004",
+      "title": "Offline Replay, Sequence Reconciliation, And Idempotent UX Actions",
+      "deliverables": [
+        "Client-generated event identifiers and idempotency keys for optimistic UI actions.",
+        "Offline queue persistence strategy with retry windows, discard policy, and conflict callback hooks.",
+        "Sequence-gap detection for socket event streams and reconciliation callbacks for missed events.",
+        "Reference behavior for duplicate ack handling and dedupe on reconnect."
+      ],
+      "acceptance_criteria": [
+        "Reconnect/retry flows do not duplicate non-idempotent user actions.",
+        "SDK surfaces deterministic reconciliation events when sequence gaps or conflicts occur.",
+        "Offline replay behavior is configurable and covered by contract tests."
+      ]
+    }
+  ]
+}

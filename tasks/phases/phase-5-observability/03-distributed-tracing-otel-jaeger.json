@@ -1,0 +1,66 @@
+{
+  "phase_id": "phase-5-observability",
+  "stream_id": "OBS-3",
+  "stream_title": "Distributed Tracing With OpenTelemetry And Jaeger",
+  "status": "planned",
+  "tasks": [
+    {
+      "task_id": "OBS-TRC-001",
+      "title": "Containerized OTEL Collector And Jaeger Topology",
+      "deliverables": [
+        "Docker compose profile for otel-collector and jaeger with stable service names and networks.",
+        "Exporter endpoints wired through env-driven config for all microservices.",
+        "Local and CI-safe default sampling presets."
+      ],
+      "acceptance_criteria": [
+        "Trace backend is reachable from all app containers without local host hacks.",
+        "No local-only dependencies are required outside docker."
+      ]
+    },
+    {
+      "task_id": "OBS-TRC-002",
+      "title": "Trace Critical Flows Across HTTP, Socket, And Kafka",
+      "deliverables": [
+        "Trace spans for admin login path: admin-portal -> gateway -> auth-service.",
+        "Trace spans for sdk session path: tenant backend -> gateway /sdk/session -> auth-service.",
+        "Trace spans for socket message path: socket sendMessage -> kafka publish -> kafka consumer -> mongodb persistence."
+      ],
+      "dependencies": [
+        "OBS-TRC-001",
+        "OBS-INS-003"
+      ],
+      "acceptance_criteria": [
+        "A single trace visualizes end-to-end journey with parent-child consistency.",
+        "Errors include stack/status attributes and correlate to logs."
+      ]
+    },
+    {
+      "task_id": "OBS-TRC-003",
+      "title": "Span Taxonomy And Performance Budget Controls",
+      "deliverables": [
+        "Span naming conventions and semantic attribute map for platform events.",
+        "Tail-based or parent-based sampling strategy per route/event criticality.",
+        "Performance budget for instrumentation overhead and exporter backpressure behavior."
+      ],
+      "acceptance_criteria": [
+        "P95 latency overhead from tracing stays below approved budget.",
+        "High-throughput socket traffic does not flood trace storage."
+      ]
+    },
+    {
+      "task_id": "OBS-TRC-004",
+      "title": "Trace Context Bridging For Socket Handshake And Kafka Persistence",
+      "deliverables": [
+        "Standard trace-context handoff for socket connection bootstrap (headers/auth payload to namespace handlers).",
+        "Span-link strategy from socket event spans to Kafka publish and Kafka consumer persistence spans.",
+        "Metric exemplar links from latency/error metrics to representative trace ids.",
+        "Trace troubleshooting guide for async boundary breaks and missing-parent scenarios."
+      ],
+      "acceptance_criteria": [
+        "Operators can pivot from metric alerts to representative traces for gateway, socket, and kafka paths.",
+        "Socket-to-kafka-to-persistence chains maintain trace/correlation linkage in sampled traces.",
+        "Missing trace-parent cases are captured and counted as a telemetry quality signal."
+      ]
+    }
+  ]
+}

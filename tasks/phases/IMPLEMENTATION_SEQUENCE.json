@@ -1,0 +1,71 @@
+{
+  "sequence_id": "implementation-sequence-v1",
+  "last_updated": "2026-02-27",
+  "rule": "observability-last",
+  "order": [
+    {
+      "step": 1,
+      "name": "Client-UI-and-Core-Contracts",
+      "files": [
+        "tasks/phases/phase-6-client-ui/00-phase-overview.json",
+        "tasks/phases/phase-6-client-ui/admin-ui-v2/01-ux-system-refactor.json",
+        "tasks/phases/phase-6-client-ui/admin-ui-v2/02-project-centric-onboarding-and-context.json",
+        "tasks/phases/phase-6-client-ui/backend-sdks/01-shared-sdk-contract-and-auth-model.json",
+        "tasks/phases/phase-6-client-ui/frontend-sdks/01-web-sdk-core.json"
+      ]
+    },
+    {
+      "step": 2,
+      "name": "Client-UI-Real-Data-and-Browser-Security",
+      "files": [
+        "tasks/phases/phase-6-client-ui/admin-ui-v2/03-admin-ui-real-data-integration.json",
+        "tasks/phases/phase-6-client-ui/admin-ui-v2/04-admin-ui-browser-flow-and-cors-e2e.json",
+        "tasks/phases/phase-6-client-ui/backend-sdks/02-language-sdk-delivery-plan.json",
+        "tasks/phases/phase-6-client-ui/frontend-sdks/02-framework-adapters.json"
+      ]
+    },
+    {
+      "step": 3,
+      "name": "Realtime-Event-Platform",
+      "files": [
+        "tasks/phases/phase-9-realtime-event-expansion/00-phase-overview.json",
+        "tasks/phases/phase-9-realtime-event-expansion/01-event-catalog-and-versioning.json",
+        "tasks/phases/phase-9-realtime-event-expansion/02-socket-namespace-expansion.json",
+        "tasks/phases/phase-9-realtime-event-expansion/03-kafka-persistence-contracts.json",
+        "tasks/phases/phase-9-realtime-event-expansion/04-realtime-e2e-scale-reliability.json"
+      ]
+    },
+    {
+      "step": 4,
+      "name": "SDK-Expansion-and-Component-Waves",
+      "files": [
+        "tasks/phases/phase-6-client-ui/backend-sdks/03-sdk-hardening-and-release.json",
+        "tasks/phases/phase-6-client-ui/frontend-sdks/03-mobile-desktop-game-sdk-plan.json",
+        "tasks/phases/phase-6-client-ui/frontend-sdks/04-feature-component-roadmap.json"
+      ]
+    },
+    {
+      "step": 5,
+      "name": "Flexible-Datastore",
+      "files": [
+        "tasks/phases/phase-10-flexible-datastore/00-phase-overview.json",
+        "tasks/phases/phase-10-flexible-datastore/01-data-access-abstraction.json",
+        "tasks/phases/phase-10-flexible-datastore/02-tenant-db-connection-orchestration.json",
+        "tasks/phases/phase-10-flexible-datastore/03-cloud-nosql-drivers-wave1.json",
+        "tasks/phases/phase-10-flexible-datastore/04-migration-security-and-ops.json"
+      ]
+    },
+    {
+      "step": 6,
+      "name": "Observability-Final-Hardening",
+      "files": [
+        "tasks/phases/phase-5-observability/00-phase-overview.json",
+        "tasks/phases/phase-5-observability/01-instrumentation-baseline.json",
+        "tasks/phases/phase-5-observability/02-metrics-and-slos.json",
+        "tasks/phases/phase-5-observability/03-distributed-tracing-otel-jaeger.json",
+        "tasks/phases/phase-5-observability/04-log-pipeline-and-audit-correlation.json",
+        "tasks/phases/phase-5-observability/05-ops-runbooks-and-alerting.json"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,70 @@
+{
+  "phase_id": "phase-9-realtime-event-expansion",
+  "stream_id": "RT-2",
+  "stream_title": "Socket Namespace Expansion",
+  "status": "planned",
+  "tasks": [
+    {
+      "task_id": "RT-SOCK-001",
+      "title": "Extend Chat Namespace For Advanced Interaction Events",
+      "deliverables": [
+        "Event contract plan for message save/forward/archive, nested comments, reaction updates, and content moderation actions.",
+        "Group lifecycle events: create, settings update, rule update, member role updates, invite link controls.",
+        "Planner-trigger events from chat/group context (task create, assign, update, complete)."
+      ],
+      "current_state_evidence": [
+        "services/socket-service/src/namespaces/chat.ts"
+      ],
+      "acceptance_criteria": [
+        "New events define validation schema and ack contract before implementation.",
+        "Event handlers preserve tenant isolation and membership checks."
+      ]
+    },
+    {
+      "task_id": "RT-SOCK-002",
+      "title": "Presence, Notification, And Privacy Event Upgrades",
+      "deliverables": [
+        "Presence visibility modes, last-seen policies, and privacy-aware subscription filters.",
+        "Notification preference events (mute, do-not-disturb, channel-specific settings).",
+        "Block/report workflow events and enforcement hooks."
+      ],
+      "acceptance_criteria": [
+        "Presence and privacy rules are enforced consistently across namespaces.",
+        "Blocked relationships prevent message and presence leakage."
+      ]
+    },
+    {
+      "task_id": "RT-SOCK-003",
+      "title": "Media/Social Interaction Event Plan",
+      "deliverables": [
+        "Event design for posts/reels interactions (like, comment, save, share) with pagination-ready payloads.",
+        "Media viewer state sync events for attachments and story/highlight experiences.",
+        "Abuse and rate-limit guards for high-frequency social interaction events."
+      ],
+      "acceptance_criteria": [
+        "Media/social event contracts are explicit and backward-compatible.",
+        "High-volume social actions include throttling and abuse detection controls."
+      ]
+    },
+    {
+      "task_id": "RT-SOCK-004",
+      "title": "Standard Ack/Error Envelope And Project-Scoped Room Isolation",
+      "current_state_evidence": [
+        "services/socket-service/src/namespaces/chat.ts",
+        "services/socket-service/src/namespaces/webrtc.ts",
+        "services/socket-service/src/middleware/auth-middleware.ts"
+      ],
+      "deliverables": [
+        "Unified socket ack/error contract (status, code, message, correlation_id, event_id, retryable).",
+        "Project-aware room naming and authorization model for project-scoped conversations and collaboration spaces.",
+        "Validation strategy ensuring cross-project event attempts fail with explicit authorization codes.",
+        "Namespace-level middleware hooks for standardized response wrapping and telemetry emission."
+      ],
+      "acceptance_criteria": [
+        "All namespace handlers return standardized ack/error envelopes.",
+        "Project-scoped resources enforce room and event isolation by default.",
+        "Unauthorized cross-project event attempts are blocked, logged, and test-covered."
+      ]
+    }
+  ]
+}

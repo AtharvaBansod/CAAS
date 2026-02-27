@@ -1,0 +1,84 @@
+{
+  "phase_id": "phase-5-observability",
+  "stream_id": "OBS-2",
+  "stream_title": "Metrics And SLOs",
+  "status": "planned",
+  "tasks": [
+    {
+      "task_id": "OBS-MET-001",
+      "title": "Define Service Level Objectives For Current Platform Flows",
+      "deliverables": [
+        "SLO catalogue for admin auth flow, sdk session creation, socket message fanout, kafka persistence, and gateway availability.",
+        "Error budget policy per flow with burn rate thresholds and escalation levels.",
+        "Metric mapping from SLOs to concrete counters/histograms."
+      ],
+      "acceptance_criteria": [
+        "Each user-facing journey has at least one availability and one latency SLI.",
+        "SLOs are consumable by alert rules without manual data transformation."
+      ]
+    },
+    {
+      "task_id": "OBS-MET-002",
+      "title": "Replace Simulated Kafka Metrics With Real Collector Data",
+      "problem": "kafka-service monitoring still emits simulated random values.",
+      "current_state_evidence": [
+        "services/kafka-service/src/monitoring/metrics-collector.ts",
+        "services/kafka-service/src/monitoring/health-dashboard-data.ts"
+      ],
+      "deliverables": [
+        "Real broker/topic/consumer lag extraction using Kafka Admin APIs and offsets.",
+        "Prometheus-safe endpoint contract for kafka-service monitoring consumers.",
+        "Fallback behavior that marks data stale rather than random."
+      ],
+      "acceptance_criteria": [
+        "No Math.random metrics remain in exposed runtime metrics paths.",
+        "Operational dashboards display real broker/topic states."
+      ]
+    },
+    {
+      "task_id": "OBS-MET-003",
+      "title": "Expose Unified Metrics Endpoints Across Services",
+      "deliverables": [
+        "Standard /metrics endpoint exposure for gateway, auth-service, socket-service, kafka-service.",
+        "Shared label cardinality guardrails (tenant/project/user labels bounded).",
+        "Service health summary endpoint consumed by admin portal monitoring page."
+      ],
+      "dependencies": [
+        "OBS-INS-001",
+        "OBS-INS-002"
+      ],
+      "acceptance_criteria": [
+        "Prometheus can scrape all core services with stable schema.",
+        "Metrics cardinality remains within predefined budget."
+      ]
+    },
+    {
+      "task_id": "OBS-MET-004",
+      "title": "Dashboard And Alert Rule Pack",
+      "deliverables": [
+        "Grafana dashboard JSON for gateway/auth/socket/kafka and tenant-facing summary cards.",
+        "Alert rules for latency, error-rate, kafka lag, websocket disconnect spikes, and auth failures.",
+        "Runbook links embedded into every alert definition."
+      ],
+      "acceptance_criteria": [
+        "Critical service regression triggers alert within defined detection window.",
+        "Admin-portal monitoring integration plan references these canonical metric names."
+      ]
+    },
+    {
+      "task_id": "OBS-MET-005",
+      "title": "Synthetic Journey Probes And Metric Freshness Guarantees",
+      "deliverables": [
+        "Synthetic docker-based probes for tenant-admin login, dashboard load, API key rotate, and whitelist update journeys.",
+        "Freshness/staleness metrics for dashboard data sources with explicit stale-state thresholds.",
+        "SLO linkage for synthetic checks and real traffic SLIs, including multi-window burn-rate policy.",
+        "Metric source-of-truth mapping for monitoring cards (real, degraded, unavailable)."
+      ],
+      "acceptance_criteria": [
+        "Synthetic failures emit dedicated alerts tied to runbooks and ownership tags.",
+        "Monitoring UI can distinguish stale data from true zero values.",
+        "SLO reports include both real-traffic and synthetic evidence for critical journeys."
+      ]
+    }
+  ]
+}

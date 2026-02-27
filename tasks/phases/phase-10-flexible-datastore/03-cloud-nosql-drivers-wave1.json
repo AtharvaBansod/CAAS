@@ -1,0 +1,76 @@
+{
+  "phase_id": "phase-10-flexible-datastore",
+  "stream_id": "FDB-3",
+  "stream_title": "Cloud NoSQL Drivers - Wave 1",
+  "status": "planned",
+  "providers_wave1": [
+    {
+      "provider": "aws-dynamodb",
+      "priority": "high"
+    },
+    {
+      "provider": "gcp-firestore",
+      "priority": "medium"
+    },
+    {
+      "provider": "azure-cosmosdb-nosql",
+      "priority": "medium"
+    }
+  ],
+  "tasks": [
+    {
+      "task_id": "FDB-DRV-001",
+      "title": "Provider Adapter Baselines",
+      "deliverables": [
+        "Adapter implementation contract for DynamoDB, Firestore, and Cosmos DB.",
+        "Capability compatibility matrix against unified repository contract.",
+        "Provider-specific limit and retry profiles."
+      ],
+      "acceptance_criteria": [
+        "Each provider adapter passes baseline CRUD and query contract tests.",
+        "Unsupported capabilities are explicitly flagged, not silently ignored."
+      ]
+    },
+    {
+      "task_id": "FDB-DRV-002",
+      "title": "Schema Mapping And Index Strategy",
+      "deliverables": [
+        "Entity-to-provider schema mapping guide for core chat and identity entities.",
+        "Indexing strategy per provider for primary read patterns.",
+        "Data type conversion and precision rules."
+      ],
+      "acceptance_criteria": [
+        "Mapped entities preserve required query patterns and constraints.",
+        "Type conversion is deterministic and tested."
+      ]
+    },
+    {
+      "task_id": "FDB-DRV-003",
+      "title": "Provider-Specific Test Harness",
+      "deliverables": [
+        "Docker-based integration tests using provider emulators/local stacks where possible.",
+        "Smoke test suite for tenant onboarding and failover scenarios per provider.",
+        "Performance baseline measurements for write/read latency and throughput."
+      ],
+      "acceptance_criteria": [
+        "Wave-1 providers have reproducible integration tests in CI.",
+        "Performance baselines are recorded and linked to SLO planning."
+      ]
+    },
+    {
+      "task_id": "FDB-DRV-004",
+      "title": "Provider Cost And Throughput Guard Profiles",
+      "deliverables": [
+        "Default throughput/latency/cost guard profiles per wave-1 provider and plan tier.",
+        "Adaptive throttling/backoff hooks tied to provider-specific quota and throttling signals.",
+        "Cost-observability labels and budget thresholds for read/write heavy workloads.",
+        "Local emulator parity report listing unsupported emulation behaviors and test caveats."
+      ],
+      "acceptance_criteria": [
+        "Guard profiles prevent uncontrolled cost or quota exhaustion under burst traffic.",
+        "Throttling signals propagate to platform telemetry and operator alerts.",
+        "Emulator-vs-real-provider differences are documented and covered by risk notes."
+      ]
+    }
+  ]
+}

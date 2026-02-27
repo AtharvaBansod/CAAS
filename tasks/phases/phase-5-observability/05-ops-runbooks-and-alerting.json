@@ -1,0 +1,62 @@
+{
+  "phase_id": "phase-5-observability",
+  "stream_id": "OBS-5",
+  "stream_title": "Operations Runbooks And Alerting",
+  "status": "planned",
+  "tasks": [
+    {
+      "task_id": "OBS-OPS-001",
+      "title": "Critical Incident Runbooks",
+      "deliverables": [
+        "Runbooks for gateway auth failures, socket disconnect storms, kafka lag spikes, and dashboard data outages.",
+        "Step-by-step diagnosis commands and rollback decision trees for docker-based environments.",
+        "Ownership map for service teams and escalation contacts."
+      ],
+      "acceptance_criteria": [
+        "Each alert has linked runbook id and clear first-response steps.",
+        "Runbooks include verification step after mitigation."
+      ]
+    },
+    {
+      "task_id": "OBS-OPS-002",
+      "title": "Alert Noise Reduction And Routing",
+      "deliverables": [
+        "Alert severity matrix and dedup rules (page, ticket, info).",
+        "Multi-window burn-rate alerts for SLO breaches.",
+        "Suppression windows for planned maintenance with audit trail."
+      ],
+      "acceptance_criteria": [
+        "No duplicate pages for same root incident within configured cooldown.",
+        "Critical incidents page on-call within target response time."
+      ]
+    },
+    {
+      "task_id": "OBS-OPS-003",
+      "title": "Observability Verification Gates In CI And E2E",
+      "deliverables": [
+        "Smoke tests that validate metrics endpoint reachability and trace emission in docker test runs.",
+        "E2E assertions for correlation id continuity across gateway -> socket -> kafka -> persistence.",
+        "Release gate that fails if required telemetry contracts regress."
+      ],
+      "acceptance_criteria": [
+        "Telemetry regressions block release in CI.",
+        "New services/events cannot ship without observability contract checks."
+      ]
+    },
+    {
+      "task_id": "OBS-OPS-004",
+      "title": "GameDay Drills And Incident Metrics Governance",
+      "deliverables": [
+        "Quarterly GameDay scenarios for auth refresh failures, socket reconnect storms, kafka lag spikes, and monitoring data staleness.",
+        "Incident KPI framework: MTTD, MTTR, false-positive rate, and alert-actionability score.",
+        "Post-incident template with required telemetry artifacts (trace ids, correlation ids, key logs, affected SLOs).",
+        "Corrective-action tracking model that links incidents back to task backlog items."
+      ],
+      "acceptance_criteria": [
+        "Each GameDay scenario is executed in containerized non-production environment with recorded outcomes.",
+        "Incident reports include measurable KPI deltas and assigned remediation ownership.",
+        "Recurring alert-noise issues are traceable to documented tuning actions."
+      ]
+    }
+  ]
+}

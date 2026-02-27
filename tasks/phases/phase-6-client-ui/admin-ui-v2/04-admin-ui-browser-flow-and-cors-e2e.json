@@ -1,0 +1,72 @@
+{
+  "phase_id": "phase-6-client-ui",
+  "workstream_id": "UIV2",
+  "task_group": "Admin UI v2 - Browser Flow, Security Headers, And E2E",
+  "status": "planned",
+  "tasks": [
+    {
+      "task_id": "UIV2-E2E-001",
+      "title": "Browser Request Flow Validation Through Gateway",
+      "deliverables": [
+        "Route flow map: admin-portal browser -> gateway only -> downstream services (no direct service exposure).",
+        "Header contract validation for Authorization, cookies, x-api-key, correlation id, and tenant/project context headers.",
+        "Negative-path checks for malformed headers, missing auth, and mismatched tenant/project claims."
+      ],
+      "acceptance_criteria": [
+        "All browser-originating API requests follow gateway ingress architecture.",
+        "No admin-portal endpoint depends on direct internal service URL."
+      ]
+    },
+    {
+      "task_id": "UIV2-E2E-002",
+      "title": "CORS Policy Alignment With Origin Whitelist Model",
+      "current_state_evidence": [
+        "services/gateway/src/plugins/cors.ts",
+        "services/gateway/src/middleware/auth/origin-validator.ts",
+        "services/auth-service/src/controllers/client.controller.ts"
+      ],
+      "deliverables": [
+        "CORS rules that support local and production origin whitelist workflows.",
+        "Origin whitelist enforcement test matrix for valid and invalid origins.",
+        "Documented behavior for no-origin requests and server-to-server flows."
+      ],
+      "acceptance_criteria": [
+        "Valid tenant origins pass CORS preflight and request execution.",
+        "Unlisted origins are blocked with predictable response behavior."
+      ]
+    },
+    {
+      "task_id": "UIV2-E2E-003",
+      "title": "Admin Portal End-To-End Regression Pack",
+      "deliverables": [
+        "Docker-only E2E suite for login, dashboard load, api key lifecycle, ip/origin whitelist CRUD, settings update.",
+        "E2E report generation in markdown and machine-readable json under tests/new_e2e/reports.",
+        "Failure triage tags mapped to gateway/auth/socket/kafka ownership."
+      ],
+      "acceptance_criteria": [
+        "Critical admin UI flows run green in containerized CI environment.",
+        "Reports contain both pass/fail summary and route-level diagnostics."
+      ]
+    },
+    {
+      "task_id": "UIV2-E2E-004",
+      "title": "Session Cookie Security, CSRF, And Identity Anti-Spoofing",
+      "current_state_evidence": [
+        "apps/admin-portal/src/app/api/auth/login/route.ts",
+        "apps/admin-portal/src/app/api/auth/refresh/route.ts",
+        "services/gateway/src/routes/v1/client/index.ts"
+      ],
+      "deliverables": [
+        "Environment-aware cookie policy for access/refresh cookies (secure, sameSite, path, TTL) with production-safe defaults.",
+        "CSRF protection model for cookie-authenticated mutating routes and documented exception policy.",
+        "Validation rules requiring server-derived client/tenant identity context instead of trusting browser-supplied mutable ids.",
+        "E2E tests for token leakage prevention (no raw tokens in logs, URLs, referrers, or error payloads)."
+      ],
+      "acceptance_criteria": [
+        "Production deployments enforce secure cookie settings and reject insecure downgrade paths.",
+        "Mutating admin requests fail predictably when CSRF/origin requirements are not met.",
+        "Client_id/tenant_id spoof attempts from browser payloads are rejected and auditable."
+      ]
+    }
+  ]
+}
