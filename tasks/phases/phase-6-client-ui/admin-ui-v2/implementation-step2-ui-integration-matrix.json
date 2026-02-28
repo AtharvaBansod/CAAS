@@ -1,0 +1,101 @@
+{
+  "artifact_id": "uiv2-step2-integration-matrix",
+  "updated_at": "2026-02-27",
+  "owner": "phase-6-client-ui/admin-ui-v2",
+  "status": "active",
+  "modules": [
+    {
+      "route": "/dashboard",
+      "state": "integrated",
+      "owner": "gateway/admin-dashboard",
+      "fields": [
+        { "ui": "stats.active_users", "api": "GET /api/v1/admin/dashboard -> stats.active_users" },
+        { "ui": "stats.messages_today", "api": "GET /api/v1/admin/dashboard -> stats.messages_today" },
+        { "ui": "stats.api_calls", "api": "GET /api/v1/admin/dashboard -> stats.api_calls" },
+        { "ui": "stats.active_connections", "api": "GET /api/v1/admin/dashboard -> stats.active_connections" },
+        { "ui": "recent_activity.*", "api": "GET /api/v1/admin/dashboard -> recent_activity[]" }
+      ]
+    },
+    {
+      "route": "/dashboard/api-keys",
+      "state": "integrated",
+      "owner": "auth/client-api-keys",
+      "fields": [
+        { "ui": "keys[].key_type", "api": "GET /api/v1/auth/client/api-keys -> keys[].key_type" },
+        { "ui": "keys[].key_prefix", "api": "GET /api/v1/auth/client/api-keys -> keys[].key_prefix" },
+        { "ui": "keys[].status", "api": "GET /api/v1/auth/client/api-keys -> keys[].status" },
+        { "ui": "keys[].created_at", "api": "GET /api/v1/auth/client/api-keys -> keys[].created_at" },
+        { "ui": "keys[].last_used_at", "api": "GET /api/v1/auth/client/api-keys -> keys[].last_used_at" },
+        { "ui": "rotate/promote/revoke", "api": "POST /api/v1/auth/client/api-keys/(rotate|promote|revoke)" }
+      ]
+    },
+    {
+      "route": "/dashboard/security",
+      "state": "partial",
+      "owner": "auth/client-whitelists",
+      "fields": [
+        { "ui": "ip_whitelist[]", "api": "GET/POST/DELETE /api/v1/auth/client/ip-whitelist" },
+        { "ui": "origin_whitelist[]", "api": "GET/POST/DELETE /api/v1/auth/client/origin-whitelist" },
+        { "ui": "mfa card", "api": "pending-ui-wire; backend exists" },
+        { "ui": "sessions card", "api": "pending-ui-wire; backend exists" }
+      ]
+    },
+    {
+      "route": "/dashboard/settings",
+      "state": "integrated",
+      "owner": "gateway/tenant-settings",
+      "fields": [
+        { "ui": "company_name", "api": "GET /api/v1/tenant -> name" },
+        { "ui": "plan", "api": "GET /api/v1/tenant -> plan" },
+        { "ui": "timezone/locale/features", "api": "GET/PUT /api/v1/tenant(/settings)" }
+      ]
+    },
+    {
+      "route": "/dashboard/audit-logs",
+      "state": "integrated",
+      "owner": "gateway/audit-query",
+      "fields": [
+        { "ui": "events table", "api": "GET /api/v1/audit/query -> events[]" },
+        { "ui": "pagination", "api": "GET /api/v1/audit/query?page&limit" },
+        { "ui": "export", "api": "GET /api/v1/audit/export?format=csv" },
+        { "ui": "freshness", "api": "GET /api/v1/audit/query -> source.generated_at" }
+      ]
+    },
+    {
+      "route": "/dashboard/monitoring",
+      "state": "integrated-degraded",
+      "owner": "gateway/admin-monitoring",
+      "fields": [
+        { "ui": "messages_per_second", "api": "GET /api/v1/admin/monitoring -> cards.messages_per_second" },
+        { "ui": "active_connections", "api": "GET /api/v1/admin/monitoring -> cards.active_connections" },
+        { "ui": "api_latency_p95_ms", "api": "GET /api/v1/admin/monitoring -> cards.api_latency_p95_ms" },
+        { "ui": "error_rate_percent", "api": "GET /api/v1/admin/monitoring -> cards.error_rate_percent" },
+        { "ui": "services[]", "api": "GET /api/v1/admin/monitoring -> services[]" }
+      ]
+    },
+    {
+      "route": "/dashboard/team",
+      "state": "blocked",
+      "owner": "pending-backend/team-management",
+      "fields": [
+        { "ui": "placeholder-status", "api": "capability-manifest only" }
+      ]
+    },
+    {
+      "route": "/dashboard/billing",
+      "state": "blocked",
+      "owner": "pending-backend/billing",
+      "fields": [
+        { "ui": "placeholder-status", "api": "capability-manifest only" }
+      ]
+    }
+  ],
+  "migration_sequence": [
+    "1. capability-manifest endpoint live",
+    "2. remove hardcoded module arrays from dashboard pages",
+    "3. move api-keys page to backend inventory contract",
+    "4. enforce tenant-not-found diagnostics and 404 path",
+    "5. enforce CORS/origin predictability and CSRF on mutating routes",
+    "6. run docker e2e and publish report with ownership tags"
+  ]
+}

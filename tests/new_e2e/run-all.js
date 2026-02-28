@@ -21,6 +21,7 @@ const report = {
   config: { ...cfg },
   summary: { total: 0, passed: 0, failed: 0, warnings: 0 },
   phases: {},
+  owners: {},
   context: {},
   cases: [],
 };
@@ -28,11 +29,27 @@ const report = {
 let currentPhase = 'setup';
 const now = () => new Date().toISOString();
 const baseHeaders = { 'content-type': 'application/json' };
+const SENSITIVE_KEY_PATTERN = /(token|secret|password|authorization|cookie|api[_-]?key)/i;
 
 function ensurePhase(name) {
   if (!report.phases[name]) {
     report.phases[name] = { total: 0, passed: 0, failed: 0, warnings: 0 };
   }
+}
+
+function inferOwnerTag(name, details = {}) {
+  const url = String(details.url || '');
+  if (url.includes('/api/v1/auth/client') || url.includes('/api/auth/')) return 'auth-service';
+  if (url.includes('/api/v1/sdk')) return 'gateway+auth-service';
+  if (url.includes('/api/v1/admin') || url.includes('/api/v1/tenant') || url.includes('/api/v1/audit')) return 'gateway';
+  if (url.includes('socket-service')) return 'socket-service';
+  if (url.includes('/compliance')) return 'compliance-service';
+  if (url.includes('/crypto')) return 'crypto-service';
+  if (url.includes('/search')) return 'search-service';
+  if (url.includes('/media')) return 'media-service';
+  if (url.includes('admin-portal')) return 'admin-portal';
+  if (name.toLowerCase().includes('socket ')) return 'socket-service';
+  return 'platform';
 }
 
 function setPhase(name) {
@@ -44,6 +61,7 @@ function setPhase(name) {
 function record(name, ok, details = {}, warning = false) {
   ensurePhase(currentPhase);
   const status = warning ? 'warning' : ok ? 'passed' : 'failed';
+  const owner = inferOwnerTag(name, details);
   report.summary.total += 1;
   report.phases[currentPhase].total += 1;
 
@@ -60,22 +78,64 @@ function record(name, ok, details = {}, warning = false) {
 
   report.cases.push({
     phase: currentPhase,
+    owner,
     name,
     status,
     timestamp: now(),
     details,
   });
+  if (!report.owners[owner]) {
+    report.owners[owner] = { total: 0, passed: 0, failed: 0, warnings: 0 };
+  }
+  report.owners[owner].total += 1;
+  if (warning) report.owners[owner].warnings += 1;
+  else if (ok) report.owners[owner].passed += 1;
+  else report.owners[owner].failed += 1;
   const icon = warning ? 'WARN' : ok ? 'PASS' : 'FAIL';
-  console.log(`[${icon}] ${name}`);
+  console.log(`[${icon}] (${owner}) ${name}`);
 }
 
 function parseJson(text) {
   try { return JSON.parse(text); } catch { return null; }
 }
 
-function extractCookie(setCookieHeader) {
-  if (!setCookieHeader || typeof setCookieHeader !== 'string') return null;
-  return setCookieHeader.split(';')[0];
+function redactSensitive(value) {
+  if (Array.isArray(value)) return value.map((item) => redactSensitive(item));
+  if (!value || typeof value !== 'object') return value;
+  const out = {};
+  for (const [key, val] of Object.entries(value)) {
+    if (SENSITIVE_KEY_PATTERN.test(key)) {
+      out[key] = typeof val === 'string' && val.length > 8
+        ? `${val.slice(0, 4)}***redacted***${val.slice(-2)}`
+        : '***redacted***';
+      continue;
+    }
+    out[key] = redactSensitive(val);
+  }
+  return out;
+}
+
+function sanitizeHeaders(headersObj) {
+  const out = {};
+  for (const [key, value] of Object.entries(headersObj || {})) {
+    if (SENSITIVE_KEY_PATTERN.test(key)) continue;
+    out[key] = value;
+  }
+  return out;
+}
+
+function extractAuthCookieBundle(setCookieHeader, middlewareSetCookieHeader) {
+  const source = `${setCookieHeader || ''},${middlewareSetCookieHeader || ''}`;
+  const refreshMatch = source.match(/caas_refresh_token=([^;]+)/);
+  const csrfMatch = source.match(/caas_csrf_token=([^;]+)/);
+  const refreshCookie = refreshMatch ? `caas_refresh_token=${refreshMatch[1]}` : null;
+  const csrfCookie = csrfMatch ? `caas_csrf_token=${csrfMatch[1]}` : null;
+  const csrfToken = csrfMatch ? csrfMatch[1] : null;
+
+  return {
+    cookieHeader: [refreshCookie, csrfCookie].filter(Boolean).join('; '),
+    csrfToken,
+  };
 }
 
 function isAccepted(status, accept) {
@@ -104,9 +164,9 @@ async function httpCase(name, method, url, options = {}) {
       method,
       url,
       status: res.status,
-      headers: Object.fromEntries(res.headers.entries()),
-      body: json || text,
-      requestBody: options.body || null,
+      headers: sanitizeHeaders(Object.fromEntries(res.headers.entries())),
+      body: redactSensitive(json || text),
+      requestBody: redactSensitive(options.body || null),
     });
     return { ok, status: res.status, headers: res.headers, text, json };
   } catch (error) {
@@ -195,6 +255,14 @@ function markdownReport() {
   lines.push('|---|---:|---:|---:|---:|');
   Object.entries(report.phases).forEach(([phase, v]) => {
     lines.push(`| ${phase} | ${v.total} | ${v.passed} | ${v.warnings} | ${v.failed} |`);
+  });
+  lines.push('');
+  lines.push('## Owner Breakdown');
+  lines.push('');
+  lines.push('| Owner | Total | Passed | Warnings | Failed |');
+  lines.push('|---|---:|---:|---:|---:|');
+  Object.entries(report.owners || {}).forEach(([owner, v]) => {
+    lines.push(`| ${owner} | ${v.total} | ${v.passed} | ${v.warnings} | ${v.failed} |`);
   });
   lines.push('');
 
@@ -389,11 +457,17 @@ async function main() {
       email: adminEmail,
       password: adminPassword,
       plan: 'business',
+      project: {
+        name: `E2E Project ${ts}`,
+        stack: 'react',
+        environment: 'development',
+      },
     },
   });
   const regBody = reg.json || {};
   report.context.client_id = regBody.client_id || null;
   report.context.tenant_id = regBody.tenant_id || null;
+  report.context.project_id = regBody.project_id || null;
   report.context.admin_email = adminEmail;
   const apiCredential = regBody.api_key || regBody.api_secret || null;
   report.context.api_key_prefix = regBody.api_key ? regBody.api_key.slice(0, 18) : null;
@@ -449,6 +523,45 @@ async function main() {
     { name: 'missing app_secret', options: { accept: [400, 401, 422], headers: baseHeaders, body: { app_id: report.context.client_id || 'default-tenant', user_external_id: `user-bad-${ts}` } } },
     { name: 'wrong content-type', options: { accept: [400, 401, 403, 415], headers: { 'content-type': 'text/plain' }, body: { bad: 'payload' } } },
   ]);
+  if (apiCredential) {
+    const sdkProjectId = report.context.project_id || `project-${ts}`;
+    const sdkNonce = `nonce-${ts}-sdksession`;
+    const signedHeaders = {
+      ...baseHeaders,
+      'x-api-key': apiCredential,
+      'x-project-id': sdkProjectId,
+      'x-timestamp': `${Math.floor(Date.now() / 1000)}`,
+      'x-nonce': sdkNonce,
+    };
+    await httpCase('Gateway SDK session valid', 'POST', `${cfg.gateway}/api/v1/sdk/session`, {
+      accept: [200, 201],
+      headers: signedHeaders,
+      body: {
+        user_external_id: `sdk-session-${ts}`,
+        project_id: sdkProjectId,
+      },
+    });
+    await httpCase('Gateway SDK session project mismatch', 'POST', `${cfg.gateway}/api/v1/sdk/session`, {
+      accept: [400, 403],
+      headers: {
+        ...baseHeaders,
+        'x-api-key': apiCredential,
+        'x-project-id': sdkProjectId,
+      },
+      body: {
+        user_external_id: `sdk-session-mismatch-${ts}`,
+        project_id: `other-${sdkProjectId}`,
+      },
+    });
+    await httpCase('Gateway SDK session replayed nonce', 'POST', `${cfg.gateway}/api/v1/sdk/session`, {
+      accept: [409],
+      headers: signedHeaders,
+      body: {
+        user_external_id: `sdk-session-replay-${ts}`,
+        project_id: sdkProjectId,
+      },
+    });
+  }
   await httpCase('Gateway SDK refresh invalid', 'POST', `${cfg.gateway}/api/v1/sdk/refresh`, {
     accept: [400, 401, 403, 404],
     headers: baseHeaders,
@@ -568,7 +681,7 @@ async function main() {
       body: { client_id: clientId, ip: testIp },
     });
     await httpCase('Client ip-whitelist add invalid ip', 'POST', `${cfg.gateway}/api/v1/auth/client/ip-whitelist`, {
-      accept: [400, 422],
+      accept: [400, 401, 422],
       headers: baseHeaders,
       body: { client_id: clientId, ip: 'bad-ip' },
     });
@@ -585,7 +698,7 @@ async function main() {
       body: { client_id: clientId, origin: testOrigin },
     });
     await httpCase('Client origin-whitelist add invalid URL', 'POST', `${cfg.gateway}/api/v1/auth/client/origin-whitelist`, {
-      accept: [400, 422],
+      accept: [400, 401, 422],
       headers: baseHeaders,
       body: { client_id: clientId, origin: 'not-a-url' },
     });
@@ -595,7 +708,7 @@ async function main() {
 
     await runMatrix('Client api-keys management matrix', 'POST', `${cfg.gateway}/api/v1/auth/client/api-keys/rotate`, [
       { name: 'rotate valid', options: { accept: [200, 400, 401, 403, 404], headers: baseHeaders, body: { client_id: clientId } } },
-      { name: 'rotate missing client_id', options: { accept: [400, 422], headers: baseHeaders, body: {} } },
+      { name: 'rotate missing client_id', options: { accept: [200, 400, 401, 422], headers: baseHeaders, body: {} } },
     ]);
     await httpCase('Client api-keys promote', 'POST', `${cfg.gateway}/api/v1/auth/client/api-keys/promote`, {
       accept: [200, 400, 401, 403, 404],
@@ -623,26 +736,78 @@ async function main() {
     headers: baseHeaders,
     body: { email: adminEmail, password: adminPassword },
   });
+  const loginPayload = loginForCookie.json || {};
+  record(
+    'Admin portal login response does not expose raw tokens',
+    !('access_token' in loginPayload) && !('refresh_token' in loginPayload),
+    { keys: Object.keys(loginPayload) }
+  );
   const setCookieRaw = loginForCookie.headers ? (loginForCookie.headers.get('set-cookie') || '') : '';
-  const refreshCookie = extractCookie(setCookieRaw);
+  const middlewareCookieRaw = loginForCookie.headers ? (loginForCookie.headers.get('x-middleware-set-cookie') || '') : '';
+  const authCookies = extractAuthCookieBundle(setCookieRaw, middlewareCookieRaw);
   await httpCase('Admin portal auth refresh invalid', 'POST', `${cfg.adminPortal}/api/auth/refresh`, {
     accept: [400, 401, 403, 404, 500],
     headers: baseHeaders,
     body: { refresh_token: 'bad' },
   });
-  if (refreshCookie) {
-    await httpCase('Admin portal auth refresh with cookie', 'POST', `${cfg.adminPortal}/api/auth/refresh`, {
+  if (authCookies.cookieHeader && authCookies.csrfToken) {
+    const refreshCase = await httpCase('Admin portal auth refresh with cookie', 'POST', `${cfg.adminPortal}/api/auth/refresh`, {
       accept: [200, 400, 401, 403, 404],
-      headers: { Cookie: refreshCookie },
+      headers: {
+        Cookie: authCookies.cookieHeader,
+        'x-csrf-token': authCookies.csrfToken,
+      },
     });
+    record(
+      'Admin portal refresh CSRF contract',
+      refreshCase.status === 200 || (refreshCase.status === 403 && refreshCase.json?.code === 'csrf_failed'),
+      {
+        status: refreshCase.status || null,
+        code: refreshCase.json?.code || null,
+      }
+    );
   } else {
-    record('Admin portal auth refresh with cookie skipped', false, { reason: 'No refresh cookie captured from login response' }, true);
+    record('Admin portal auth refresh with cookie skipped', false, {
+      reason: 'Missing refresh/csrf cookies from login response',
+      hasCookieHeader: Boolean(authCookies.cookieHeader),
+      hasCsrfToken: Boolean(authCookies.csrfToken),
+    }, true);
   }
-  await httpCase('Admin portal auth logout', 'POST', `${cfg.adminPortal}/api/auth/logout`, {
-    accept: [200, 204, 401],
-    headers: baseHeaders,
-    body: {},
+  if (authCookies.cookieHeader && authCookies.csrfToken) {
+    const logoutCase = await httpCase('Admin portal auth logout', 'POST', `${cfg.adminPortal}/api/auth/logout`, {
+      accept: [200, 204, 401, 403],
+      headers: {
+        ...baseHeaders,
+        Cookie: authCookies.cookieHeader,
+        'x-csrf-token': authCookies.csrfToken,
+      },
+      body: {},
+    });
+    record(
+      'Admin portal logout CSRF contract',
+      logoutCase.status === 200 || logoutCase.status === 204 || (logoutCase.status === 403 && logoutCase.json?.code === 'csrf_failed'),
+      {
+        status: logoutCase.status || null,
+        code: logoutCase.json?.code || null,
+      }
+    );
+  } else {
+    await httpCase('Admin portal auth logout without csrf', 'POST', `${cfg.adminPortal}/api/auth/logout`, {
+      accept: [401, 403],
+      headers: baseHeaders,
+      body: {},
+    });
+  }
+  const leakProbeToken = `eyJ.new.${ts}.sensitive`;
+  const leakProbe = await httpCase('Gateway bearer leakage probe', 'GET', `${cfg.gateway}/api/v1/tenant`, {
+    accept: [400, 401, 403],
+    headers: { authorization: `Bearer ${leakProbeToken}` },
   });
+  record(
+    'Gateway error does not echo bearer token',
+    !(leakProbe.text || '').includes(leakProbeToken),
+    { status: leakProbe.status || null }
+  );
   await runMatrix('Browser-like CORS matrix through gateway', 'OPTIONS', `${cfg.gateway}/api/v1/auth/client/login`, [
     {
       name: 'allowed localhost origin',

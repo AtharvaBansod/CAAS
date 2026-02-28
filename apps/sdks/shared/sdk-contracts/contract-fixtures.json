@@ -1,0 +1,16 @@
+{
+  "fixtures": {
+    "session_create": {
+      "user_external_id": "fixture-user-1",
+      "project_id": "fixture-project-1"
+    },
+    "session_refresh": {
+      "refresh_token": "fixture-refresh-token"
+    },
+    "expected_errors": [
+      { "code": "context_missing", "status": 401 },
+      { "code": "validation_error", "status": 400 },
+      { "code": "origin_not_allowed", "status": 403 }
+    ]
+  }
+}

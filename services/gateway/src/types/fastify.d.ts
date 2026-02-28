@@ -21,6 +21,7 @@ declare module 'fastify' {
       id: string;
       user_id?: string;
       tenant_id: string;
+      project_id?: string;
       sub?: string;
       jti?: string;
       email?: string;

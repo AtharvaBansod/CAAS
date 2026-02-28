@@ -17,6 +17,7 @@ export interface AuthenticatedSocket extends Socket {
   user?: {
     user_id: string;
     tenant_id: string;
+    project_id?: string;
     external_id?: string;
     permissions: string[];
     session_id?: string;
@@ -49,6 +50,7 @@ export const socketAuthMiddleware = (authClient: AuthServiceClient) =>
       socket.user = {
         user_id: payload.user_id,
         tenant_id: payload.tenant_id,
+        project_id: payload.project_id,
         external_id: payload.external_id,
         permissions: payload.permissions || [],
         session_id: payload.session_id,
@@ -61,6 +63,7 @@ export const socketAuthMiddleware = (authClient: AuthServiceClient) =>
       await authClient.storeSocketContext(socket.id, {
         user_id: payload.user_id,
         tenant_id: payload.tenant_id,
+        project_id: payload.project_id,
         external_id: payload.external_id,
         permissions: payload.permissions || [],
         session_id: payload.session_id,

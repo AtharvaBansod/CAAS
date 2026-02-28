@@ -21,7 +21,15 @@ export class TokenService {
     }
   }
 
-  async generateTokenPair(user: User & { external_id?: string }, session: any) {
+  async generateTokenPair(
+    user: User & {
+      external_id?: string;
+      project_id?: string;
+      project_stack?: string;
+      project_environment?: 'development' | 'staging' | 'production';
+    },
+    session: any
+  ) {
     const jti = uuidv4();
     const now = Math.floor(Date.now() / 1000);
 
@@ -31,6 +39,9 @@ export class TokenService {
       tenant_id: user.tenant_id,
       email: user.email,
       external_id: (user as any).external_id,
+      project_id: (user as any).project_id,
+      project_stack: (user as any).project_stack,
+      project_environment: (user as any).project_environment,
       session_id: session.session_id,
       type: 'access',
       iat: now,
@@ -43,6 +54,7 @@ export class TokenService {
       user_id: user.user_id,
       tenant_id: user.tenant_id,
       session_id: session.session_id,
+      project_id: (user as any).project_id,
       type: 'refresh',
       iat: now,
       exp: now + config.jwt.refreshTokenExpiry,

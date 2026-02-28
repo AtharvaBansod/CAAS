@@ -3,6 +3,7 @@ import { apiClient } from '../api-client';
 /* ── Types ────────────────────────────────────────────── */
 export interface TenantInfo {
     tenant_id: string;
+    client_id?: string;
     name: string;
     plan: 'free' | 'business' | 'enterprise';
     settings?: TenantSettings;

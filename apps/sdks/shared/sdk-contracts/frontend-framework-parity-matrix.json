@@ -1,0 +1,18 @@
+{
+  "artifact_id": "sdkfe-framework-parity",
+  "updated_at": "2026-02-27",
+  "frameworks": ["react", "angular"],
+  "capabilities": [
+    { "capability": "core-sdk lifecycle binding", "react": "done", "angular": "done" },
+    { "capability": "connection-state stream", "react": "done", "angular": "done" },
+    { "capability": "event stream hooks/services", "react": "done", "angular": "done" },
+    { "capability": "error propagation", "react": "done", "angular": "done" },
+    { "capability": "SSR-safe initialization", "react": "done", "angular": "n/a (adapter has no window dependency)" },
+    { "capability": "theme token bridge", "react": "done", "angular": "planned via host app styling tokens" }
+  ],
+  "compatibility": {
+    "core_sdk": "apps/sdks/frontend/sdk-web-core",
+    "react": "apps/sdks/frontend/sdk-react",
+    "angular": "apps/sdks/frontend/sdk-angular"
+  }
+}

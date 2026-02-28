@@ -31,6 +31,11 @@ export interface AuditQueryResponse {
     page: number;
     limit: number;
     has_more: boolean;
+    source?: {
+        backend?: string;
+        collection?: string;
+        generated_at?: string;
+    };
 }
 
 /* ── API ──────────────────────────────────────────────── */

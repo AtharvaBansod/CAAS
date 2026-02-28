@@ -24,6 +24,7 @@ export interface ValidateTokenResponse {
   payload?: {
     user_id: string;
     tenant_id: string;
+    project_id?: string;
     external_id?: string;
     permissions: string[];
     session_id?: string;
@@ -37,6 +38,7 @@ export interface ValidateTokenResponse {
 export interface SocketContext {
   user_id: string;
   tenant_id: string;
+  project_id?: string;
   external_id?: string;
   permissions: string[];
   session_id?: string;

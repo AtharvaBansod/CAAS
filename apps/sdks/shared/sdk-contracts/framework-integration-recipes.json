@@ -1,0 +1,24 @@
+{
+  "artifact_id": "sdkfe-integration-recipes",
+  "updated_at": "2026-02-27",
+  "recipes": [
+    {
+      "name": "guarded-route-auth-handoff",
+      "frameworks": ["react", "angular"],
+      "flow": [
+        "if token missing: render unauthenticated state",
+        "if token refresh in progress: render loading boundary",
+        "if token valid: connect core sdk and enter connected/degraded state"
+      ]
+    },
+    {
+      "name": "token-refresh-error",
+      "frameworks": ["react", "angular"],
+      "flow": [
+        "core sdk emits error token_refresh_error",
+        "adapter surfaces error stream/hook",
+        "host app redirects to login or fallback shell"
+      ]
+    }
+  ]
+}

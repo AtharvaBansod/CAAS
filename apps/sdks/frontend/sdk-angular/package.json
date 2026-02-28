@@ -1,0 +1,21 @@
+{
+  "name": "@caas/sdk-angular",
+  "version": "0.1.0-alpha.1",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "@angular/core": "^17 || ^18",
+    "rxjs": "^7.8.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.2",
+    "vitest": "^2.1.8",
+    "rxjs": "^7.8.1"
+  }
+}

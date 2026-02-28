@@ -1,35 +1,30 @@
 import { apiClient } from '../api-client';
 
-/* ── Types ────────────────────────────────────────────── */
 export interface WhitelistEntry {
     value: string;
     added_at: string;
     added_by?: string;
 }
 
-/* ── API ──────────────────────────────────────────────── */
 export const securityApi = {
-    // IP whitelist
-    getIpWhitelist: (clientId: string) =>
-        apiClient.get<{ ips: string[] }>('/api/v1/auth/client/ip-whitelist', { client_id: clientId }),
+    getIpWhitelist: () =>
+        apiClient.get<{ ips: string[] }>('/api/v1/auth/client/ip-whitelist'),
 
-    addIp: (clientId: string, ip: string) =>
-        apiClient.post<{ message: string }>('/api/v1/auth/client/ip-whitelist', { client_id: clientId, ip }),
+    addIp: (ip: string) =>
+        apiClient.post<{ message: string }>('/api/v1/auth/client/ip-whitelist', { ip }),
 
-    removeIp: (clientId: string, ip: string) =>
-        apiClient.delete<{ message: string }>(`/api/v1/auth/client/ip-whitelist/${encodeURIComponent(ip)}?client_id=${clientId}`),
+    removeIp: (ip: string) =>
+        apiClient.delete<{ message: string }>(`/api/v1/auth/client/ip-whitelist/${encodeURIComponent(ip)}`),
 
-    // Origin whitelist
-    getOriginWhitelist: (clientId: string) =>
-        apiClient.get<{ origins: string[] }>('/api/v1/auth/client/origin-whitelist', { client_id: clientId }),
+    getOriginWhitelist: () =>
+        apiClient.get<{ origins: string[] }>('/api/v1/auth/client/origin-whitelist'),
 
-    addOrigin: (clientId: string, origin: string) =>
-        apiClient.post<{ message: string }>('/api/v1/auth/client/origin-whitelist', { client_id: clientId, origin }),
+    addOrigin: (origin: string) =>
+        apiClient.post<{ message: string }>('/api/v1/auth/client/origin-whitelist', { origin }),
 
-    removeOrigin: (clientId: string, origin: string) =>
-        apiClient.delete<{ message: string }>(`/api/v1/auth/client/origin-whitelist/${encodeURIComponent(origin)}?client_id=${clientId}`),
+    removeOrigin: (origin: string) =>
+        apiClient.delete<{ message: string }>(`/api/v1/auth/client/origin-whitelist/${encodeURIComponent(origin)}`),
 
-    // MFA
     enableMfa: () =>
         apiClient.post<{ secret: string; qr_url: string; recovery_codes: string[] }>('/api/v1/admin/mfa'),
 

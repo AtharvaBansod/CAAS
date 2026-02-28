@@ -1,0 +1,51 @@
+{
+  "artifact_id": "uiv2-proj-001-step1-capability-matrix",
+  "generated_on": "2026-02-27",
+  "decision_record": {
+    "model_choice": "reuse-client-projects-embedded",
+    "reason": "Current auth-service client model already stores project metadata and active project fields; step-1 requires project-first onboarding and project context propagation without introducing a new collection migration in the same delivery slice.",
+    "follow_up": "Introduce dedicated project model with migration window in UIV2-PROJ-004 if project volume/query patterns exceed embedded-document suitability."
+  },
+  "capabilities": [
+    {
+      "operation": "project.create",
+      "status": "implemented",
+      "gateway_route": "POST /api/v1/auth/client/projects",
+      "auth_service_route": "POST /api/v1/auth/client/projects",
+      "notes": "Derives client_id from JWT context in gateway and sets created project as active context."
+    },
+    {
+      "operation": "project.list",
+      "status": "implemented",
+      "gateway_route": "GET /api/v1/auth/client/projects",
+      "auth_service_route": "GET /api/v1/auth/client/projects",
+      "notes": "Returns tenant client project list from auth-service client repository."
+    },
+    {
+      "operation": "project.select_active",
+      "status": "implemented",
+      "gateway_route": "POST /api/v1/auth/client/projects/select",
+      "auth_service_route": "POST /api/v1/auth/client/projects/select",
+      "notes": "Updates active project context used by admin tokens and API-key fallback scope."
+    },
+    {
+      "operation": "project.update",
+      "status": "implemented",
+      "gateway_route": "PATCH /api/v1/auth/client/projects/:project_id",
+      "auth_service_route": "PATCH /api/v1/auth/client/projects/:project_id",
+      "notes": "Allows controlled metadata updates (name, stack, environment) with server-derived client identity."
+    },
+    {
+      "operation": "project.archive",
+      "status": "implemented",
+      "gateway_route": "POST /api/v1/auth/client/projects/:project_id/archive",
+      "auth_service_route": "POST /api/v1/auth/client/projects/:project_id/archive",
+      "notes": "Archives project with active-project fallback guard so at least one active project context remains."
+    }
+  ],
+  "canonical_errors": [
+    "context_missing",
+    "identity_context_mismatch",
+    "project_scope_violation"
+  ]
+}

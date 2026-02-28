@@ -43,6 +43,29 @@ function Wait-ContainerHealthy {
     return $false
 }
 
+function Invoke-WithRetry {
+    param(
+        [scriptblock]$Action,
+        [string]$OperationName,
+        [int]$MaxAttempts = 3,
+        [int]$DelaySeconds = 5
+    )
+
+    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+        & $Action
+        if ($LASTEXITCODE -eq 0) {
+            return $true
+        }
+
+        if ($attempt -lt $MaxAttempts) {
+            Write-Host "  $OperationName failed (attempt $attempt/$MaxAttempts). Retrying in $DelaySeconds s..." -ForegroundColor Yellow
+            Start-Sleep -Seconds $DelaySeconds
+        }
+    }
+
+    return $false
+}
+
 function Reset-KafkaState {
     Write-Host "  Resetting Kafka/Zookeeper state due to cluster ID mismatch..." -ForegroundColor Yellow
     docker compose stop kafka-1 kafka-2 kafka-3 zookeeper 2>&1 | Out-Null
@@ -75,25 +98,41 @@ try {
 
 # Pull third-party images up front to avoid mid-start stalls
 Write-Host "Pre-pulling infrastructure images (if needed)..." -ForegroundColor Yellow
-docker compose pull `
-    mongodb-primary `
-    mongodb-secondary-1 `
-    mongodb-secondary-2 `
-    redis-gateway `
-    redis-socket `
-    redis-shared `
-    redis-compliance `
-    redis-crypto `
-    zookeeper `
-    kafka-1 `
-    kafka-2 `
-    kafka-3 `
-    schema-registry `
-    elasticsearch `
-    minio `
-    kafka-ui `
-    mongo-express `
-    redis-commander 2>&1 | Out-Null
+if (-not (Invoke-WithRetry -OperationName "Pre-pull node:20-slim" -MaxAttempts 3 -DelaySeconds 6 -Action {
+    docker pull node:20-slim 2>&1 | Out-Null
+})) {
+    Write-Host "Warning: Could not pre-pull node:20-slim. Build will still continue." -ForegroundColor Yellow
+}
+
+if (-not (Invoke-WithRetry -OperationName "Pre-pull infrastructure images" -MaxAttempts 3 -DelaySeconds 6 -Action {
+    docker compose pull `
+        mongodb-primary `
+        mongodb-secondary-1 `
+        mongodb-secondary-2 `
+        redis-gateway `
+        redis-socket `
+        redis-shared `
+        redis-compliance `
+        redis-crypto `
+        zookeeper `
+        kafka-1 `
+        kafka-2 `
+        kafka-3 `
+        schema-registry `
+        elasticsearch `
+        minio `
+        kafka-ui `
+        mongo-express `
+        redis-commander 2>&1 | Out-Null
+})) {
+    Write-Host "Warning: Infrastructure image pre-pull failed after retries." -ForegroundColor Yellow
+}
+
+if (-not (Invoke-WithRetry -OperationName "Pre-pull minio/mc" -MaxAttempts 3 -DelaySeconds 6 -Action {
+    docker pull minio/mc 2>&1 | Out-Null
+})) {
+    Write-Host "Warning: Could not pre-pull minio/mc image." -ForegroundColor Yellow
+}
 
 # Clean volumes if requested
 if ($Clean) {
@@ -110,9 +149,24 @@ if ($Build) {
     if ($NoCache) {
         $buildArgs += "--no-cache"
     }
-    docker @buildArgs
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "Error: Build failed!" -ForegroundColor Red
+
+    $buildSucceeded = $false
+    for ($attempt = 1; $attempt -le 3; $attempt++) {
+        docker @buildArgs
+        if ($LASTEXITCODE -eq 0) {
+            $buildSucceeded = $true
+            break
+        }
+
+        if ($attempt -lt 3) {
+            Write-Host "  Build failed (attempt $attempt/3). Refreshing base image and retrying..." -ForegroundColor Yellow
+            docker pull node:20-slim 2>&1 | Out-Null
+            Start-Sleep -Seconds 8
+        }
+    }
+
+    if (-not $buildSucceeded) {
+        Write-Host "Error: Build failed after 3 attempts!" -ForegroundColor Red
         exit 1
     }
     Write-Host "Build complete!" -ForegroundColor Green
@@ -442,7 +496,7 @@ try {
     Write-Host "  Mongo Express:      http://localhost:8082" -ForegroundColor White
     Write-Host "  Redis Commander:    http://localhost:8083" -ForegroundColor White
     Write-Host ""
-    Write-Host "Use Docker-based e2e tests under tests/new_e2e once generated." -ForegroundColor Yellow
+    Write-Host "Use Docker-based e2e tests under tests/fresh_e2e for the latest validation pack." -ForegroundColor Yellow
     Write-Host ""
     
 } catch {

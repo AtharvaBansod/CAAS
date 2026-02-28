@@ -33,6 +33,7 @@ export class AuthMiddleware {
           sub: context.user_id || 'system',
           tenantId: context.tenant_id,
           tenant_id: context.tenant_id,
+          project_id: context.project_id || (context.metadata?.project_id as string | undefined),
 
           // JWT/Session specific (defaulting as they might come from API Key)
           jti: 'n/a',

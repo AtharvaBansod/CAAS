@@ -16,6 +16,7 @@ export const CONTEXT_HEADERS = {
     SESSION_ID: 'x-session-id',
     AUTH_TYPE: 'x-auth-type',
     CLIENT_ID: 'x-client-id',
+    PROJECT_ID: 'x-project-id',
     REQUEST_ID: 'x-request-id',
     CORRELATION_ID: 'x-correlation-id',
     SERVICE_SECRET: 'x-service-secret',
@@ -61,6 +62,10 @@ export async function contextHeadersMiddleware(
     // Client ID for API key requests
     if (auth.metadata?.client_id) {
         contextHeaders[CONTEXT_HEADERS.CLIENT_ID] = auth.metadata.client_id as string;
+    }
+
+    if (auth.project_id || auth.metadata?.project_id) {
+        contextHeaders[CONTEXT_HEADERS.PROJECT_ID] = (auth.project_id || auth.metadata?.project_id) as string;
     }
 
     // External ID for SDK users

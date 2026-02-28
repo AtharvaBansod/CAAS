@@ -19,29 +19,108 @@ export async function originValidator(
         return;
     }
 
-    // In development mode, skip strict origin checking
-    if (process.env.NODE_ENV === 'development') {
-        return;
+    const method = (request.method || 'GET').toUpperCase();
+    const isMutatingMethod = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
+    const strictValidationDisabled = process.env.STRICT_ORIGIN_VALIDATION === 'false';
+    if (strictValidationDisabled && process.env.NODE_ENV !== 'production') return;
+
+    const rawOrigin = request.headers.origin || request.headers.referer;
+    let normalizedOrigin: string | null = null;
+    if (typeof rawOrigin === 'string' && rawOrigin.length > 0) {
+        try {
+            normalizedOrigin = new URL(rawOrigin).origin;
+        } catch {
+            normalizedOrigin = null;
+        }
     }
 
-    const origin = request.headers.origin || request.headers.referer;
-
-    if (!origin) {
-        // No origin header - could be a server-side request
-        // Allow but log warning
+    if (!normalizedOrigin) {
+        const userAgent = String(request.headers['user-agent'] || '');
+        const browserHintsPresent = !!request.headers['sec-fetch-site'] || /mozilla|chrome|safari|firefox|edg\//i.test(userAgent);
+        if (isMutatingMethod) {
+            if (browserHintsPresent) {
+                reply.status(403).send({
+                    error: 'Origin header is required for mutating browser requests',
+                    code: 'origin_required',
+                });
+                return;
+            }
+            request.log.info({
+                user_id: auth.user_id,
+                tenant_id: auth.tenant_id,
+                method,
+            }, 'Allowing mutating JWT request without origin (server-to-server context)');
+            return;
+        }
         request.log.warn({
             user_id: auth.user_id,
             tenant_id: auth.tenant_id,
+            method,
         }, 'JWT request without origin header');
         return;
     }
 
-    // Origin validation is primarily handled by CORS configuration
-    // This middleware provides additional logging and can be extended
-    // to check against per-client origin whitelists from the auth service
-    request.log.info({
-        user_id: auth.user_id,
-        origin,
-        auth_type: 'jwt',
-    }, 'JWT request origin checked');
+    const clientId = auth.metadata?.client_id as string | undefined;
+    if (!clientId) {
+        if (isMutatingMethod) {
+            reply.status(401).send({
+                error: 'Client identity missing in authentication context',
+                code: 'context_missing',
+            });
+            return;
+        }
+        return;
+    }
+
+    const authClient = (request.server as any).authClient;
+    if (!authClient || typeof authClient.getClientOriginWhitelist !== 'function') {
+        request.log.warn({ client_id: clientId }, 'Auth client origin whitelist lookup unavailable');
+        return;
+    }
+
+    try {
+        const whitelistResponse = await authClient.getClientOriginWhitelist(clientId);
+        const origins = Array.isArray(whitelistResponse?.origins) ? whitelistResponse.origins : [];
+
+        // Empty whitelist means origin enforcement is not configured yet for this client.
+        if (origins.length === 0) {
+            request.log.debug({ client_id: clientId }, 'Origin whitelist empty; skipping strict origin match');
+            return;
+        }
+
+        const normalizedWhitelist = origins
+            .map((origin: unknown) => {
+                if (typeof origin !== 'string' || origin.length === 0) return null;
+                try {
+                    return new URL(origin).origin;
+                } catch {
+                    return null;
+                }
+            })
+            .filter((origin: string | null): origin is string => !!origin);
+
+        if (!normalizedWhitelist.includes(normalizedOrigin)) {
+            reply.status(403).send({
+                error: 'Origin not allowed for this tenant client',
+                code: 'origin_not_allowed',
+            });
+            return;
+        }
+    } catch (error: any) {
+        request.log.warn(
+            {
+                err: error,
+                client_id: clientId,
+                origin: normalizedOrigin,
+            },
+            'Origin whitelist validation failed'
+        );
+        if (isMutatingMethod) {
+            reply.status(503).send({
+                error: 'Origin validation dependency unavailable',
+                code: 'origin_validation_unavailable',
+            });
+            return;
+        }
+    }
 }

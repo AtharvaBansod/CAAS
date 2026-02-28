@@ -85,6 +85,15 @@ export async function clientRoutes(server: FastifyInstance) {
                     email: { type: 'string', format: 'email' },
                     password: { type: 'string', minLength: 8 },
                     plan: { type: 'string', enum: ['free', 'business', 'enterprise'] },
+                    project: {
+                        type: 'object',
+                        required: ['name', 'stack', 'environment'],
+                        properties: {
+                            name: { type: 'string', minLength: 2 },
+                            stack: { type: 'string' },
+                            environment: { type: 'string', enum: ['development', 'staging', 'production'] },
+                        },
+                    },
                 },
             },
         },
@@ -94,7 +103,101 @@ export async function clientRoutes(server: FastifyInstance) {
     const managementRoutes = async (subServer: FastifyInstance) => {
         subServer.addHook('preHandler', (await import('../middleware/service-auth.middleware')).serviceAuthMiddleware);
 
+        // Project Management
+        subServer.get('/projects', {
+            schema: {
+                querystring: {
+                    type: 'object',
+                    required: ['client_id'],
+                    properties: {
+                        client_id: { type: 'string' },
+                    },
+                },
+            },
+        }, clientController.listProjects.bind(clientController));
+
+        subServer.post('/projects', {
+            schema: {
+                body: {
+                    type: 'object',
+                    required: ['client_id', 'name', 'stack', 'environment'],
+                    properties: {
+                        client_id: { type: 'string' },
+                        name: { type: 'string', minLength: 2 },
+                        stack: { type: 'string', minLength: 1 },
+                        environment: { type: 'string', enum: ['development', 'staging', 'production'] },
+                    },
+                },
+            },
+        }, clientController.createProject.bind(clientController));
+
+        subServer.patch('/projects/:project_id', {
+            schema: {
+                params: {
+                    type: 'object',
+                    required: ['project_id'],
+                    properties: {
+                        project_id: { type: 'string', minLength: 1 },
+                    },
+                },
+                body: {
+                    type: 'object',
+                    required: ['client_id'],
+                    properties: {
+                        client_id: { type: 'string' },
+                        name: { type: 'string', minLength: 2 },
+                        stack: { type: 'string', minLength: 1 },
+                        environment: { type: 'string', enum: ['development', 'staging', 'production'] },
+                    },
+                },
+            },
+        }, clientController.updateProject.bind(clientController));
+
+        subServer.post('/projects/:project_id/archive', {
+            schema: {
+                params: {
+                    type: 'object',
+                    required: ['project_id'],
+                    properties: {
+                        project_id: { type: 'string', minLength: 1 },
+                    },
+                },
+                body: {
+                    type: 'object',
+                    required: ['client_id'],
+                    properties: {
+                        client_id: { type: 'string' },
+                    },
+                },
+            },
+        }, clientController.archiveProject.bind(clientController));
+
+        subServer.post('/projects/select', {
+            schema: {
+                body: {
+                    type: 'object',
+                    required: ['client_id', 'project_id'],
+                    properties: {
+                        client_id: { type: 'string' },
+                        project_id: { type: 'string', minLength: 1 },
+                    },
+                },
+            },
+        }, clientController.selectProject.bind(clientController));
+
         // API Key Management
+        subServer.get('/api-keys', {
+            schema: {
+                querystring: {
+                    type: 'object',
+                    required: ['client_id'],
+                    properties: {
+                        client_id: { type: 'string' },
+                    },
+                },
+            },
+        }, clientController.getApiKeyInventory.bind(clientController));
+
         subServer.post('/api-keys/rotate', {
             schema: {
                 body: {

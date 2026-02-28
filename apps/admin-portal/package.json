@@ -7,7 +7,9 @@
         "build": "next build",
         "start": "next start -p 3100",
         "lint": "next lint",
-        "type-check": "tsc --noEmit"
+        "type-check": "tsc --noEmit",
+        "lint:design-tokens": "node ./scripts/check-design-tokens.mjs",
+        "test:ux-gates": "node ./tests/ux/run-ux-gates.mjs"
     },
     "dependencies": {
         "next": "14.2.15",

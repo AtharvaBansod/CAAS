@@ -9,6 +9,7 @@ import { dlqAdminRoutes } from './dlq';
 import { adminSessionsRoutes } from './sessions';
 import { adminMFARoutes } from './mfa';
 import dashboardRoutes from './dashboard';
+import auditLogsRoutes from './audit-logs';
 
 export async function adminRoutes(fastify: FastifyInstance) {
   // Register DLQ admin routes
@@ -22,4 +23,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
 
   // Register dashboard routes
   await fastify.register(dashboardRoutes, { prefix: '/admin' });
+
+  // Register admin audit routes
+  await fastify.register(auditLogsRoutes, { prefix: '/admin/audit' });
 }

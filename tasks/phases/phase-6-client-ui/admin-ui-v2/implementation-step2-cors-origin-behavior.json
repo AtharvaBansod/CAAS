@@ -1,0 +1,26 @@
+{
+  "artifact_id": "uiv2-step2-cors-origin-behavior",
+  "updated_at": "2026-02-27",
+  "rules": [
+    {
+      "case": "browser preflight OPTIONS with allowed origin",
+      "expected": "204 with allow-origin/allow-methods/allow-headers"
+    },
+    {
+      "case": "browser preflight OPTIONS with unlisted origin",
+      "expected": "403 + { code: cors_origin_blocked }"
+    },
+    {
+      "case": "jwt mutating request with browser hints and missing origin",
+      "expected": "403 + { code: origin_required }"
+    },
+    {
+      "case": "jwt mutating request without browser hints and missing origin",
+      "expected": "allowed as server-to-server compatibility path"
+    },
+    {
+      "case": "jwt request with origin and non-empty whitelist",
+      "expected": "origin must match whitelist; otherwise 403 origin_not_allowed"
+    }
+  ]
+}

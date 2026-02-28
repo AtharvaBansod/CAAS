@@ -1,0 +1,42 @@
+{
+  "version": "1.0.0",
+  "targets": [
+    {
+      "name": "mobile-small",
+      "width": 360,
+      "height": 740
+    },
+    {
+      "name": "mobile-large",
+      "width": 430,
+      "height": 932
+    },
+    {
+      "name": "tablet",
+      "width": 820,
+      "height": 1180
+    },
+    {
+      "name": "laptop",
+      "width": 1366,
+      "height": 768
+    },
+    {
+      "name": "desktop",
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "name": "ultrawide",
+      "width": 3440,
+      "height": 1440
+    }
+  ],
+  "critical_flows": [
+    "dashboard-shell-navigation",
+    "project-switcher-selection",
+    "account-actions-and-logout",
+    "api-key-rotate-promote-revoke",
+    "security-whitelist-crud"
+  ]
+}

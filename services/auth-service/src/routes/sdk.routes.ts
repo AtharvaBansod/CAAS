@@ -21,6 +21,7 @@ export async function sdkRoutes(server: FastifyInstance) {
                 required: ['user_external_id'],
                 properties: {
                     user_external_id: { type: 'string' },
+                    project_id: { type: 'string' },
                     user_data: {
                         type: 'object',
                         properties: {

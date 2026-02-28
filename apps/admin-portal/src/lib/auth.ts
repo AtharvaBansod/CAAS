@@ -8,6 +8,10 @@ export interface AuthUser {
     role: 'tenant_admin';
     tenantId: string;
     clientId: string;
+    projectId?: string;
+    projectRole?: string;
+    projectStack?: string;
+    projectEnvironment?: 'development' | 'staging' | 'production';
     companyName?: string;
     plan?: 'free' | 'business' | 'enterprise';
     exp: number;
@@ -19,12 +23,17 @@ export function decodeToken(token: string): AuthUser | null {
         const payload = JSON.parse(atob(token.split('.')[1]));
         const tenantId = payload.tenantId || payload.tenant_id;
         const clientId = payload.clientId || payload.client_id || payload.sub;
+        const projectId = payload.projectId || payload.project_id;
         return {
             sub: payload.sub || payload.user_id || clientId,
             email: payload.email || '',
             role: payload.role || 'tenant_admin',
             tenantId,
             clientId,
+            projectId,
+            projectRole: payload.project_role,
+            projectStack: payload.project_stack,
+            projectEnvironment: payload.project_environment,
             companyName: payload.company_name,
             plan: payload.plan,
             exp: payload.exp || 0,
@@ -50,6 +59,15 @@ export function getAccessToken(): string | null {
     return localStorage.getItem('caas_access_token');
 }
 
+/** Get CSRF token from cookies */
+export function getCsrfToken(): string | null {
+    if (typeof window === 'undefined') return null;
+    const cookies = document.cookie.split(';').map((c) => c.trim());
+    const tokenCookie = cookies.find((c) => c.startsWith('caas_csrf_token='));
+    if (!tokenCookie) return null;
+    return tokenCookie.split('=')[1] || null;
+}
+
 /** Store tokens */
 export function setTokens(accessToken: string, refreshToken: string) {
     localStorage.setItem('caas_access_token', accessToken);
@@ -64,4 +82,5 @@ export function clearTokens() {
     localStorage.removeItem('caas_refresh_token');
     document.cookie = 'caas_access_token=; path=/; max-age=0';
     document.cookie = 'caas_refresh_token=; path=/; max-age=0';
+    document.cookie = 'caas_csrf_token=; path=/; max-age=0';
 }

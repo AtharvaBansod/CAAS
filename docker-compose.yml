@@ -715,10 +715,11 @@ services:
       caas-network:
         ipv4_address: 172.28.7.1
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3001/health"]
+      test: ["CMD", "node", "-e", "const http = require('http'); http.get('http://127.0.0.1:3001/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 40s
     restart: unless-stopped
 
   socket-service-2:
@@ -752,6 +753,12 @@ services:
     networks:
       caas-network:
         ipv4_address: 172.28.7.2
+    healthcheck:
+      test: ["CMD", "node", "-e", "const http = require('http'); http.get('http://127.0.0.1:3001/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     restart: unless-stopped
 
   # ============================================
@@ -800,6 +807,183 @@ services:
       - caas-network
     volumes:
       - ./tests/new_e2e/reports:/tests/new_e2e/reports
+    restart: "no"
+    profiles:
+      - test
+
+  e2e-fresh:
+    build:
+      context: ./tests/fresh_e2e
+      dockerfile: ./Dockerfile
+    container_name: caas-e2e-fresh
+    environment:
+      - GATEWAY_URL=http://gateway:3000
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - COMPLIANCE_SERVICE_URL=http://compliance-service:3008
+      - CRYPTO_SERVICE_URL=http://crypto-service:3009
+      - SEARCH_SERVICE_URL=http://search-service:3006
+      - MEDIA_SERVICE_URL=http://media-service:3005
+      - SOCKET1_URL=http://socket-service-1:3001
+      - SOCKET2_URL=http://socket-service-2:3001
+      - ADMIN_PORTAL_URL=http://admin-portal:3100
+    depends_on:
+      gateway:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+      compliance-service:
+        condition: service_healthy
+      crypto-service:
+        condition: service_healthy
+      search-service:
+        condition: service_healthy
+      media-service:
+        condition: service_healthy
+      socket-service-1:
+        condition: service_started
+      socket-service-2:
+        condition: service_started
+      admin-portal:
+        condition: service_started
+    networks:
+      - caas-network
+    volumes:
+      - ./tests/fresh_e2e/reports:/tests/fresh_e2e/reports
+    restart: "no"
+    profiles:
+      - test
+
+  sdk-web-core-tests:
+    build:
+      context: ./apps/sdks/frontend/sdk-web-core
+      dockerfile: ./Dockerfile
+    container_name: caas-sdk-web-core-tests
+    environment:
+      - NODE_ENV=test
+    networks:
+      - caas-network
+    restart: "no"
+    profiles:
+      - test
+
+  admin-portal-ux-gates:
+    build:
+      context: ./apps/admin-portal
+      dockerfile: ./Dockerfile.test
+    container_name: caas-admin-portal-ux-gates
+    environment:
+      - NODE_ENV=test
+    networks:
+      - caas-network
+    restart: "no"
+    profiles:
+      - test
+
+  e2e-step2:
+    build:
+      context: ./tests/step2_e2e
+      dockerfile: ./Dockerfile
+    container_name: caas-e2e-step2
+    environment:
+      - GATEWAY_URL=http://gateway:3000
+      - ADMIN_PORTAL_URL=http://admin-portal:3100
+    depends_on:
+      gateway:
+        condition: service_healthy
+      admin-portal:
+        condition: service_started
+    networks:
+      - caas-network
+    volumes:
+      - ./tests/step2_e2e/reports:/tests/step2_e2e/reports
+    restart: "no"
+    profiles:
+      - test
+
+  sdk-node-ts-tests:
+    build:
+      context: ./apps/sdks/backend/sdk-node-ts
+      dockerfile: ./Dockerfile
+    container_name: caas-sdk-node-ts-tests
+    networks:
+      - caas-network
+    restart: "no"
+    profiles:
+      - test
+
+  sdk-python-tests:
+    build:
+      context: ./apps/sdks/backend/sdk-python
+      dockerfile: ./Dockerfile
+    container_name: caas-sdk-python-tests
+    networks:
+      - caas-network
+    restart: "no"
+    profiles:
+      - test
+
+  sdk-java-tests:
+    build:
+      context: ./apps/sdks/backend/sdk-java
+      dockerfile: ./Dockerfile
+    container_name: caas-sdk-java-tests
+    networks:
+      - caas-network
+    restart: "no"
+    profiles:
+      - test
+
+  sdk-dotnet-tests:
+    build:
+      context: ./apps/sdks/backend/sdk-dotnet
+      dockerfile: ./Dockerfile
+    container_name: caas-sdk-dotnet-tests
+    networks:
+      - caas-network
+    restart: "no"
+    profiles:
+      - test
+
+  sdk-ruby-tests:
+    build:
+      context: ./apps/sdks/backend/sdk-ruby
+      dockerfile: ./Dockerfile
+    container_name: caas-sdk-ruby-tests
+    networks:
+      - caas-network
+    restart: "no"
+    profiles:
+      - test
+
+  sdk-rust-tests:
+    build:
+      context: ./apps/sdks/backend/sdk-rust
+      dockerfile: ./Dockerfile
+    container_name: caas-sdk-rust-tests
+    networks:
+      - caas-network
+    restart: "no"
+    profiles:
+      - test
+
+  sdk-react-tests:
+    build:
+      context: ./apps/sdks/frontend/sdk-react
+      dockerfile: ./Dockerfile
+    container_name: caas-sdk-react-tests
+    networks:
+      - caas-network
+    restart: "no"
+    profiles:
+      - test
+
+  sdk-angular-tests:
+    build:
+      context: ./apps/sdks/frontend/sdk-angular
+      dockerfile: ./Dockerfile
+    container_name: caas-sdk-angular-tests
+    networks:
+      - caas-network
     restart: "no"
     profiles:
       - test

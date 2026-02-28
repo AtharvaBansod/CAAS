@@ -16,6 +16,7 @@ export interface User {
   id: string;
   sub: string;
   tenant_id: string;
+  project_id?: string;
   session_id?: string;
   device_id?: string;
   jti?: string;

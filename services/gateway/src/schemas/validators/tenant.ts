@@ -6,8 +6,10 @@ export const updateSettingsSchema = z.object({
 
 export const tenantResponseSchema = z.object({
   tenant_id: z.string(),
+  client_id: z.string().optional(),
   name: z.string(),
   plan: z.string(),
+  settings: z.record(z.any()).optional(),
 });
 
 export const usageResponseSchema = z.object({

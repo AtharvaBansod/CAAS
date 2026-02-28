@@ -10,8 +10,8 @@ import { useTenantInfo, useUpdateTenantSettings } from '@/hooks/useTenant';
 import { Settings, Save, Building2, Globe2 } from 'lucide-react';
 
 export default function SettingsPage() {
-    const { user } = useAuth();
-    const { data: tenantInfo, isLoading } = useTenantInfo();
+    const { user, activeProject } = useAuth();
+    const { data: tenantInfo, isLoading, error } = useTenantInfo();
     const updateSettings = useUpdateTenantSettings();
 
     const [companyName, setCompanyName] = React.useState('');
@@ -28,7 +28,8 @@ export default function SettingsPage() {
 
     React.useEffect(() => {
         if (!tenantInfo) return;
-        setCompanyName(tenantInfo.name || user?.companyName || '');
+        const resolvedCompanyName = tenantInfo.name || user?.companyName || '';
+        setCompanyName(resolvedCompanyName);
         setEmail(user?.email || '');
         if (tenantInfo.settings?.timezone) setTimezone(tenantInfo.settings.timezone);
         if (tenantInfo.settings?.locale) setLocale(tenantInfo.settings.locale);
@@ -37,6 +38,13 @@ export default function SettingsPage() {
                 ...prev,
                 ...tenantInfo.settings?.features,
             }));
+        }
+        if (!tenantInfo.name) {
+            console.warn('[admin-ui][tenant-context-fallback]', {
+                route: '/dashboard/settings',
+                fallback: 'user.companyName',
+                tenant_id: tenantInfo.tenant_id,
+            });
         }
     }, [tenantInfo, user?.email, user?.companyName]);
 
@@ -55,6 +63,22 @@ export default function SettingsPage() {
                 <p className="mt-1 text-muted-foreground">Configure your workspace and feature preferences.</p>
             </div>
 
+            {error && (
+                <Card className="border-destructive/40 bg-destructive/5">
+                    <CardContent className="py-4 text-sm">
+                        <p className="font-medium text-destructive">Unable to load tenant context</p>
+                        <p className="mt-1 text-muted-foreground">
+                            {(error as any)?.message || 'Unknown error'}
+                        </p>
+                        {((error as any)?.details?.code === 'tenant_not_found' || (error as any)?.code === 'tenant_not_found') && (
+                            <p className="mt-2 text-xs text-muted-foreground font-mono">
+                                Diagnostics ref: {((error as any)?.details?.diagnostics?.correlation_id || (error as any)?.details?.correlation_id || 'n/a')}
+                            </p>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
+
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -68,7 +92,7 @@ export default function SettingsPage() {
                             label="Company Name"
                             value={companyName}
                             onChange={(e) => setCompanyName(e.target.value)}
-                            disabled={isLoading}
+                            disabled
                         />
                         <Input label="Admin Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled />
                     </div>
@@ -160,12 +184,20 @@ export default function SettingsPage() {
                         </div>
                         <div className="rounded-lg bg-muted p-3">
                             <p className="text-xs text-muted-foreground">Client ID</p>
-                            <p className="font-mono text-sm mt-1">{user?.clientId || 'N/A'}</p>
+                            <p className="font-mono text-sm mt-1">{tenantInfo?.client_id || user?.clientId || 'N/A'}</p>
                         </div>
                         <div className="rounded-lg bg-muted p-3">
                             <p className="text-xs text-muted-foreground">Plan</p>
                             <Badge variant="default" className="mt-1">{tenantInfo?.plan || user?.plan || 'unknown'}</Badge>
                         </div>
+                    </div>
+                    <div className="mt-3 rounded-lg bg-muted p-3">
+                        <p className="text-xs text-muted-foreground">Active Project Context</p>
+                        <p className="mt-1 text-sm">
+                            {activeProject
+                                ? `${activeProject.name} (${activeProject.stack} / ${activeProject.environment})`
+                                : 'No project selected'}
+                        </p>
                     </div>
                 </CardContent>
             </Card>

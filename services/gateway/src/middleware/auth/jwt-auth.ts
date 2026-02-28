@@ -39,12 +39,16 @@ export class JwtAuthStrategy extends AuthStrategy {
 
       return {
         tenant_id: payload.tenant_id,
+        project_id: (payload as any).project_id,
         user_id: payload.user_id,
         auth_type: 'jwt',
         permissions: payload.permissions || [],
         rate_limit_tier: 'business', // Determined by tenant plan
         metadata: {
           client_id: (payload as any).client_id,
+          project_id: (payload as any).project_id,
+          project_stack: (payload as any).project_stack,
+          project_environment: (payload as any).project_environment,
           email: payload.email,
           role: (payload as any).role,
           company_name: (payload as any).company_name,

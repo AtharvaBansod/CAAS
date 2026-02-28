@@ -1,0 +1,21 @@
+{
+  "artifact_id": "sdk-release-governance",
+  "updated_at": "2026-02-27",
+  "channels": ["alpha", "beta", "stable"],
+  "rules": [
+    "all sdk package tests must pass in docker profile test",
+    "stable promotion requires no critical dependency vulnerabilities",
+    "cross-language conformance smoke must pass",
+    "breaking contract change requires major version bump"
+  ],
+  "packages": [
+    "apps/sdks/backend/sdk-node-ts",
+    "apps/sdks/backend/sdk-python",
+    "apps/sdks/backend/sdk-java",
+    "apps/sdks/backend/sdk-dotnet",
+    "apps/sdks/backend/sdk-ruby",
+    "apps/sdks/backend/sdk-rust",
+    "apps/sdks/frontend/sdk-react",
+    "apps/sdks/frontend/sdk-angular"
+  ]
+}

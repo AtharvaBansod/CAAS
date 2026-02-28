@@ -8,6 +8,7 @@ export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 export interface ApiError {
     status: number;
     message: string;
+    code?: string;
     details?: unknown;
 }
 
@@ -31,6 +32,40 @@ class ApiClient {
         return localStorage.getItem('caas_access_token');
     }
 
+    private getActiveProjectId(): string | null {
+        if (typeof window === 'undefined') return null;
+        return localStorage.getItem('caas_active_project_id');
+    }
+
+    private getCsrfToken(): string | null {
+        if (typeof window === 'undefined') return null;
+        const cookies = document.cookie.split(';').map((c) => c.trim());
+        const tokenCookie = cookies.find((c) => c.startsWith('caas_csrf_token='));
+        if (!tokenCookie) return null;
+        return tokenCookie.split('=')[1] || null;
+    }
+
+    private createCorrelationId(): string {
+        if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+            return crypto.randomUUID();
+        }
+        return `corr_${Date.now()}_${Math.random().toString(36).slice(2, 12)}`;
+    }
+
+    private createIdempotencyKey(): string {
+        if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+            return `idem_${crypto.randomUUID()}`;
+        }
+        return `idem_${Date.now()}_${Math.random().toString(36).slice(2, 12)}`;
+    }
+
+    private createNonce(): string {
+        if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+            return crypto.randomUUID().replace(/-/g, '');
+        }
+        return `${Date.now()}${Math.random().toString(36).slice(2, 12)}`;
+    }
+
     private async handleResponse<T>(response: Response, retryFn?: () => Promise<Response>): Promise<T> {
         if (response.status === 401) {
             // Try silent refresh
@@ -51,11 +86,25 @@ class ApiClient {
 
         if (!response.ok) {
             let message = 'Request failed';
+            let code: string | undefined;
+            let details: unknown = undefined;
             try {
                 const body = await response.json();
                 message = body.error || body.message || message;
+                code = body.code;
+                details = body;
             } catch { }
-            throw { status: response.status, message } as ApiError;
+            const correlationId = response.headers.get('x-correlation-id');
+            throw {
+                status: response.status,
+                message,
+                code,
+                details: {
+                    ...(typeof details === 'object' && details !== null ? details as Record<string, unknown> : {}),
+                    correlation_id: correlationId || undefined,
+                    status: response.status,
+                },
+            } as ApiError;
         }
 
         // 204 No Content
@@ -66,7 +115,12 @@ class ApiClient {
 
     private async attemptRefresh(): Promise<boolean> {
         try {
-            const res = await fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' });
+            const csrfToken = this.getCsrfToken();
+            const res = await fetch('/api/auth/refresh', {
+                method: 'POST',
+                credentials: 'include',
+                headers: csrfToken ? { 'x-csrf-token': csrfToken } : {},
+            });
             return res.ok;
         } catch {
             return false;
@@ -78,10 +132,24 @@ class ApiClient {
 
         const makeRequest = () => {
             const token = this.getAuthToken();
+            const projectId = this.getActiveProjectId();
             const reqHeaders: Record<string, string> = {
                 'Content-Type': 'application/json',
+                'x-correlation-id': this.createCorrelationId(),
                 ...headers,
             };
+            if (method !== 'GET') {
+                reqHeaders['idempotency-key'] = this.createIdempotencyKey();
+                reqHeaders['x-timestamp'] = `${Math.floor(Date.now() / 1000)}`;
+                reqHeaders['x-nonce'] = this.createNonce();
+                const csrfToken = this.getCsrfToken();
+                if (csrfToken) {
+                    reqHeaders['x-csrf-token'] = csrfToken;
+                }
+            }
+            if (projectId) {
+                reqHeaders['x-project-id'] = projectId;
+            }
             if (token) {
                 reqHeaders['Authorization'] = `Bearer ${token}`;
             }

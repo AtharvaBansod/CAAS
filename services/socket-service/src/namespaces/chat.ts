@@ -20,8 +20,8 @@ import { config } from '../config';
 const logger = getLogger('ChatNamespace');
 
 // Helper to generate tenant-isolated room names
-const getConversationRoomName = (tenantId: string, conversationId: string) =>
-  `tenant:${tenantId}:conversation:${conversationId}`;
+const getConversationRoomName = (tenantId: string, conversationId: string, projectId: string = 'default') =>
+  `tenant:${tenantId}:project:${projectId}:conversation:${conversationId}`;
 
 export function registerChatNamespace(io: Server) {
   const chat = io.of('/chat');
@@ -95,9 +95,10 @@ export function registerChatNamespace(io: Server) {
   chat.on('connection', (socket: AuthenticatedSocket) => {
     const userId = socket.user?.user_id;
     const tenantId = socket.user?.tenant_id;
+    const projectId = socket.user?.project_id || 'default';
     const displayName = (socket.user as any)?.name || (socket.user as any)?.email || userId || 'Unknown';
 
-    logger.info(`[Chat] Client connected: ${socket.id} (User: ${userId}, Tenant: ${tenantId})`);
+    logger.info(`[Chat] Client connected: ${socket.id} (User: ${userId}, Tenant: ${tenantId}, Project: ${projectId})`);
 
     if (!userId || !tenantId) {
       logger.warn(`[Chat] Unauthenticated or missing tenantId for socket ${socket.id}. Disconnecting.`);
@@ -129,7 +130,7 @@ export function registerChatNamespace(io: Server) {
         return callback({ status: 'error', message: authResult.reason || 'Not authorized to join this conversation' });
       }
 
-      const roomName = getConversationRoomName(tenantId, conversationId);
+      const roomName = getConversationRoomName(tenantId, conversationId, projectId);
 
       try {
         await socket.join(roomName);
@@ -154,7 +155,7 @@ export function registerChatNamespace(io: Server) {
         return callback({ status: 'error', message: 'conversationId is required' });
       }
 
-      const roomName = getConversationRoomName(tenantId, conversationId);
+      const roomName = getConversationRoomName(tenantId, conversationId, projectId);
 
       try {
         await socket.leave(roomName);
@@ -176,7 +177,7 @@ export function registerChatNamespace(io: Server) {
         return callback({ status: 'error', message: 'conversationId and messageContent are required' });
       }
 
-      const roomName = getConversationRoomName(tenantId, conversationId);
+      const roomName = getConversationRoomName(tenantId, conversationId, projectId);
 
       // Check if the socket is actually in the room before broadcasting
       if (!socket.rooms.has(roomName)) {
@@ -354,7 +355,7 @@ export function registerChatNamespace(io: Server) {
         return;
       }
 
-      const roomName = getConversationRoomName(tenantId, conversationId);
+      const roomName = getConversationRoomName(tenantId, conversationId, projectId);
 
       // Check if user is in the room
       if (!socket.rooms.has(roomName)) {
@@ -421,7 +422,7 @@ export function registerChatNamespace(io: Server) {
         return;
       }
 
-      const roomName = getConversationRoomName(tenantId, conversationId);
+      const roomName = getConversationRoomName(tenantId, conversationId, projectId);
 
       // Check if user is in the room
       if (!socket.rooms.has(roomName)) {
@@ -461,7 +462,7 @@ export function registerChatNamespace(io: Server) {
         return;
       }
 
-      const roomName = getConversationRoomName(tenantId, conversationId);
+      const roomName = getConversationRoomName(tenantId, conversationId, projectId);
 
       if (!socket.rooms.has(roomName)) {
         logger.warn(`[Chat] User ${userId} attempted messages_read in room ${roomName} without being a member`);
@@ -503,7 +504,7 @@ export function registerChatNamespace(io: Server) {
         return;
       }
 
-      const roomName = getConversationRoomName(tenantId, conversationId);
+      const roomName = getConversationRoomName(tenantId, conversationId, projectId);
 
       if (!socket.rooms.has(roomName)) {
         logger.warn(`[Chat] User ${userId} attempted conversation_read in room ${roomName} without being a member`);
@@ -581,7 +582,7 @@ export function registerChatNamespace(io: Server) {
     ) => {
       try {
         await roomModeration.kickUser(userId, targetUserId, conversationId, tenantId, reason);
-        const roomName = getConversationRoomName(tenantId, conversationId);
+      const roomName = getConversationRoomName(tenantId, conversationId, projectId);
         chat.to(roomName).emit('moderation:kicked', {
           target_user_id: targetUserId,
           moderator_id: userId,
@@ -600,7 +601,7 @@ export function registerChatNamespace(io: Server) {
     ) => {
       try {
         await roomModeration.banUser(userId, targetUserId, conversationId, tenantId, durationSeconds, reason);
-        const roomName = getConversationRoomName(tenantId, conversationId);
+      const roomName = getConversationRoomName(tenantId, conversationId, projectId);
         chat.to(roomName).emit('moderation:banned', {
           target_user_id: targetUserId,
           moderator_id: userId,
@@ -632,7 +633,7 @@ export function registerChatNamespace(io: Server) {
     ) => {
       try {
         await roomModeration.muteUser(userId, targetUserId, conversationId, tenantId, durationSeconds, reason);
-        const roomName = getConversationRoomName(tenantId, conversationId);
+        const roomName = getConversationRoomName(tenantId, conversationId, projectId);
         chat.to(roomName).emit('moderation:muted', {
           target_user_id: targetUserId,
           moderator_id: userId,
@@ -652,7 +653,7 @@ export function registerChatNamespace(io: Server) {
     ) => {
       try {
         await roomModeration.unmuteUser(userId, targetUserId, conversationId, tenantId, reason);
-        const roomName = getConversationRoomName(tenantId, conversationId);
+        const roomName = getConversationRoomName(tenantId, conversationId, projectId);
         chat.to(roomName).emit('moderation:unmuted', {
           target_user_id: targetUserId,
           moderator_id: userId,

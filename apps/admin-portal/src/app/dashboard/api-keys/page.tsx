@@ -1,11 +1,13 @@
 'use client';
 
 import * as React from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useAuth } from '@/hooks/useAuth';
+import { useApiKeys } from '@/hooks/useApiKeys';
 import { useToast } from '@/components/providers/ToastProvider';
 import { maskApiKey, copyToClipboard, formatDate } from '@/lib/utils';
 import { apiKeysApi } from '@/lib/api/api-keys';
@@ -24,14 +26,20 @@ import {
 interface KeySlot {
     id: 'primary' | 'secondary';
     name: string;
-    key?: string;
+    key_prefix?: string | null;
+    key_value?: string;
     type: 'primary' | 'secondary';
-    status: 'active' | 'unknown';
+    status: 'active' | 'revoked' | 'missing';
+    created_at?: string | null;
+    last_used_at?: string | null;
+    read_only: boolean;
 }
 
 export default function ApiKeysPage() {
+    const queryClient = useQueryClient();
     const { toast } = useToast();
     const { user } = useAuth();
+    const { data: inventory, isLoading, error } = useApiKeys();
     const [secondaryKey, setSecondaryKey] = React.useState<string | undefined>(undefined);
     const [secondaryGeneratedAt, setSecondaryGeneratedAt] = React.useState<string | undefined>(undefined);
     const [revealedKeys, setRevealedKeys] = React.useState<Set<string>>(new Set());
@@ -39,10 +47,32 @@ export default function ApiKeysPage() {
     const [promoteLoading, setPromoteLoading] = React.useState(false);
     const [revokeLoading, setRevokeLoading] = React.useState<'primary' | 'secondary' | null>(null);
 
-    const keys: KeySlot[] = [
-        { id: 'primary', name: 'Primary API Key', type: 'primary', status: 'active' },
-        { id: 'secondary', name: 'Secondary Key (staging)', key: secondaryKey, type: 'secondary', status: secondaryKey ? 'active' : 'unknown' },
-    ];
+    const keys: KeySlot[] = React.useMemo(() => {
+        const entries = inventory?.keys || [];
+        if (entries.length === 0) {
+            return [
+                { id: 'primary', name: 'Primary API Key', type: 'primary', status: 'missing', read_only: true },
+                { id: 'secondary', name: 'Secondary API Key', type: 'secondary', status: 'missing', read_only: true },
+            ];
+        }
+
+        return entries
+            .slice()
+            .sort((a, b) => (a.key_type === 'primary' ? -1 : 1))
+            .map((entry) => ({
+                id: entry.key_type,
+                name: entry.key_type === 'primary' ? 'Primary API Key' : 'Secondary Key (staging)',
+                key_prefix: entry.key_prefix,
+                key_value: entry.key_type === 'secondary' ? secondaryKey : undefined,
+                type: entry.key_type,
+                status: entry.status,
+                created_at: entry.created_at,
+                last_used_at: entry.last_used_at,
+                read_only: entry.read_only,
+            }));
+    }, [inventory?.keys, secondaryKey]);
+
+    const hasPromotableSecondary = keys.some((key) => key.type === 'secondary' && key.status === 'active');
 
     const toggleReveal = (id: string) => {
         setRevealedKeys((prev) => {
@@ -58,15 +88,12 @@ export default function ApiKeysPage() {
     };
 
     const handleRotate = async () => {
-        if (!user?.clientId) {
-            toast({ type: 'error', title: 'Client ID missing', description: 'Please log in again.' });
-            return;
-        }
         setRotateLoading(true);
         try {
-            const res = await apiKeysApi.rotate(user.clientId);
+            const res = await apiKeysApi.rotate();
             setSecondaryKey(res.secondary_key);
             setSecondaryGeneratedAt(new Date().toISOString());
+            await queryClient.invalidateQueries({ queryKey: ['api-keys'] });
             toast({ type: 'success', title: 'Secondary key generated', description: 'Save it now. It will not be shown again.' });
         } catch (error: any) {
             toast({ type: 'error', title: 'Rotation failed', description: error.message || 'Failed to rotate key' });
@@ -75,15 +102,12 @@ export default function ApiKeysPage() {
     };
 
     const handlePromote = async () => {
-        if (!user?.clientId) {
-            toast({ type: 'error', title: 'Client ID missing', description: 'Please log in again.' });
-            return;
-        }
         setPromoteLoading(true);
         try {
-            await apiKeysApi.promote(user.clientId);
+            await apiKeysApi.promote();
             setSecondaryKey(undefined);
             setSecondaryGeneratedAt(undefined);
+            await queryClient.invalidateQueries({ queryKey: ['api-keys'] });
             toast({ type: 'success', title: 'Key promoted', description: 'Secondary key is now primary.' });
         } catch (error: any) {
             toast({ type: 'error', title: 'Promotion failed', description: error.message || 'Failed to promote key' });
@@ -92,17 +116,14 @@ export default function ApiKeysPage() {
     };
 
     const handleRevoke = async (type: 'primary' | 'secondary') => {
-        if (!user?.clientId) {
-            toast({ type: 'error', title: 'Client ID missing', description: 'Please log in again.' });
-            return;
-        }
         setRevokeLoading(type);
         try {
-            await apiKeysApi.revokeByType(user.clientId, type);
+            await apiKeysApi.revokeByType(type);
             if (type === 'secondary') {
                 setSecondaryKey(undefined);
                 setSecondaryGeneratedAt(undefined);
             }
+            await queryClient.invalidateQueries({ queryKey: ['api-keys'] });
             toast({ type: 'success', title: `${type[0].toUpperCase()}${type.slice(1)} key revoked` });
         } catch (error: any) {
             toast({ type: 'error', title: 'Revocation failed', description: error.message || 'Failed to revoke key' });
@@ -123,7 +144,7 @@ export default function ApiKeysPage() {
                     <Button variant="outline" onClick={handleRotate} loading={rotateLoading}>
                         <RotateCcw className="h-4 w-4" /> Rotate
                     </Button>
-                    <Button variant="outline" onClick={handlePromote} loading={promoteLoading} disabled={!secondaryKey}>
+                    <Button variant="outline" onClick={handlePromote} loading={promoteLoading} disabled={!hasPromotableSecondary}>
                         <ArrowUp className="h-4 w-4" /> Promote
                     </Button>
                 </div>
@@ -135,11 +156,20 @@ export default function ApiKeysPage() {
                     <div>
                         <p className="text-sm font-medium text-foreground">Keep your API keys secure</p>
                         <p className="text-xs text-muted-foreground mt-1">
-                            Key values are write-only. Existing keys cannot be retrieved; rotate to generate a new secondary key.
+                            Key values are write-only. Existing keys cannot be retrieved; rotate to generate a new secondary key and promote when ready.
                         </p>
                     </div>
                 </CardContent>
             </Card>
+
+            {error && (
+                <Card className="border-destructive/40 bg-destructive/5">
+                    <CardContent className="py-4 text-sm">
+                        <p className="font-medium text-destructive">Failed to load API key inventory</p>
+                        <p className="mt-1 text-muted-foreground">{(error as any)?.message || 'Unknown error'}</p>
+                    </CardContent>
+                </Card>
+            )}
 
             {keys.length === 0 ? (
                 <EmptyState title="No API keys" description="Your API keys will appear here after registration." icon={Key} />
@@ -155,16 +185,19 @@ export default function ApiKeysPage() {
                                             <Badge variant={k.type === 'primary' ? 'default' : 'secondary'}>
                                                 {k.type}
                                             </Badge>
-                                            <Badge variant={k.status === 'active' ? 'success' : 'secondary'}>
+                                            <Badge variant={k.status === 'active' ? 'success' : k.status === 'revoked' ? 'destructive' : 'secondary'}>
                                                 {k.status}
                                             </Badge>
+                                            {k.read_only && <Badge variant="outline">read-only</Badge>}
                                         </div>
 
                                         <div className="flex items-center gap-2 rounded-md bg-muted p-3 font-mono text-sm">
                                             <code className="flex-1 truncate">
-                                                {k.key ? (revealedKeys.has(k.id) ? k.key : maskApiKey(k.key)) : 'Write-only key (not retrievable)'}
+                                                {k.key_value
+                                                    ? (revealedKeys.has(k.id) ? k.key_value : maskApiKey(k.key_value))
+                                                    : (k.key_prefix ? `${k.key_prefix}****************` : 'Write-only key (not retrievable)')}
                                             </code>
-                                            {k.key && (
+                                            {k.key_value && (
                                                 <>
                                                     <button
                                                         onClick={() => toggleReveal(k.id)}
@@ -174,7 +207,7 @@ export default function ApiKeysPage() {
                                                         {revealedKeys.has(k.id) ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                                     </button>
                                                     <button
-                                                        onClick={() => k.key && handleCopy(k.key)}
+                                                        onClick={() => k.key_value && handleCopy(k.key_value)}
                                                         className="text-muted-foreground hover:text-foreground transition-colors"
                                                         title="Copy to clipboard"
                                                     >
@@ -189,8 +222,11 @@ export default function ApiKeysPage() {
                                                 <Clock className="h-3 w-3" />
                                                 {k.type === 'secondary' && secondaryGeneratedAt
                                                     ? `Generated: ${formatDate(secondaryGeneratedAt, { dateStyle: 'medium', timeStyle: 'short' })}`
-                                                    : 'Managed server-side'}
+                                                    : k.created_at
+                                                        ? `Created: ${formatDate(k.created_at, { dateStyle: 'medium', timeStyle: 'short' })}`
+                                                        : 'Managed server-side'}
                                             </span>
+                                            <span>{k.last_used_at ? `Last used: ${formatDate(k.last_used_at, { dateStyle: 'medium', timeStyle: 'short' })}` : 'Last used: n/a'}</span>
                                         </div>
                                     </div>
 
@@ -200,6 +236,7 @@ export default function ApiKeysPage() {
                                             size="sm"
                                             className="gap-1"
                                             loading={revokeLoading === k.type}
+                                            disabled={isLoading || k.status === 'missing'}
                                             onClick={() => handleRevoke(k.type)}
                                         >
                                             <Trash2 className="h-3 w-3" /> Revoke

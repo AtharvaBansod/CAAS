@@ -1,0 +1,36 @@
+{
+  "version": "1.0.0",
+  "scope": [
+    "/dashboard",
+    "/dashboard/api-keys",
+    "/dashboard/security",
+    "/dashboard/settings",
+    "/dashboard/audit-logs",
+    "/dashboard/monitoring",
+    "/dashboard/team",
+    "/dashboard/billing",
+    "/dashboard/docs"
+  ],
+  "gates": [
+    {
+      "id": "A11Y-KEYBOARD-001",
+      "description": "All navigation and account actions are reachable by keyboard only.",
+      "status": "required"
+    },
+    {
+      "id": "A11Y-FOCUS-002",
+      "description": "Visible focus ring appears on active controls with deterministic focus order.",
+      "status": "required"
+    },
+    {
+      "id": "A11Y-CONTRAST-003",
+      "description": "Text and interactive controls satisfy WCAG AA contrast thresholds.",
+      "status": "required"
+    },
+    {
+      "id": "A11Y-ARIA-004",
+      "description": "Interactive icon-only controls include explicit aria-label attributes.",
+      "status": "required"
+    }
+  ]
+}

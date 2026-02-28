@@ -44,20 +44,20 @@
   ],
   "future_code_locations_guidance": {
     "backend_sdks": [
-      "apps/sdk-node-ts",
-      "apps/sdk-python",
-      "apps/sdk-java",
-      "apps/sdk-dotnet",
-      "apps/sdk-ruby",
-      "apps/sdk-rust"
+      "apps/sdks/backend/sdk-node-ts",
+      "apps/sdks/backend/sdk-python",
+      "apps/sdks/backend/sdk-java",
+      "apps/sdks/backend/sdk-dotnet",
+      "apps/sdks/backend/sdk-ruby",
+      "apps/sdks/backend/sdk-rust"
     ],
     "frontend_sdks": [
-      "apps/sdk-web-core",
-      "apps/sdk-react",
-      "apps/sdk-angular",
-      "apps/sdk-flutter",
-      "apps/sdk-kotlin",
-      "apps/sdk-csharp-game"
+      "apps/sdks/frontend/sdk-web-core",
+      "apps/sdks/frontend/sdk-react",
+      "apps/sdks/frontend/sdk-angular",
+      "apps/sdks/frontend/sdk-flutter",
+      "apps/sdks/frontend/sdk-kotlin",
+      "apps/sdks/frontend/sdk-csharp-game"
     ],
     "admin_ui": [
       "apps/admin-portal"

@@ -41,11 +41,17 @@ export function middleware(request: NextRequest) {
             loginUrl.searchParams.set('returnUrl', pathname);
             const response = NextResponse.redirect(loginUrl);
             response.cookies.delete('caas_access_token');
+            response.cookies.delete('caas_refresh_token');
+            response.cookies.delete('caas_csrf_token');
             return response;
         }
     } catch {
         const loginUrl = new URL('/login', request.url);
-        return NextResponse.redirect(loginUrl);
+        const response = NextResponse.redirect(loginUrl);
+        response.cookies.delete('caas_access_token');
+        response.cookies.delete('caas_refresh_token');
+        response.cookies.delete('caas_csrf_token');
+        return response;
     }
 
     return NextResponse.next();

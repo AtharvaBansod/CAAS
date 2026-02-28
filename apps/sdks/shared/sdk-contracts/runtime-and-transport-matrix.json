@@ -1,0 +1,22 @@
+{
+  "runtime_matrix": {
+    "typescript-node": { "minimum": "18", "target": "20" },
+    "python": { "minimum": "3.10", "target": "3.12" },
+    "java": { "minimum": "17", "target": "21" },
+    "dotnet-csharp": { "minimum": "8.0", "target": "8.0" },
+    "ruby": { "minimum": "3.1", "target": "3.3" },
+    "rust": { "minimum": "1.75", "target": "stable" }
+  },
+  "transport_capability_matrix": {
+    "proxy_support": true,
+    "tls": true,
+    "mtls": "host-application controlled",
+    "timeouts": "per-request override supported",
+    "retries": "idempotent and transient-error only"
+  },
+  "security_maintenance": {
+    "dependency_scan_policy": "critical/high vulnerabilities block stable",
+    "rotation_policy": "weekly dependency bump checks",
+    "artifact_signing": "required for stable channel"
+  }
+}

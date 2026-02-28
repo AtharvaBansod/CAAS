@@ -1,0 +1,30 @@
+{
+  "artifact_id": "sdkbe-parity-matrix",
+  "updated_at": "2026-02-27",
+  "milestones": {
+    "A_auth_session_core": {
+      "typescript-node": "done",
+      "python": "done",
+      "java": "done",
+      "dotnet-csharp": "done",
+      "ruby": "done",
+      "rust": "done"
+    },
+    "B_advanced_options": {
+      "typescript-node": "done",
+      "python": "partial",
+      "java": "partial",
+      "dotnet-csharp": "partial",
+      "ruby": "partial",
+      "rust": "partial"
+    },
+    "C_observability_metadata": {
+      "typescript-node": "done",
+      "python": "done",
+      "java": "partial",
+      "dotnet-csharp": "partial",
+      "ruby": "partial",
+      "rust": "partial"
+    }
+  }
+}

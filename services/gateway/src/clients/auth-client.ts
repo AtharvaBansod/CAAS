@@ -56,6 +56,9 @@ export interface ValidateTokenResponse {
   payload?: {
     user_id: string;
     client_id?: string;
+    project_id?: string;
+    project_stack?: string;
+    project_environment?: 'development' | 'staging' | 'production';
     tenant_id: string;
     role?: string;
     external_id?: string;
@@ -78,6 +81,8 @@ export interface ValidateApiKeyResponse {
     plan: string;
     permissions: string[];
     rate_limit_tier: string;
+    active_project_id?: string;
+    project_ids?: string[];
   };
   error?: string;
 }
@@ -97,6 +102,7 @@ export interface SessionInfo {
 
 export interface SdkSessionRequest {
   user_external_id: string;
+  project_id?: string;
   user_data?: {
     name?: string;
     email?: string;
@@ -119,6 +125,7 @@ export interface SdkSessionResponse {
     user_id: string;
     external_id: string;
     tenant_id: string;
+    project_id?: string;
   };
   socket_urls: string[];
 }
@@ -348,13 +355,17 @@ export class AuthServiceClient {
    */
   async createSdkSession(request: SdkSessionRequest, apiKey: string): Promise<SdkSessionResponse> {
     return this.circuitBreaker.execute(async () => {
+      const headers: Record<string, string> = {
+        'X-Api-Key': apiKey,
+      };
+      if (request.project_id) {
+        headers['X-Project-Id'] = request.project_id;
+      }
       const response = await this.client.post<SdkSessionResponse>(
         '/api/v1/auth/sdk/session',
         request,
         {
-          headers: {
-            'X-Api-Key': apiKey,
-          },
+          headers,
         }
       );
       return response.data;
@@ -438,6 +449,11 @@ export class AuthServiceClient {
     email: string;
     password: string;
     plan?: string;
+    project?: {
+      name: string;
+      stack: string;
+      environment: 'development' | 'staging' | 'production';
+    };
   }): Promise<any> {
     return this.circuitBreaker.execute(async () => {
       const response = await this.client.post('/api/v1/auth/client/register', data);
@@ -490,6 +506,92 @@ export class AuthServiceClient {
   }): Promise<any> {
     return this.circuitBreaker.execute(async () => {
       const response = await this.client.post('/api/v1/auth/client/reset-password', data);
+      return response.data;
+    });
+  }
+
+  /**
+   * List projects for client
+   */
+  async getClientProjects(clientId: string): Promise<any> {
+    return this.circuitBreaker.execute(async () => {
+      const response = await this.client.get('/api/v1/auth/client/projects', {
+        params: { client_id: clientId },
+      });
+      return response.data;
+    });
+  }
+
+  /**
+   * Create a project for client
+   */
+  async createClientProject(data: {
+    client_id: string;
+    name: string;
+    stack: string;
+    environment: 'development' | 'staging' | 'production';
+  }): Promise<any> {
+    return this.circuitBreaker.execute(async () => {
+      const response = await this.client.post('/api/v1/auth/client/projects', data);
+      return response.data;
+    });
+  }
+
+  /**
+   * Select active project for client
+   */
+  async selectClientProject(data: { client_id: string; project_id: string }): Promise<any> {
+    return this.circuitBreaker.execute(async () => {
+      const response = await this.client.post('/api/v1/auth/client/projects/select', data);
+      return response.data;
+    });
+  }
+
+  /**
+   * Update project metadata for client
+   */
+  async updateClientProject(data: {
+    client_id: string;
+    project_id: string;
+    name?: string;
+    stack?: string;
+    environment?: 'development' | 'staging' | 'production';
+  }): Promise<any> {
+    return this.circuitBreaker.execute(async () => {
+      const response = await this.client.patch(
+        `/api/v1/auth/client/projects/${encodeURIComponent(data.project_id)}`,
+        {
+          client_id: data.client_id,
+          ...(data.name ? { name: data.name } : {}),
+          ...(data.stack ? { stack: data.stack } : {}),
+          ...(data.environment ? { environment: data.environment } : {}),
+        }
+      );
+      return response.data;
+    });
+  }
+
+  /**
+   * Archive project for client
+   */
+  async archiveClientProject(data: { client_id: string; project_id: string }): Promise<any> {
+    return this.circuitBreaker.execute(async () => {
+      const response = await this.client.post(
+        `/api/v1/auth/client/projects/${encodeURIComponent(data.project_id)}/archive`,
+        { client_id: data.client_id }
+      );
+      return response.data;
+    });
+  }
+
+  /**
+   * Get client API key inventory (non-secret metadata)
+   */
+  async getClientApiKeys(clientId: string): Promise<any> {
+    return this.circuitBreaker.execute(async () => {
+      const response = await this.client.get('/api/v1/auth/client/api-keys', {
+        params: { client_id: clientId },
+      });
       return response.data;
     });
   }

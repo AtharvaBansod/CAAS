@@ -1,0 +1,12 @@
+{
+  "name": "caas-fresh-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Fresh Docker-only E2E suite for latest CAAS implementation",
+  "scripts": {
+    "test": "node run-fresh.js"
+  },
+  "dependencies": {
+    "socket.io-client": "^4.8.1"
+  }
+}

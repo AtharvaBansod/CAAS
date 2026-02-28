@@ -92,6 +92,8 @@ export default function DashboardPage() {
     }
 
     if (error) {
+        const correlationId = (error as any)?.details?.diagnostics?.correlation_id || (error as any)?.details?.correlation_id;
+        const tenantNotFound = (error as any)?.details?.code === 'tenant_not_found' || (error as any)?.code === 'tenant_not_found';
         return (
             <div className="flex h-[50vh] flex-col items-center justify-center space-y-4">
                 <div className="rounded-full bg-destructive/10 p-3">
@@ -100,6 +102,14 @@ export default function DashboardPage() {
                 <div className="text-center">
                     <h2 className="text-xl font-semibold">Failed to load dashboard</h2>
                     <p className="text-sm text-muted-foreground">{(error as any)?.message || 'Something went wrong'}</p>
+                    {tenantNotFound && (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                            Tenant record is missing for current identity context.
+                        </p>
+                    )}
+                    {correlationId && (
+                        <p className="mt-1 text-xs font-mono text-muted-foreground">Diagnostics ref: {correlationId}</p>
+                    )}
                 </div>
             </div>
         );

@@ -1,0 +1,2601 @@
+{
+  "generatedAt": "2026-02-27T16:56:04.349Z",
+  "summary": {
+    "total": 75,
+    "passed": 73,
+    "failed": 2,
+    "warnings": 0
+  },
+  "phases": {
+    "01-health-and-basics": {
+      "total": 10,
+      "passed": 10,
+      "failed": 0,
+      "warnings": 0
+    },
+    "02-cors-and-registration": {
+      "total": 18,
+      "passed": 17,
+      "failed": 1,
+      "warnings": 0
+    },
+    "03-project-lifecycle-and-scope": {
+      "total": 12,
+      "passed": 12,
+      "failed": 0,
+      "warnings": 0
+    },
+    "04-sdk-http-contract": {
+      "total": 12,
+      "passed": 12,
+      "failed": 0,
+      "warnings": 0
+    },
+    "05-socket-e2e": {
+      "total": 17,
+      "passed": 17,
+      "failed": 0,
+      "warnings": 0
+    },
+    "06-admin-ui-gateway-flow": {
+      "total": 6,
+      "passed": 5,
+      "failed": 1,
+      "warnings": 0
+    }
+  },
+  "context": {
+    "client_id": "2955b739-5591-40a9-beda-265ceb990301",
+    "tenant_id": "d23de551-ed40-4622-9ba4-9ec06d1234f5",
+    "project_id": "65ff0018-5a7b-42c7-9752-4d2119075939",
+    "api_key_prefix": "caas_prod_3cc855856b",
+    "admin_access_token_prefix": "eyJhbGciOiJIUzI1NiIs"
+  },
+  "cases": [
+    {
+      "phase": "01-health-and-basics",
+      "name": "Gateway /health",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:04.435Z",
+      "details": {
+        "method": "GET",
+        "url": "http://gateway:3000/health",
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-expose-headers": "X-Total-Count, X-Page-Count, X-Correlation-Id",
+          "connection": "keep-alive",
+          "content-length": "54",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:04 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "2a86035a-0da1-4285-892d-8510f1f56f4f",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "99",
+          "x-ratelimit-reset": "1772211424",
+          "x-xss-protection": "0"
+        },
+        "response": {
+          "status": "ok",
+          "timestamp": "2026-02-27T16:56:04.419Z"
+        },
+        "requestBody": null
+      }
+    },
+    {
+      "phase": "01-health-and-basics",
+      "name": "Gateway /internal/health",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:04.446Z",
+      "details": {
+        "method": "GET",
+        "url": "http://gateway:3000/internal/health",
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-expose-headers": "X-Total-Count, X-Page-Count, X-Correlation-Id",
+          "connection": "keep-alive",
+          "content-length": "101",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:04 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "78916529-33bb-4b19-8150-6824ecce618b",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "98",
+          "x-ratelimit-reset": "1772211424",
+          "x-xss-protection": "0"
+        },
+        "response": {
+          "status": "ok",
+          "service": "caas-gateway",
+          "timestamp": "2026-02-27T16:56:04.443Z",
+          "uptime": 31.541316403
+        },
+        "requestBody": null
+      }
+    },
+    {
+      "phase": "01-health-and-basics",
+      "name": "Auth /health",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:04.455Z",
+      "details": {
+        "method": "GET",
+        "url": "http://auth-service:3001/health",
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "connection": "keep-alive",
+          "content-length": "105",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:04 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "13475864-0f49-4069-99aa-355e5613be99",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "10000",
+          "x-ratelimit-remaining": "9999",
+          "x-ratelimit-reset": "900",
+          "x-xss-protection": "0"
+        },
+        "response": {
+          "status": "healthy",
+          "service": "auth-service",
+          "timestamp": "2026-02-27T16:56:04.452Z",
+          "uptime": 62.42731936
+        },
+        "requestBody": null
+      }
+    },
+    {
+      "phase": "01-health-and-basics",
+      "name": "Compliance /health",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:04.467Z",
+      "details": {
+        "method": "GET",
+        "url": "http://compliance-service:3008/health",
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "connection": "keep-alive",
+          "content-length": "143",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:04 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "ff392cd0-770b-4d22-8b23-ea774e51a02b",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "99",
+          "x-ratelimit-reset": "3600",
+          "x-xss-protection": "0"
+        },
+        "response": {
+          "status": "healthy",
+          "service": "compliance-service",
+          "timestamp": "2026-02-27T16:56:04.464Z",
+          "checks": {
+            "mongodb": "connected",
+            "redis": "connected"
+          }
+        },
+        "requestBody": null
+      }
+    },
+    {
+      "phase": "01-health-and-basics",
+      "name": "Crypto /health",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:04.478Z",
+      "details": {
+        "method": "GET",
+        "url": "http://crypto-service:3009/health",
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "connection": "keep-alive",
+          "content-length": "139",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:04 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "e6280104-66da-4aec-89cf-d4aadd93969b",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "1000",
+          "x-ratelimit-remaining": "999",
+          "x-ratelimit-reset": "3600",
+          "x-xss-protection": "0"
+        },
+        "response": {
+          "status": "healthy",
+          "service": "crypto-service",
+          "timestamp": "2026-02-27T16:56:04.475Z",
+          "checks": {
+            "mongodb": "connected",
+            "redis": "connected"
+          }
+        },
+        "requestBody": null
+      }
+    },
+    {
+      "phase": "01-health-and-basics",
+      "name": "Search /health",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:04.485Z",
+      "details": {
+        "method": "GET",
+        "url": "http://search-service:3006/health",
+        "status": 200,
+        "headers": {
+          "connection": "keep-alive",
+          "content-length": "192",
+          "content-type": "application/json; charset=utf-8",
+          "date": "Fri, 27 Feb 2026 16:56:04 GMT",
+          "keep-alive": "timeout=72",
+          "x-correlation-id": "fd0d1206-ccf9-4ed9-b4dd-80176de42aa0"
+        },
+        "response": {
+          "status": "healthy",
+          "service": "search-service",
+          "indexing": {
+            "documentsIndexed": 0,
+            "documentsUpdated": 0,
+            "documentsDeleted": 0,
+            "errors": 0,
+            "lastFlush": "2026-02-27T16:55:06.048Z",
+            "averageLatency": 0
+          }
+        },
+        "requestBody": null
+      }
+    },
+    {
+      "phase": "01-health-and-basics",
+      "name": "Media /health",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:04.494Z",
+      "details": {
+        "method": "GET",
+        "url": "http://media-service:3005/health",
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-origin": "*",
+          "connection": "keep-alive",
+          "content-length": "151",
+          "content-type": "application/json; charset=utf-8",
+          "date": "Fri, 27 Feb 2026 16:56:04 GMT",
+          "keep-alive": "timeout=72",
+          "x-correlation-id": "52f59aeb-0559-4b48-b4f9-50ef0b16710f"
+        },
+        "response": {
+          "status": "healthy",
+          "timestamp": "2026-02-27T16:56:04.492Z",
+          "services": {
+            "mongodb": "connected",
+            "s3": "connected",
+            "redis": "connected",
+            "kafka": "connected"
+          }
+        },
+        "requestBody": null
+      }
+    },
+    {
+      "phase": "01-health-and-basics",
+      "name": "Socket1 /health",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:04.505Z",
+      "details": {
+        "method": "GET",
+        "url": "http://socket-service-1:3001/health",
+        "status": 200,
+        "headers": {
+          "connection": "keep-alive",
+          "content-length": "243",
+          "content-type": "application/json; charset=utf-8",
+          "date": "Fri, 27 Feb 2026 16:56:04 GMT",
+          "etag": "W/\"f3-c7tM7q6+P80EwG5v0dY79635FK4\"",
+          "keep-alive": "timeout=5",
+          "x-powered-by": "Express"
+        },
+        "response": {
+          "status": "healthy",
+          "timestamp": "2026-02-27T16:56:04.502Z",
+          "checks": {
+            "redis": {
+              "status": "healthy",
+              "latency_ms": 1
+            },
+            "memory": {
+              "status": "healthy"
+            },
+            "uptime": {
+              "status": "healthy"
+            }
+          },
+          "metrics": {
+            "connections": 0,
+            "uptime_seconds": 59,
+            "memory_usage_mb": 24
+          }
+        },
+        "requestBody": null
+      }
+    },
+    {
+      "phase": "01-health-and-basics",
+      "name": "Socket2 /health",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:04.515Z",
+      "details": {
+        "method": "GET",
+        "url": "http://socket-service-2:3001/health",
+        "status": 200,
+        "headers": {
+          "connection": "keep-alive",
+          "content-length": "243",
+          "content-type": "application/json; charset=utf-8",
+          "date": "Fri, 27 Feb 2026 16:56:04 GMT",
+          "etag": "W/\"f3-rRG4vkXT6qucIWr8Bg+HDE8gTWQ\"",
+          "keep-alive": "timeout=5",
+          "x-powered-by": "Express"
+        },
+        "response": {
+          "status": "healthy",
+          "timestamp": "2026-02-27T16:56:04.512Z",
+          "checks": {
+            "redis": {
+              "status": "healthy",
+              "latency_ms": 1
+            },
+            "memory": {
+              "status": "healthy"
+            },
+            "uptime": {
+              "status": "healthy"
+            }
+          },
+          "metrics": {
+            "connections": 0,
+            "uptime_seconds": 59,
+            "memory_usage_mb": 24
+          }
+        },
+        "requestBody": null
+      }
+    },
+    {
+      "phase": "01-health-and-basics",
+      "name": "Admin Portal /api/health",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:04.546Z",
+      "details": {
+        "method": "GET",
+        "url": "http://admin-portal:3100/api/health",
+        "status": 200,
+        "headers": {
+          "connection": "keep-alive",
+          "content-type": "application/json",
+          "date": "Fri, 27 Feb 2026 16:56:04 GMT",
+          "keep-alive": "timeout=5",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "transfer-encoding": "chunked",
+          "vary": "RSC, Next-Router-State-Tree, Next-Router-Prefetch",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-nextjs-cache": "HIT"
+        },
+        "response": {
+          "status": "healthy",
+          "service": "admin-portal",
+          "version": "1.0.0",
+          "timestamp": "2026-02-27T16:51:26.633Z"
+        },
+        "requestBody": null
+      }
+    },
+    {
+      "phase": "02-cors-and-registration",
+      "name": "Gateway preflight register with custom headers",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:04.551Z",
+      "details": {
+        "method": "OPTIONS",
+        "url": "http://gateway:3000/api/v1/auth/client/register",
+        "status": 204,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-headers": "Content-Type, Authorization, X-Api-Key, X-Requested-With, Accept, X-Correlation-Id, Idempotency-Key, X-Timestamp, X-Nonce, X-Signature, X-Project-Id, X-Tenant-Id, X-Client-Id, X-Request-Id, X-CSRF-Token",
+          "access-control-allow-methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+          "access-control-allow-origin": "http://localhost:3100",
+          "access-control-expose-headers": "X-Total-Count, X-Page-Count, X-Correlation-Id",
+          "connection": "keep-alive",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:04 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-xss-protection": "0"
+        },
+        "response": "",
+        "requestBody": null
+      }
+    },
+    {
+      "phase": "02-cors-and-registration",
+      "name": "CORS allow header includes content-type",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:04.552Z",
+      "details": {
+        "allowHeaders": "content-type, authorization, x-api-key, x-requested-with, accept, x-correlation-id, idempotency-key, x-timestamp, x-nonce, x-signature, x-project-id, x-tenant-id, x-client-id, x-request-id, x-csrf-token",
+        "expected": "content-type"
+      }
+    },
+    {
+      "phase": "02-cors-and-registration",
+      "name": "CORS allow header includes authorization",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:04.552Z",
+      "details": {
+        "allowHeaders": "content-type, authorization, x-api-key, x-requested-with, accept, x-correlation-id, idempotency-key, x-timestamp, x-nonce, x-signature, x-project-id, x-tenant-id, x-client-id, x-request-id, x-csrf-token",
+        "expected": "authorization"
+      }
+    },
+    {
+      "phase": "02-cors-and-registration",
+      "name": "CORS allow header includes x-correlation-id",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:04.552Z",
+      "details": {
+        "allowHeaders": "content-type, authorization, x-api-key, x-requested-with, accept, x-correlation-id, idempotency-key, x-timestamp, x-nonce, x-signature, x-project-id, x-tenant-id, x-client-id, x-request-id, x-csrf-token",
+        "expected": "x-correlation-id"
+      }
+    },
+    {
+      "phase": "02-cors-and-registration",
+      "name": "CORS allow header includes idempotency-key",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:04.553Z",
+      "details": {
+        "allowHeaders": "content-type, authorization, x-api-key, x-requested-with, accept, x-correlation-id, idempotency-key, x-timestamp, x-nonce, x-signature, x-project-id, x-tenant-id, x-client-id, x-request-id, x-csrf-token",
+        "expected": "idempotency-key"
+      }
+    },
+    {
+      "phase": "02-cors-and-registration",
+      "name": "CORS allow header includes x-timestamp",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:04.553Z",
+      "details": {
+        "allowHeaders": "content-type, authorization, x-api-key, x-requested-with, accept, x-correlation-id, idempotency-key, x-timestamp, x-nonce, x-signature, x-project-id, x-tenant-id, x-client-id, x-request-id, x-csrf-token",
+        "expected": "x-timestamp"
+      }
+    },
+    {
+      "phase": "02-cors-and-registration",
+      "name": "CORS allow header includes x-nonce",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:04.553Z",
+      "details": {
+        "allowHeaders": "content-type, authorization, x-api-key, x-requested-with, accept, x-correlation-id, idempotency-key, x-timestamp, x-nonce, x-signature, x-project-id, x-tenant-id, x-client-id, x-request-id, x-csrf-token",
+        "expected": "x-nonce"
+      }
+    },
+    {
+      "phase": "02-cors-and-registration",
+      "name": "CORS allow header includes x-project-id",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:04.553Z",
+      "details": {
+        "allowHeaders": "content-type, authorization, x-api-key, x-requested-with, accept, x-correlation-id, idempotency-key, x-timestamp, x-nonce, x-signature, x-project-id, x-tenant-id, x-client-id, x-request-id, x-csrf-token",
+        "expected": "x-project-id"
+      }
+    },
+    {
+      "phase": "02-cors-and-registration",
+      "name": "Admin proxy register",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:04.840Z",
+      "details": {
+        "method": "POST",
+        "url": "http://admin-portal:3100/api/auth/register",
+        "status": 201,
+        "headers": {
+          "connection": "keep-alive",
+          "content-type": "application/json",
+          "date": "Fri, 27 Feb 2026 16:56:04 GMT",
+          "keep-alive": "timeout=5",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "transfer-encoding": "chunked",
+          "vary": "RSC, Next-Router-State-Tree, Next-Router-Prefetch",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY"
+        },
+        "response": {
+          "client_id": "2955b739-5591-40a9-beda-265ceb990301",
+          "tenant_id": "d23de551-ed40-4622-9ba4-9ec06d1234f5",
+          "project_id": "65ff0018-5a7b-42c7-9752-4d2119075939",
+          "api_key": "caas_prod_3cc855856bf44378b265cb79defc56432b9c8ff8460e696ddc6e46b3f72828f6",
+          "api_secret": "caas_prod_680d9ac63bc7e68991380b24b173bc8cc969f33a9a68f300067a1f2f8bf16376",
+          "message": "Registration successful. Store your API keys securely - they cannot be retrieved later."
+        },
+        "requestBody": {
+          "company_name": "Fresh Tenant 1772211364352",
+          "email": "fresh-1772211364352@example.com",
+          "password": "FreshPassword-123!",
+          "plan": "business",
+          "project": {
+            "name": "Primary Project 1772211364352",
+            "stack": "react",
+            "environment": "development"
+          }
+        }
+      }
+    },
+    {
+      "phase": "02-cors-and-registration",
+      "name": "Admin proxy register duplicate email",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:04.887Z",
+      "details": {
+        "method": "POST",
+        "url": "http://admin-portal:3100/api/auth/register",
+        "status": 409,
+        "headers": {
+          "connection": "keep-alive",
+          "content-type": "application/json",
+          "date": "Fri, 27 Feb 2026 16:56:04 GMT",
+          "keep-alive": "timeout=5",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "transfer-encoding": "chunked",
+          "vary": "RSC, Next-Router-State-Tree, Next-Router-Prefetch",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY"
+        },
+        "response": {
+          "error": "Email already registered"
+        },
+        "requestBody": {
+          "company_name": "Fresh Tenant 1772211364352",
+          "email": "fresh-1772211364352@example.com",
+          "password": "FreshPassword-123!",
+          "plan": "business",
+          "project": {
+            "name": "Primary Project 1772211364352",
+            "stack": "react",
+            "environment": "development"
+          }
+        }
+      }
+    },
+    {
+      "phase": "02-cors-and-registration",
+      "name": "Gateway register negative matrix :: missing fields",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:04.898Z",
+      "details": {
+        "method": "POST",
+        "url": "http://gateway:3000/api/v1/auth/client/register",
+        "status": 400,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-expose-headers": "X-Total-Count, X-Page-Count, X-Correlation-Id",
+          "connection": "keep-alive",
+          "content-length": "274",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:04 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "bdf6e389-13d0-4f27-822d-952fb13d1e1c",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "97",
+          "x-ratelimit-reset": "60",
+          "x-xss-protection": "0"
+        },
+        "response": {
+          "statusCode": 400,
+          "error": "Bad Request",
+          "message": "Validation Error",
+          "details": [
+            {
+              "field": "company_name",
+              "message": "Required",
+              "code": "invalid_type"
+            },
+            {
+              "field": "email",
+              "message": "Required",
+              "code": "invalid_type"
+            },
+            {
+              "field": "password",
+              "message": "Required",
+              "code": "invalid_type"
+            }
+          ]
+        },
+        "requestBody": {}
+      }
+    },
+    {
+      "phase": "02-cors-and-registration",
+      "name": "Gateway register negative matrix :: invalid email",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:04.906Z",
+      "details": {
+        "method": "POST",
+        "url": "http://gateway:3000/api/v1/auth/client/register",
+        "status": 400,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-expose-headers": "X-Total-Count, X-Page-Count, X-Correlation-Id",
+          "connection": "keep-alive",
+          "content-length": "149",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:04 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "167fada7-0d83-4f5a-a4ba-7e1d3fbf83b8",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "96",
+          "x-ratelimit-reset": "60",
+          "x-xss-protection": "0"
+        },
+        "response": {
+          "statusCode": 400,
+          "error": "Bad Request",
+          "message": "Validation Error",
+          "details": [
+            {
+              "field": "email",
+              "message": "Invalid email",
+              "code": "invalid_string"
+            }
+          ]
+        },
+        "requestBody": {
+          "company_name": "X Corp",
+          "email": "bad-email",
+          "password": "FreshPassword-123!"
+        }
+      }
+    },
+    {
+      "phase": "02-cors-and-registration",
+      "name": "Gateway register negative matrix :: short password",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:04.913Z",
+      "details": {
+        "method": "POST",
+        "url": "http://gateway:3000/api/v1/auth/client/register",
+        "status": 400,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-expose-headers": "X-Total-Count, X-Page-Count, X-Correlation-Id",
+          "connection": "keep-alive",
+          "content-length": "177",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:04 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "f1ea359f-e493-4a90-9079-49a9f9dee8e7",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "95",
+          "x-ratelimit-reset": "60",
+          "x-xss-protection": "0"
+        },
+        "response": {
+          "statusCode": 400,
+          "error": "Bad Request",
+          "message": "Validation Error",
+          "details": [
+            {
+              "field": "password",
+              "message": "String must contain at least 8 character(s)",
+              "code": "too_small"
+            }
+          ]
+        },
+        "requestBody": {
+          "company_name": "X Corp",
+          "email": "neg-1772211364352@example.com",
+          "password": "123"
+        }
+      }
+    },
+    {
+      "phase": "02-cors-and-registration",
+      "name": "Gateway register negative matrix :: invalid project environment",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:04.921Z",
+      "details": {
+        "method": "POST",
+        "url": "http://gateway:3000/api/v1/auth/client/register",
+        "status": 400,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-expose-headers": "X-Total-Count, X-Page-Count, X-Correlation-Id",
+          "connection": "keep-alive",
+          "content-length": "238",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:04 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "d9db364d-7066-4535-9c42-ea549389eece",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "94",
+          "x-ratelimit-reset": "60",
+          "x-xss-protection": "0"
+        },
+        "response": {
+          "statusCode": 400,
+          "error": "Bad Request",
+          "message": "Validation Error",
+          "details": [
+            {
+              "field": "project.environment",
+              "message": "Invalid enum value. Expected 'development' | 'staging' | 'production', received 'qa'",
+              "code": "invalid_enum_value"
+            }
+          ]
+        },
+        "requestBody": {
+          "company_name": "X Corp",
+          "email": "neg2-1772211364352@example.com",
+          "password": "FreshPassword-123!",
+          "project": {
+            "name": "proj",
+            "stack": "react",
+            "environment": "qa"
+          }
+        }
+      }
+    },
+    {
+      "phase": "02-cors-and-registration",
+      "name": "Gateway client login",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:05.020Z",
+      "details": {
+        "method": "POST",
+        "url": "http://gateway:3000/api/v1/auth/client/login",
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-expose-headers": "X-Total-Count, X-Page-Count, X-Correlation-Id",
+          "connection": "keep-alive",
+          "content-length": "1077",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:05 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "1e04b011-459f-48a5-9943-e39090d93994",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "97",
+          "x-ratelimit-reset": "1772211423",
+          "x-xss-protection": "0"
+        },
+        "response": {
+          "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyOTU1YjczOS01NTkxLTQwYTktYmVkYS0yNjVjZWI5OTAzMDEiLCJjbGllbnRfaWQiOiIyOTU1YjczOS01NTkxLTQwYTktYmVkYS0yNjVjZWI5OTAzMDEiLCJwcm9qZWN0X2lkIjoiNjVmZjAwMTgtNWE3Yi00MmM3LTk3NTItNGQyMTE5MDc1OTM5IiwicHJvamVjdF9yb2xlIjoib3duZXIiLCJwcm9qZWN0X3N0YWNrIjoicmVhY3QiLCJwcm9qZWN0X2Vudmlyb25tZW50IjoiZGV2ZWxvcG1lbnQiLCJ1c2VyX2lkIjoiMjk1NWI3MzktNTU5MS00MGE5LWJlZGEtMjY1Y2ViOTkwMzAxIiwiZW1haWwiOiJmcmVzaC0xNzcyMjExMzY0MzUyQGV4YW1wbGUuY29tIiwicm9sZSI6InRlbmFudF9hZG1pbiIsInRlbmFudF9pZCI6ImQyM2RlNTUxLWVkNDAtNDYyMi05YmE0LTllYzA2ZDEyMzRmNSIsImNvbXBhbnlfbmFtZSI6IkZyZXNoIFRlbmFudCAxNzcyMjExMzY0MzUyIiwicGxhbiI6ImJ1c2luZXNzIiwiaWF0IjoxNzcyMjExMzY1LCJleHAiOjE3NzIyMTIyNjUsImlzcyI6ImNhYXMtYXV0aC1zZXJ2aWNlIn0.xVjC0zVJhlsf-92r3-ATbU7XiUjKjbim-kKDn9mlX9o",
+          "refresh_token": "908eedc542590a44a54ebf82ca2d8d3153f584061151b1403da997710782421882d38519b2d00cb11e562d29d19aa0ac",
+          "tenant_id": "d23de551-ed40-4622-9ba4-9ec06d1234f5",
+          "client_id": "2955b739-5591-40a9-beda-265ceb990301",
+          "project_id": "65ff0018-5a7b-42c7-9752-4d2119075939",
+          "expires_in": 900
+        },
+        "requestBody": {
+          "email": "fresh-1772211364352@example.com",
+          "password": "FreshPassword-123!"
+        }
+      }
+    },
+    {
+      "phase": "02-cors-and-registration",
+      "name": "Admin proxy login",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:05.139Z",
+      "details": {
+        "method": "POST",
+        "url": "http://admin-portal:3100/api/auth/login",
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "connection": "keep-alive",
+          "content-type": "application/json",
+          "date": "Fri, 27 Feb 2026 16:56:05 GMT",
+          "keep-alive": "timeout=5",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "set-cookie": "caas_csrf_token=6027d421a94bfa8c445d76cbccc5062873a039854990b1f2; Path=/; Expires=Fri, 06 Mar 2026 16:56:05 GMT; Max-Age=604800; Secure; SameSite=strict",
+          "transfer-encoding": "chunked",
+          "vary": "RSC, Next-Router-State-Tree, Next-Router-Prefetch",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-middleware-set-cookie": "caas_access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyOTU1YjczOS01NTkxLTQwYTktYmVkYS0yNjVjZWI5OTAzMDEiLCJjbGllbnRfaWQiOiIyOTU1YjczOS01NTkxLTQwYTktYmVkYS0yNjVjZWI5OTAzMDEiLCJwcm9qZWN0X2lkIjoiNjVmZjAwMTgtNWE3Yi00MmM3LTk3NTItNGQyMTE5MDc1OTM5IiwicHJvamVjdF9yb2xlIjoib3duZXIiLCJwcm9qZWN0X3N0YWNrIjoicmVhY3QiLCJwcm9qZWN0X2Vudmlyb25tZW50IjoiZGV2ZWxvcG1lbnQiLCJ1c2VyX2lkIjoiMjk1NWI3MzktNTU5MS00MGE5LWJlZGEtMjY1Y2ViOTkwMzAxIiwiZW1haWwiOiJmcmVzaC0xNzcyMjExMzY0MzUyQGV4YW1wbGUuY29tIiwicm9sZSI6InRlbmFudF9hZG1pbiIsInRlbmFudF9pZCI6ImQyM2RlNTUxLWVkNDAtNDYyMi05YmE0LTllYzA2ZDEyMzRmNSIsImNvbXBhbnlfbmFtZSI6IkZyZXNoIFRlbmFudCAxNzcyMjExMzY0MzUyIiwicGxhbiI6ImJ1c2luZXNzIiwiaWF0IjoxNzcyMjExMzY1LCJleHAiOjE3NzIyMTIyNjUsImlzcyI6ImNhYXMtYXV0aC1zZXJ2aWNlIn0.xVjC0zVJhlsf-92r3-ATbU7XiUjKjbim-kKDn9mlX9o; Path=/; Expires=Fri, 27 Feb 2026 17:11:05 GMT; Max-Age=900; Secure; SameSite=lax,caas_refresh_token=0d27a49ce3372c21f63fc588773ad88b1729da27bc68289a7233fc2f6463a37b48bda6484a0204ea740acd39059c0a50; Path=/; Expires=Fri, 06 Mar 2026 16:56:05 GMT; Max-Age=604800; Secure; HttpOnly; SameSite=lax,caas_csrf_token=6027d421a94bfa8c445d76cbccc5062873a039854990b1f2; Path=/; Expires=Fri, 06 Mar 2026 16:56:05 GMT; Max-Age=604800; Secure; SameSite=strict"
+        },
+        "response": {
+          "tenant_id": "d23de551-ed40-4622-9ba4-9ec06d1234f5",
+          "client_id": "2955b739-5591-40a9-beda-265ceb990301",
+          "email": "fresh-1772211364352@example.com"
+        },
+        "requestBody": {
+          "email": "fresh-1772211364352@example.com",
+          "password": "FreshPassword-123!"
+        }
+      }
+    },
+    {
+      "phase": "02-cors-and-registration",
+      "name": "Admin proxy refresh with cookie",
+      "status": "failed",
+      "timestamp": "2026-02-27T16:56:05.157Z",
+      "details": {
+        "method": "POST",
+        "url": "http://admin-portal:3100/api/auth/refresh",
+        "status": 403,
+        "headers": {
+          "connection": "keep-alive",
+          "content-type": "application/json",
+          "date": "Fri, 27 Feb 2026 16:56:05 GMT",
+          "keep-alive": "timeout=5",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "transfer-encoding": "chunked",
+          "vary": "RSC, Next-Router-State-Tree, Next-Router-Prefetch",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY"
+        },
+        "response": {
+          "error": "CSRF validation failed",
+          "code": "csrf_failed"
+        },
+        "requestBody": null
+      }
+    },
+    {
+      "phase": "02-cors-and-registration",
+      "name": "Gateway refresh token",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:05.184Z",
+      "details": {
+        "method": "POST",
+        "url": "http://gateway:3000/api/v1/auth/client/refresh",
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-expose-headers": "X-Total-Count, X-Page-Count, X-Correlation-Id",
+          "connection": "keep-alive",
+          "content-length": "923",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:05 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "4a2493bb-5842-469d-84df-ddf6150ea5ce",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "96",
+          "x-ratelimit-reset": "1772211424",
+          "x-xss-protection": "0"
+        },
+        "response": {
+          "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyOTU1YjczOS01NTkxLTQwYTktYmVkYS0yNjVjZWI5OTAzMDEiLCJjbGllbnRfaWQiOiIyOTU1YjczOS01NTkxLTQwYTktYmVkYS0yNjVjZWI5OTAzMDEiLCJwcm9qZWN0X2lkIjoiNjVmZjAwMTgtNWE3Yi00MmM3LTk3NTItNGQyMTE5MDc1OTM5IiwicHJvamVjdF9yb2xlIjoib3duZXIiLCJwcm9qZWN0X3N0YWNrIjoicmVhY3QiLCJwcm9qZWN0X2Vudmlyb25tZW50IjoiZGV2ZWxvcG1lbnQiLCJ1c2VyX2lkIjoiMjk1NWI3MzktNTU5MS00MGE5LWJlZGEtMjY1Y2ViOTkwMzAxIiwiZW1haWwiOiJmcmVzaC0xNzcyMjExMzY0MzUyQGV4YW1wbGUuY29tIiwicm9sZSI6InRlbmFudF9hZG1pbiIsInRlbmFudF9pZCI6ImQyM2RlNTUxLWVkNDAtNDYyMi05YmE0LTllYzA2ZDEyMzRmNSIsImNvbXBhbnlfbmFtZSI6IkZyZXNoIFRlbmFudCAxNzcyMjExMzY0MzUyIiwicGxhbiI6ImJ1c2luZXNzIiwiaWF0IjoxNzcyMjExMzY1LCJleHAiOjE3NzIyMTIyNjUsImlzcyI6ImNhYXMtYXV0aC1zZXJ2aWNlIn0.xVjC0zVJhlsf-92r3-ATbU7XiUjKjbim-kKDn9mlX9o",
+          "refresh_token": "147027cf579ba9fcbdc1d729a3cf1d4a38e694d566805bba5058fa8395107b0f1a1ee6b01896e4edd1258bb838d87c49",
+          "expires_in": 900
+        },
+        "requestBody": {
+          "refresh_token": "908eedc542590a44a54ebf82ca2d8d3153f584061151b1403da997710782421882d38519b2d00cb11e562d29d19aa0ac"
+        }
+      }
+    },
+    {
+      "phase": "03-project-lifecycle-and-scope",
+      "name": "List projects initial",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:05.217Z",
+      "details": {
+        "method": "GET",
+        "url": "http://gateway:3000/api/v1/auth/client/projects",
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-expose-headers": "X-Total-Count, X-Page-Count, X-Correlation-Id",
+          "connection": "keep-alive",
+          "content-length": "248",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:05 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "dcf44c14-e861-4d3f-9c97-530fef9c88ad",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "1000",
+          "x-ratelimit-remaining": "999",
+          "x-ratelimit-reset": "1772211425",
+          "x-xss-protection": "0"
+        },
+        "response": {
+          "projects": [
+            {
+              "project_id": "65ff0018-5a7b-42c7-9752-4d2119075939",
+              "slug": "primary-project-1772211364352",
+              "name": "Primary Project 1772211364352",
+              "stack": "react",
+              "environment": "development",
+              "created_at": "2026-02-27T16:56:04.726Z",
+              "status": "active"
+            }
+          ]
+        },
+        "requestBody": null
+      }
+    },
+    {
+      "phase": "03-project-lifecycle-and-scope",
+      "name": "Create secondary project",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:05.250Z",
+      "details": {
+        "method": "POST",
+        "url": "http://gateway:3000/api/v1/auth/client/projects",
+        "status": 201,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-expose-headers": "X-Total-Count, X-Page-Count, X-Correlation-Id",
+          "connection": "keep-alive",
+          "content-length": "303",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:05 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "a2bb9249-5216-440d-be8c-c75ba0e01952",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "1000",
+          "x-ratelimit-remaining": "998",
+          "x-ratelimit-reset": "1772211425",
+          "x-xss-protection": "0"
+        },
+        "response": {
+          "project": {
+            "project_id": "14694433-df85-455c-acaa-19cafba2e463",
+            "slug": "secondary-project-1772211364352",
+            "name": "Secondary Project 1772211364352",
+            "stack": "node",
+            "environment": "staging",
+            "created_at": "2026-02-27T16:56:05.239Z",
+            "status": "active"
+          },
+          "active_project_id": "14694433-df85-455c-acaa-19cafba2e463"
+        },
+        "requestBody": {
+          "name": "Secondary Project 1772211364352",
+          "stack": "node",
+          "environment": "staging"
+        }
+      }
+    },
+    {
+      "phase": "03-project-lifecycle-and-scope",
+      "name": "Update project metadata",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:05.288Z",
+      "details": {
+        "method": "PATCH",
+        "url": "http://gateway:3000/api/v1/auth/client/projects/14694433-df85-455c-acaa-19cafba2e463",
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-expose-headers": "X-Total-Count, X-Page-Count, X-Correlation-Id",
+          "connection": "keep-alive",
+          "content-length": "306",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:05 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "abf49293-84c5-427f-9b18-b2e17a176a44",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "1000",
+          "x-ratelimit-remaining": "997",
+          "x-ratelimit-reset": "1772211425",
+          "x-xss-protection": "0"
+        },
+        "response": {
+          "project": {
+            "project_id": "14694433-df85-455c-acaa-19cafba2e463",
+            "slug": "secondary-project-updated-1772211364352",
+            "name": "Secondary Project Updated 1772211364352",
+            "stack": "python",
+            "environment": "production",
+            "created_at": "2026-02-27T16:56:05.239Z",
+            "status": "active"
+          },
+          "message": "Project updated successfully"
+        },
+        "requestBody": {
+          "name": "Secondary Project Updated 1772211364352",
+          "stack": "python",
+          "environment": "production"
+        }
+      }
+    },
+    {
+      "phase": "03-project-lifecycle-and-scope",
+      "name": "Select updated project as active",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:05.325Z",
+      "details": {
+        "method": "POST",
+        "url": "http://gateway:3000/api/v1/auth/client/projects/select",
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-expose-headers": "X-Total-Count, X-Page-Count, X-Correlation-Id",
+          "connection": "keep-alive",
+          "content-length": "359",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:05 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "d1d52c7b-18fc-4496-b8b1-25e8f2e28ddb",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "1000",
+          "x-ratelimit-remaining": "996",
+          "x-ratelimit-reset": "1772211425",
+          "x-xss-protection": "0"
+        },
+        "response": {
+          "active_project_id": "14694433-df85-455c-acaa-19cafba2e463",
+          "project": {
+            "project_id": "14694433-df85-455c-acaa-19cafba2e463",
+            "slug": "secondary-project-updated-1772211364352",
+            "name": "Secondary Project Updated 1772211364352",
+            "stack": "python",
+            "environment": "production",
+            "created_at": "2026-02-27T16:56:05.239Z",
+            "status": "active"
+          },
+          "message": "Active project updated"
+        },
+        "requestBody": {
+          "project_id": "14694433-df85-455c-acaa-19cafba2e463"
+        }
+      }
+    },
+    {
+      "phase": "03-project-lifecycle-and-scope",
+      "name": "Update project client spoof attempt rejected",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:05.340Z",
+      "details": {
+        "method": "PATCH",
+        "url": "http://gateway:3000/api/v1/auth/client/projects/14694433-df85-455c-acaa-19cafba2e463",
+        "status": 403,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-expose-headers": "X-Total-Count, X-Page-Count, X-Correlation-Id",
+          "connection": "keep-alive",
+          "content-length": "102",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:05 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "e68435c0-0309-4c7d-944f-cea511d9bda4",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "1000",
+          "x-ratelimit-remaining": "995",
+          "x-ratelimit-reset": "1772211425",
+          "x-xss-protection": "0"
+        },
+        "response": {
+          "error": "Provided client_id does not match authenticated context",
+          "code": "identity_context_mismatch"
+        },
+        "requestBody": {
+          "client_id": "spoofed-client-id",
+          "name": "Spoofed"
+        }
+      }
+    },
+    {
+      "phase": "03-project-lifecycle-and-scope",
+      "name": "Archive selected project",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:05.377Z",
+      "details": {
+        "method": "POST",
+        "url": "http://gateway:3000/api/v1/auth/client/projects/14694433-df85-455c-acaa-19cafba2e463/archive",
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-expose-headers": "X-Total-Count, X-Page-Count, X-Correlation-Id",
+          "connection": "keep-alive",
+          "content-length": "569",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:05 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "a1433e8e-1682-4615-9b36-5ba04bd26053",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "1000",
+          "x-ratelimit-remaining": "994",
+          "x-ratelimit-reset": "1772211425",
+          "x-xss-protection": "0"
+        },
+        "response": {
+          "archived_project": {
+            "project_id": "14694433-df85-455c-acaa-19cafba2e463",
+            "slug": "secondary-project-updated-1772211364352",
+            "name": "Secondary Project Updated 1772211364352",
+            "stack": "python",
+            "environment": "production",
+            "created_at": "2026-02-27T16:56:05.239Z",
+            "status": "archived"
+          },
+          "active_project": {
+            "project_id": "65ff0018-5a7b-42c7-9752-4d2119075939",
+            "slug": "primary-project-1772211364352",
+            "name": "Primary Project 1772211364352",
+            "stack": "react",
+            "environment": "development",
+            "created_at": "2026-02-27T16:56:04.726Z",
+            "status": "active"
+          },
+          "message": "Project archived successfully"
+        },
+        "requestBody": {}
+      }
+    },
+    {
+      "phase": "03-project-lifecycle-and-scope",
+      "name": "List projects after archive",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:05.402Z",
+      "details": {
+        "method": "GET",
+        "url": "http://gateway:3000/api/v1/auth/client/projects",
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-expose-headers": "X-Total-Count, X-Page-Count, X-Correlation-Id",
+          "connection": "keep-alive",
+          "content-length": "248",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:05 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "710f30df-3daf-4813-8d14-f4dd87c2339c",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "1000",
+          "x-ratelimit-remaining": "993",
+          "x-ratelimit-reset": "1772211425",
+          "x-xss-protection": "0"
+        },
+        "response": {
+          "projects": [
+            {
+              "project_id": "65ff0018-5a7b-42c7-9752-4d2119075939",
+              "slug": "primary-project-1772211364352",
+              "name": "Primary Project 1772211364352",
+              "stack": "react",
+              "environment": "development",
+              "created_at": "2026-02-27T16:56:04.726Z",
+              "status": "active"
+            }
+          ]
+        },
+        "requestBody": null
+      }
+    },
+    {
+      "phase": "03-project-lifecycle-and-scope",
+      "name": "Archive last active project rejected",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:05.425Z",
+      "details": {
+        "method": "POST",
+        "url": "http://gateway:3000/api/v1/auth/client/projects/65ff0018-5a7b-42c7-9752-4d2119075939/archive",
+        "status": 400,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-expose-headers": "X-Total-Count, X-Page-Count, X-Correlation-Id",
+          "connection": "keep-alive",
+          "content-length": "51",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:05 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "e66b7924-a7e9-4f27-b527-2793eda85fbc",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "1000",
+          "x-ratelimit-remaining": "992",
+          "x-ratelimit-reset": "1772211425",
+          "x-xss-protection": "0"
+        },
+        "response": {
+          "error": "At least one active project is required"
+        },
+        "requestBody": {}
+      }
+    },
+    {
+      "phase": "03-project-lifecycle-and-scope",
+      "name": "Project select spoofed client_id rejected",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:05.441Z",
+      "details": {
+        "method": "POST",
+        "url": "http://gateway:3000/api/v1/auth/client/projects/select",
+        "status": 403,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-expose-headers": "X-Total-Count, X-Page-Count, X-Correlation-Id",
+          "connection": "keep-alive",
+          "content-length": "102",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:05 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "898185cd-cd35-4a3a-9bf4-f69f4d932ff2",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "1000",
+          "x-ratelimit-remaining": "991",
+          "x-ratelimit-reset": "1772211425",
+          "x-xss-protection": "0"
+        },
+        "response": {
+          "error": "Provided client_id does not match authenticated context",
+          "code": "identity_context_mismatch"
+        },
+        "requestBody": {
+          "client_id": "spoofed-client-id",
+          "project_id": "65ff0018-5a7b-42c7-9752-4d2119075939"
+        }
+      }
+    },
+    {
+      "phase": "03-project-lifecycle-and-scope",
+      "name": "Project create spoofed client_id rejected",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:05.457Z",
+      "details": {
+        "method": "POST",
+        "url": "http://gateway:3000/api/v1/auth/client/projects",
+        "status": 403,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-expose-headers": "X-Total-Count, X-Page-Count, X-Correlation-Id",
+          "connection": "keep-alive",
+          "content-length": "102",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:05 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "a43c7b35-dd01-4000-9e2f-2d8fce7dc534",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "1000",
+          "x-ratelimit-remaining": "990",
+          "x-ratelimit-reset": "1772211425",
+          "x-xss-protection": "0"
+        },
+        "response": {
+          "error": "Provided client_id does not match authenticated context",
+          "code": "identity_context_mismatch"
+        },
+        "requestBody": {
+          "client_id": "spoofed-client-id",
+          "name": "Spoofed Project",
+          "stack": "react",
+          "environment": "development"
+        }
+      }
+    },
+    {
+      "phase": "03-project-lifecycle-and-scope",
+      "name": "Project list still available",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:05.474Z",
+      "details": {
+        "method": "GET",
+        "url": "http://gateway:3000/api/v1/auth/client/projects",
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-expose-headers": "X-Total-Count, X-Page-Count, X-Correlation-Id",
+          "connection": "keep-alive",
+          "content-length": "248",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:05 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "62a3ed82-d37b-409b-b57c-83fd6988da24",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "1000",
+          "x-ratelimit-remaining": "989",
+          "x-ratelimit-reset": "1772211425",
+          "x-xss-protection": "0"
+        },
+        "response": {
+          "projects": [
+            {
+              "project_id": "65ff0018-5a7b-42c7-9752-4d2119075939",
+              "slug": "primary-project-1772211364352",
+              "name": "Primary Project 1772211364352",
+              "stack": "react",
+              "environment": "development",
+              "created_at": "2026-02-27T16:56:04.726Z",
+              "status": "active"
+            }
+          ]
+        },
+        "requestBody": null
+      }
+    },
+    {
+      "phase": "03-project-lifecycle-and-scope",
+      "name": "Project list count check",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:05.474Z",
+      "details": {
+        "initialProjectCount": 1
+      }
+    },
+    {
+      "phase": "04-sdk-http-contract",
+      "name": "SDK health endpoint",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:05.480Z",
+      "details": {
+        "method": "GET",
+        "url": "http://gateway:3000/api/v1/sdk/health",
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-expose-headers": "X-Total-Count, X-Page-Count, X-Correlation-Id",
+          "connection": "keep-alive",
+          "content-length": "87",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:05 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "c114816a-a831-472f-98e0-46872d13ab01",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "95",
+          "x-ratelimit-reset": "1772211424",
+          "x-xss-protection": "0"
+        },
+        "response": {
+          "status": "ok",
+          "service": "sdk-gateway",
+          "dependencies": {
+            "auth_client_circuit": "CLOSED"
+          }
+        },
+        "requestBody": null
+      }
+    },
+    {
+      "phase": "04-sdk-http-contract",
+      "name": "SDK capabilities with API key",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:05.500Z",
+      "details": {
+        "method": "GET",
+        "url": "http://gateway:3000/api/v1/sdk/capabilities",
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-expose-headers": "X-Total-Count, X-Page-Count, X-Correlation-Id",
+          "connection": "keep-alive",
+          "content-length": "573",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:05 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "53942d54-8ff8-47aa-9885-6a26800fd9dc",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "1000",
+          "x-ratelimit-remaining": "988",
+          "x-ratelimit-reset": "1772211425",
+          "x-xss-protection": "0"
+        },
+        "response": {
+          "session": {
+            "create": true,
+            "refresh": true,
+            "logout": true
+          },
+          "headers": {
+            "required": [
+              "x-api-key"
+            ],
+            "optional": [
+              "x-correlation-id",
+              "idempotency-key",
+              "x-project-id",
+              "user-agent",
+              "x-timestamp",
+              "x-nonce",
+              "x-signature"
+            ]
+          },
+          "errors": {
+            "context_missing": "Authenticated context is missing required tenant/client metadata",
+            "identity_context_mismatch": "Provided client identity does not match authenticated context",
+            "project_scope_violation": "Requested project is not within authenticated API key scope",
+            "replay_detected": "Signed request nonce has already been seen and is treated as replay"
+          }
+        },
+        "requestBody": null
+      }
+    },
+    {
+      "phase": "04-sdk-http-contract",
+      "name": "SDK session create valid",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:05.742Z",
+      "details": {
+        "method": "POST",
+        "url": "http://gateway:3000/api/v1/sdk/session",
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-expose-headers": "X-Total-Count, X-Page-Count, X-Correlation-Id",
+          "connection": "keep-alive",
+          "content-length": "1683",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:05 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "corr-1772211364352",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "1000",
+          "x-ratelimit-remaining": "987",
+          "x-ratelimit-reset": "1772211425",
+          "x-xss-protection": "0"
+        },
+        "response": {
+          "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJjN2YzMWJkYy00ODllLTRmMDctYTE3MS1iY2Y5MWJkNjRlOTUiLCJ1c2VyX2lkIjoiMzMxNTM5MTktNzQ4Yi00N2I1LTg0ZTgtODAzMTcwNDZjYWZiIiwidGVuYW50X2lkIjoiZDIzZGU1NTEtZWQ0MC00NjIyLTliYTQtOWVjMDZkMTIzNGY1IiwiZW1haWwiOiJzZGstdXNlci0xNzcyMjExMzY0MzUyQHNkay5kMjNkZTU1MS1lZDQwLTQ2MjItOWJhNC05ZWMwNmQxMjM0ZjUuY2Fhcy5pbyIsImV4dGVybmFsX2lkIjoic2RrLXVzZXItMTc3MjIxMTM2NDM1MiIsInByb2plY3RfaWQiOiI2NWZmMDAxOC01YTdiLTQyYzctOTc1Mi00ZDIxMTkwNzU5MzkiLCJwcm9qZWN0X3N0YWNrIjoicmVhY3QiLCJwcm9qZWN0X2Vudmlyb25tZW50IjoiZGV2ZWxvcG1lbnQiLCJzZXNzaW9uX2lkIjoiM2MzN2ZjMGItYTA4NS00Y2IxLTkwNjgtZjg4NzA1MTcyNmIyIiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3MjIxMTM2NSwiZXhwIjoxNzcyMjEyMjY1LCJpc3MiOiJjYWFzLWF1dGgtc2VydmljZSJ9.cvueB6perzNprE0Iu-VDtfQ44UwSMZRd-hMVfp3KS7E",
+          "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJkNjU2ZDU4OC1lYWQ4LTQ3YjUtYTYyMi0zNTcxZDMyZjM5ZjciLCJ1c2VyX2lkIjoiMzMxNTM5MTktNzQ4Yi00N2I1LTg0ZTgtODAzMTcwNDZjYWZiIiwidGVuYW50X2lkIjoiZDIzZGU1NTEtZWQ0MC00NjIyLTliYTQtOWVjMDZkMTIzNGY1Iiwic2Vzc2lvbl9pZCI6IjNjMzdmYzBiLWEwODUtNGNiMS05MDY4LWY4ODcwNTE3MjZiMiIsInByb2plY3RfaWQiOiI2NWZmMDAxOC01YTdiLTQyYzctOTc1Mi00ZDIxMTkwNzU5MzkiLCJ0eXBlIjoicmVmcmVzaCIsImlhdCI6MTc3MjIxMTM2NSwiZXhwIjoxNzcyODE2MTY1LCJpc3MiOiJjYWFzLWF1dGgtc2VydmljZSJ9.hqsWvdbaSmq0b4Uzv4qAROYyKngchT1CUep8-y-qFXM",
+          "expires_in": 900,
+          "token_type": "Bearer",
+          "user": {
+            "user_id": "33153919-748b-47b5-84e8-80317046cafb",
+            "external_id": "sdk-user-1772211364352",
+            "tenant_id": "d23de551-ed40-4622-9ba4-9ec06d1234f5",
+            "project_id": "65ff0018-5a7b-42c7-9752-4d2119075939",
+            "project_stack": "react",
+            "project_environment": "development"
+          },
+          "project_context_source": "header",
+          "socket_urls": [
+            "ws://localhost:3001"
+          ]
+        },
+        "requestBody": {
+          "user_external_id": "sdk-user-1772211364352",
+          "project_id": "65ff0018-5a7b-42c7-9752-4d2119075939"
+        }
+      }
+    },
+    {
+      "phase": "04-sdk-http-contract",
+      "name": "SDK session create with auth fallback project context",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:05.870Z",
+      "details": {
+        "method": "POST",
+        "url": "http://gateway:3000/api/v1/sdk/session",
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-expose-headers": "X-Total-Count, X-Page-Count, X-Correlation-Id",
+          "connection": "keep-alive",
+          "content-length": "1723",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:05 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "d769360b-0ff5-4408-b5b9-ca0db7ed4125",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-project-context-source": "auth_fallback_compat",
+          "x-ratelimit-limit": "1000",
+          "x-ratelimit-remaining": "986",
+          "x-ratelimit-reset": "1772211424",
+          "x-xss-protection": "0"
+        },
+        "response": {
+          "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI5MzQ2MWU1ZS1mZGMyLTQ2MzUtOGM4Yy1jMTUxMTJhNDRhZDUiLCJ1c2VyX2lkIjoiN2MxODEzYTMtOWQyMS00NGIxLTg4ZDctNTJjYTU3YTdiY2RlIiwidGVuYW50X2lkIjoiZDIzZGU1NTEtZWQ0MC00NjIyLTliYTQtOWVjMDZkMTIzNGY1IiwiZW1haWwiOiJzZGstdXNlci1mYWxsYmFjay0xNzcyMjExMzY0MzUyQHNkay5kMjNkZTU1MS1lZDQwLTQ2MjItOWJhNC05ZWMwNmQxMjM0ZjUuY2Fhcy5pbyIsImV4dGVybmFsX2lkIjoic2RrLXVzZXItZmFsbGJhY2stMTc3MjIxMTM2NDM1MiIsInByb2plY3RfaWQiOiI2NWZmMDAxOC01YTdiLTQyYzctOTc1Mi00ZDIxMTkwNzU5MzkiLCJwcm9qZWN0X3N0YWNrIjoicmVhY3QiLCJwcm9qZWN0X2Vudmlyb25tZW50IjoiZGV2ZWxvcG1lbnQiLCJzZXNzaW9uX2lkIjoiNmM5MTY4NjctZWQzYi00ZmVkLTg0YTItMWE1NWI0YTQzODgzIiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3MjIxMTM2NSwiZXhwIjoxNzcyMjEyMjY1LCJpc3MiOiJjYWFzLWF1dGgtc2VydmljZSJ9.maerKznlzC2RLHEhXp-UwAyQbwj0F_8wS_xjbfytBv4",
+          "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIyMmFlOTFiZi1lNWU5LTRiNmEtYWEzYi03MzE1YmE1N2FiYWQiLCJ1c2VyX2lkIjoiN2MxODEzYTMtOWQyMS00NGIxLTg4ZDctNTJjYTU3YTdiY2RlIiwidGVuYW50X2lkIjoiZDIzZGU1NTEtZWQ0MC00NjIyLTliYTQtOWVjMDZkMTIzNGY1Iiwic2Vzc2lvbl9pZCI6IjZjOTE2ODY3LWVkM2ItNGZlZC04NGEyLTFhNTViNGE0Mzg4MyIsInByb2plY3RfaWQiOiI2NWZmMDAxOC01YTdiLTQyYzctOTc1Mi00ZDIxMTkwNzU5MzkiLCJ0eXBlIjoicmVmcmVzaCIsImlhdCI6MTc3MjIxMTM2NSwiZXhwIjoxNzcyODE2MTY1LCJpc3MiOiJjYWFzLWF1dGgtc2VydmljZSJ9.33kDNKNqvDgtT3njpFr7zDJtFNxra14InRl7KnhTZWE",
+          "expires_in": 900,
+          "token_type": "Bearer",
+          "user": {
+            "user_id": "7c1813a3-9d21-44b1-88d7-52ca57a7bcde",
+            "external_id": "sdk-user-fallback-1772211364352",
+            "tenant_id": "d23de551-ed40-4622-9ba4-9ec06d1234f5",
+            "project_id": "65ff0018-5a7b-42c7-9752-4d2119075939",
+            "project_stack": "react",
+            "project_environment": "development"
+          },
+          "project_context_source": "auth_fallback",
+          "socket_urls": [
+            "ws://localhost:3001"
+          ]
+        },
+        "requestBody": {
+          "user_external_id": "sdk-user-fallback-1772211364352"
+        }
+      }
+    },
+    {
+      "phase": "04-sdk-http-contract",
+      "name": "SDK fallback project context header present",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:05.870Z",
+      "details": {
+        "header": "auth_fallback_compat"
+      }
+    },
+    {
+      "phase": "04-sdk-http-contract",
+      "name": "SDK session replay nonce rejected",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:05.888Z",
+      "details": {
+        "method": "POST",
+        "url": "http://gateway:3000/api/v1/sdk/session",
+        "status": 409,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-expose-headers": "X-Total-Count, X-Page-Count, X-Correlation-Id",
+          "connection": "keep-alive",
+          "content-length": "72",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:05 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "ba25ea1c-d3c6-4320-a834-01b2d8ff9c0c",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "1000",
+          "x-ratelimit-remaining": "985",
+          "x-ratelimit-reset": "1772211424",
+          "x-xss-protection": "0"
+        },
+        "response": {
+          "error": "Request nonce has already been used",
+          "code": "replay_detected"
+        },
+        "requestBody": {
+          "user_external_id": "sdk-user-replay-1772211364352",
+          "project_id": "65ff0018-5a7b-42c7-9752-4d2119075939"
+        }
+      }
+    },
+    {
+      "phase": "04-sdk-http-contract",
+      "name": "SDK session project mismatch rejected",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:05.900Z",
+      "details": {
+        "method": "POST",
+        "url": "http://gateway:3000/api/v1/sdk/session",
+        "status": 400,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-expose-headers": "X-Total-Count, X-Page-Count, X-Correlation-Id",
+          "connection": "keep-alive",
+          "content-length": "99",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:05 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "b512f5a1-83fc-4d3e-b97a-74a60853ecee",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "1000",
+          "x-ratelimit-remaining": "984",
+          "x-ratelimit-reset": "1772211424",
+          "x-xss-protection": "0"
+        },
+        "response": {
+          "error": "x-project-id header and project_id body value mismatch",
+          "code": "project_scope_violation"
+        },
+        "requestBody": {
+          "user_external_id": "sdk-user-mismatch-1772211364352",
+          "project_id": "mismatch-65ff0018-5a7b-42c7-9752-4d2119075939"
+        }
+      }
+    },
+    {
+      "phase": "04-sdk-http-contract",
+      "name": "SDK session tenant_id spoof rejected",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:05.912Z",
+      "details": {
+        "method": "POST",
+        "url": "http://gateway:3000/api/v1/sdk/session",
+        "status": 403,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-expose-headers": "X-Total-Count, X-Page-Count, X-Correlation-Id",
+          "connection": "keep-alive",
+          "content-length": "102",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:05 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "2d5805b0-a630-4c9e-b2f9-126a1acf92cd",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "1000",
+          "x-ratelimit-remaining": "983",
+          "x-ratelimit-reset": "1772211424",
+          "x-xss-protection": "0"
+        },
+        "response": {
+          "error": "Provided tenant_id does not match authenticated context",
+          "code": "identity_context_mismatch"
+        },
+        "requestBody": {
+          "user_external_id": "sdk-user-tenant-spoof-1772211364352",
+          "tenant_id": "spoofed-tenant"
+        }
+      }
+    },
+    {
+      "phase": "04-sdk-http-contract",
+      "name": "SDK session client_id spoof rejected",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:05.925Z",
+      "details": {
+        "method": "POST",
+        "url": "http://gateway:3000/api/v1/sdk/session",
+        "status": 403,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-expose-headers": "X-Total-Count, X-Page-Count, X-Correlation-Id",
+          "connection": "keep-alive",
+          "content-length": "102",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:05 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "397ee754-eff8-4630-a24e-767172faf9e6",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "1000",
+          "x-ratelimit-remaining": "982",
+          "x-ratelimit-reset": "1772211424",
+          "x-xss-protection": "0"
+        },
+        "response": {
+          "error": "Provided client_id does not match authenticated context",
+          "code": "identity_context_mismatch"
+        },
+        "requestBody": {
+          "user_external_id": "sdk-user-client-spoof-1772211364352",
+          "client_id": "spoofed-client"
+        }
+      }
+    },
+    {
+      "phase": "04-sdk-http-contract",
+      "name": "SDK refresh/logout matrix :: refresh invalid token",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:05.937Z",
+      "details": {
+        "method": "POST",
+        "url": "http://gateway:3000/api/v1/sdk/refresh",
+        "status": 401,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-expose-headers": "X-Total-Count, X-Page-Count, X-Correlation-Id",
+          "connection": "keep-alive",
+          "content-length": "58",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:05 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "7a6efb63-7159-475f-8632-bb20be495ce5",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "94",
+          "x-ratelimit-reset": "1772211423",
+          "x-xss-protection": "0"
+        },
+        "response": {
+          "error": "Invalid refresh token",
+          "code": "context_missing"
+        },
+        "requestBody": {
+          "refresh_token": "invalid"
+        }
+      }
+    },
+    {
+      "phase": "04-sdk-http-contract",
+      "name": "SDK refresh/logout matrix :: refresh valid token",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:05.952Z",
+      "details": {
+        "method": "POST",
+        "url": "http://gateway:3000/api/v1/sdk/refresh",
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-expose-headers": "X-Total-Count, X-Page-Count, X-Correlation-Id",
+          "connection": "keep-alive",
+          "content-length": "1081",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:05 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "48480a62-cdf6-49ad-b751-6b11a59e050d",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "93",
+          "x-ratelimit-reset": "1772211423",
+          "x-xss-protection": "0"
+        },
+        "response": {
+          "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIyOWEyOGE2YS03OTQzLTRlYjItYmZlMy1iODBmZmM2MjNmYTQiLCJ1c2VyX2lkIjoiMzMxNTM5MTktNzQ4Yi00N2I1LTg0ZTgtODAzMTcwNDZjYWZiIiwidGVuYW50X2lkIjoiZDIzZGU1NTEtZWQ0MC00NjIyLTliYTQtOWVjMDZkMTIzNGY1IiwiZW1haWwiOiJzZGstdXNlci0xNzcyMjExMzY0MzUyQHNkay5kMjNkZTU1MS1lZDQwLTQ2MjItOWJhNC05ZWMwNmQxMjM0ZjUuY2Fhcy5pbyIsInNlc3Npb25faWQiOiIzYzM3ZmMwYi1hMDg1LTRjYjEtOTA2OC1mODg3MDUxNzI2YjIiLCJ0eXBlIjoiYWNjZXNzIiwiaWF0IjoxNzcyMjExMzY1LCJleHAiOjE3NzIyMTIyNjUsImlzcyI6ImNhYXMtYXV0aC1zZXJ2aWNlIn0.PiGotJ7LgDL0aq9F9879-RgrUo2jAcw0X0IlMWfCDNs",
+          "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI4YTQxMzAwMS1lYTYwLTRmZWEtOTZhNS1kZTI3YjhlMDA2ZTAiLCJ1c2VyX2lkIjoiMzMxNTM5MTktNzQ4Yi00N2I1LTg0ZTgtODAzMTcwNDZjYWZiIiwidGVuYW50X2lkIjoiZDIzZGU1NTEtZWQ0MC00NjIyLTliYTQtOWVjMDZkMTIzNGY1Iiwic2Vzc2lvbl9pZCI6IjNjMzdmYzBiLWEwODUtNGNiMS05MDY4LWY4ODcwNTE3MjZiMiIsInR5cGUiOiJyZWZyZXNoIiwiaWF0IjoxNzcyMjExMzY1LCJleHAiOjE3NzI4MTYxNjUsImlzcyI6ImNhYXMtYXV0aC1zZXJ2aWNlIn0.75c4eBQDmzzM8PqFKAE53ETYo9l-rvo8w5RtGJ_XiSM",
+          "expires_in": 900,
+          "token_type": "Bearer"
+        },
+        "requestBody": {
+          "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJkNjU2ZDU4OC1lYWQ4LTQ3YjUtYTYyMi0zNTcxZDMyZjM5ZjciLCJ1c2VyX2lkIjoiMzMxNTM5MTktNzQ4Yi00N2I1LTg0ZTgtODAzMTcwNDZjYWZiIiwidGVuYW50X2lkIjoiZDIzZGU1NTEtZWQ0MC00NjIyLTliYTQtOWVjMDZkMTIzNGY1Iiwic2Vzc2lvbl9pZCI6IjNjMzdmYzBiLWEwODUtNGNiMS05MDY4LWY4ODcwNTE3MjZiMiIsInByb2plY3RfaWQiOiI2NWZmMDAxOC01YTdiLTQyYzctOTc1Mi00ZDIxMTkwNzU5MzkiLCJ0eXBlIjoicmVmcmVzaCIsImlhdCI6MTc3MjIxMTM2NSwiZXhwIjoxNzcyODE2MTY1LCJpc3MiOiJjYWFzLWF1dGgtc2VydmljZSJ9.hqsWvdbaSmq0b4Uzv4qAROYyKngchT1CUep8-y-qFXM"
+        }
+      }
+    },
+    {
+      "phase": "04-sdk-http-contract",
+      "name": "SDK logout missing bearer",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:05.960Z",
+      "details": {
+        "method": "POST",
+        "url": "http://gateway:3000/api/v1/sdk/logout",
+        "status": 401,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-expose-headers": "X-Total-Count, X-Page-Count, X-Correlation-Id",
+          "connection": "keep-alive",
+          "content-length": "58",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:05 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "f1d0d72c-a515-4634-98f1-9261af6281ce",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "92",
+          "x-ratelimit-reset": "1772211423",
+          "x-xss-protection": "0"
+        },
+        "response": {
+          "error": "Bearer token required",
+          "code": "context_missing"
+        },
+        "requestBody": {}
+      }
+    },
+    {
+      "phase": "05-socket-e2e",
+      "name": "Socket /chat rejects missing token",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:05.999Z",
+      "details": {
+        "reason": "Authentication failed: No token provided"
+      }
+    },
+    {
+      "phase": "05-socket-e2e",
+      "name": "Socket /chat authenticated connect",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:06.047Z",
+      "details": {
+        "reason": null
+      }
+    },
+    {
+      "phase": "05-socket-e2e",
+      "name": "Socket chat joinRoom invalid",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:06.052Z",
+      "details": {
+        "event": "joinRoom",
+        "payload": {},
+        "ack": {
+          "status": "error",
+          "message": "conversationId is required"
+        }
+      }
+    },
+    {
+      "phase": "05-socket-e2e",
+      "name": "Socket chat joinRoom valid-shape",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:06.070Z",
+      "details": {
+        "event": "joinRoom",
+        "payload": {
+          "conversationId": "room-1772211364352"
+        },
+        "ack": {
+          "status": "error",
+          "message": "User is not a member of this conversation"
+        }
+      }
+    },
+    {
+      "phase": "05-socket-e2e",
+      "name": "Socket chat sendMessage invalid",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:06.073Z",
+      "details": {
+        "event": "sendMessage",
+        "payload": {
+          "conversationId": "room-1772211364352"
+        },
+        "ack": {
+          "status": "error",
+          "message": "conversationId and messageContent are required"
+        }
+      }
+    },
+    {
+      "phase": "05-socket-e2e",
+      "name": "Socket chat sendMessage valid-shape",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:06.076Z",
+      "details": {
+        "event": "sendMessage",
+        "payload": {
+          "conversationId": "room-1772211364352",
+          "messageContent": "hello from fresh e2e"
+        },
+        "ack": {
+          "status": "error",
+          "message": "Not a member of this room"
+        }
+      }
+    },
+    {
+      "phase": "05-socket-e2e",
+      "name": "Socket chat typing_query",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:06.082Z",
+      "details": {
+        "event": "typing_query",
+        "payload": {
+          "conversationId": "room-1772211364352"
+        },
+        "ack": {
+          "status": "ok",
+          "users": [],
+          "count": 0
+        }
+      }
+    },
+    {
+      "phase": "05-socket-e2e",
+      "name": "Socket chat message_read invalid",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:06.086Z",
+      "details": {
+        "event": "message_read",
+        "payload": {},
+        "ack": {
+          "status": "error",
+          "message": "messageId and conversationId are required"
+        }
+      }
+    },
+    {
+      "phase": "05-socket-e2e",
+      "name": "Socket chat message_delivered invalid",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:06.089Z",
+      "details": {
+        "event": "message_delivered",
+        "payload": {},
+        "ack": {
+          "status": "error",
+          "message": "messageId and conversationId are required"
+        }
+      }
+    },
+    {
+      "phase": "05-socket-e2e",
+      "name": "Socket chat leaveRoom valid-shape",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:06.098Z",
+      "details": {
+        "event": "leaveRoom",
+        "payload": {
+          "conversationId": "room-1772211364352"
+        },
+        "ack": {
+          "status": "ok",
+          "room": "tenant:d23de551-ed40-4622-9ba4-9ec06d1234f5:project:65ff0018-5a7b-42c7-9752-4d2119075939:conversation:room-1772211364352"
+        }
+      }
+    },
+    {
+      "phase": "05-socket-e2e",
+      "name": "Socket /presence authenticated connect",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:06.130Z",
+      "details": {
+        "reason": null
+      }
+    },
+    {
+      "phase": "05-socket-e2e",
+      "name": "Socket presence_subscribe ack",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:06.139Z",
+      "details": {
+        "ack": {
+          "success": false,
+          "error": "Not authenticated"
+        }
+      }
+    },
+    {
+      "phase": "05-socket-e2e",
+      "name": "Socket presence_unsubscribe ack",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:06.140Z",
+      "details": {
+        "ack": {
+          "success": false,
+          "error": "Not authenticated"
+        }
+      }
+    },
+    {
+      "phase": "05-socket-e2e",
+      "name": "Socket /webrtc authenticated connect",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:06.157Z",
+      "details": {
+        "reason": null
+      }
+    },
+    {
+      "phase": "05-socket-e2e",
+      "name": "Socket webrtc call:initiate ack",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:06.171Z",
+      "details": {
+        "ack": {
+          "status": "ok",
+          "call_id": "438c60d8-8952-4850-9bcc-796b54dba4ba",
+          "call": {
+            "id": "438c60d8-8952-4850-9bcc-796b54dba4ba",
+            "type": "one_to_one",
+            "status": "ringing",
+            "caller_id": "33153919-748b-47b5-84e8-80317046cafb",
+            "participants": [
+              {
+                "user_id": "33153919-748b-47b5-84e8-80317046cafb",
+                "status": "calling",
+                "joined_at": "2026-02-27T16:56:06.163Z"
+              },
+              {
+                "status": "ringing"
+              }
+            ],
+            "tenant_id": "d23de551-ed40-4622-9ba4-9ec06d1234f5",
+            "created_at": "2026-02-27T16:56:06.163Z"
+          }
+        }
+      }
+    },
+    {
+      "phase": "05-socket-e2e",
+      "name": "Socket webrtc ice-candidate invalid ack",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:06.172Z",
+      "details": {
+        "ack": {
+          "status": "error",
+          "message": "Invalid ICE candidate: ICE candidate is required"
+        }
+      }
+    },
+    {
+      "phase": "05-socket-e2e",
+      "name": "SDK logout with bearer",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:06.199Z",
+      "details": {
+        "method": "POST",
+        "url": "http://gateway:3000/api/v1/sdk/logout",
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-expose-headers": "X-Total-Count, X-Page-Count, X-Correlation-Id",
+          "connection": "keep-alive",
+          "content-length": "37",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:06 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "bd346a2f-ddc8-4657-926a-6ca8499ed807",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "1000",
+          "x-ratelimit-remaining": "981",
+          "x-ratelimit-reset": "1772211425",
+          "x-xss-protection": "0"
+        },
+        "response": {
+          "message": "Logged out successfully"
+        },
+        "requestBody": null
+      }
+    },
+    {
+      "phase": "06-admin-ui-gateway-flow",
+      "name": "Admin dashboard without auth redirect",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:06.208Z",
+      "details": {
+        "method": "GET",
+        "url": "http://admin-portal:3100/dashboard",
+        "status": 307,
+        "headers": {
+          "connection": "keep-alive",
+          "date": "Fri, 27 Feb 2026 16:56:06 GMT",
+          "keep-alive": "timeout=5",
+          "location": "/login?returnUrl=%2Fdashboard",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "transfer-encoding": "chunked",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY"
+        },
+        "response": "/login?returnUrl=%2Fdashboard",
+        "requestBody": null
+      }
+    },
+    {
+      "phase": "06-admin-ui-gateway-flow",
+      "name": "Admin api auth logout",
+      "status": "failed",
+      "timestamp": "2026-02-27T16:56:06.223Z",
+      "details": {
+        "method": "POST",
+        "url": "http://admin-portal:3100/api/auth/logout",
+        "status": 403,
+        "headers": {
+          "connection": "keep-alive",
+          "content-type": "application/json",
+          "date": "Fri, 27 Feb 2026 16:56:06 GMT",
+          "keep-alive": "timeout=5",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "transfer-encoding": "chunked",
+          "vary": "RSC, Next-Router-State-Tree, Next-Router-Prefetch",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY"
+        },
+        "response": {
+          "error": "CSRF validation failed",
+          "code": "csrf_failed"
+        },
+        "requestBody": {}
+      }
+    },
+    {
+      "phase": "06-admin-ui-gateway-flow",
+      "name": "Gateway tenant with missing bearer",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:06.230Z",
+      "details": {
+        "method": "GET",
+        "url": "http://gateway:3000/api/v1/tenant",
+        "status": 401,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-expose-headers": "X-Total-Count, X-Page-Count, X-Correlation-Id",
+          "connection": "keep-alive",
+          "content-length": "70",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:06 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "65a375c5-936b-4dd8-800e-37ef2f8f9537",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "100",
+          "x-ratelimit-remaining": "91",
+          "x-ratelimit-reset": "1772211424",
+          "x-xss-protection": "0"
+        },
+        "response": {
+          "statusCode": 401,
+          "error": "Error",
+          "message": "Tenant context required"
+        },
+        "requestBody": null
+      }
+    },
+    {
+      "phase": "06-admin-ui-gateway-flow",
+      "name": "Gateway tenant with bearer",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:06.254Z",
+      "details": {
+        "method": "GET",
+        "url": "http://gateway:3000/api/v1/tenant",
+        "status": 200,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-expose-headers": "X-Total-Count, X-Page-Count, X-Correlation-Id",
+          "connection": "keep-alive",
+          "content-length": "171",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:06 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-correlation-id": "6de9c702-c8c3-4d16-9cda-ecdfbfe0bf16",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-ratelimit-limit": "1000",
+          "x-ratelimit-remaining": "980",
+          "x-ratelimit-reset": "1772211425",
+          "x-xss-protection": "0"
+        },
+        "response": {
+          "tenant_id": "d23de551-ed40-4622-9ba4-9ec06d1234f5",
+          "client_id": "2955b739-5591-40a9-beda-265ceb990301",
+          "name": "Fresh Tenant 1772211364352",
+          "plan": "business",
+          "settings": {}
+        },
+        "requestBody": null
+      }
+    },
+    {
+      "phase": "06-admin-ui-gateway-flow",
+      "name": "Gateway project preflight matrix :: allowed origin with custom headers",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:06.257Z",
+      "details": {
+        "method": "OPTIONS",
+        "url": "http://gateway:3000/api/v1/auth/client/projects",
+        "status": 204,
+        "headers": {
+          "access-control-allow-credentials": "true",
+          "access-control-allow-headers": "Content-Type, Authorization, X-Api-Key, X-Requested-With, Accept, X-Correlation-Id, Idempotency-Key, X-Timestamp, X-Nonce, X-Signature, X-Project-Id, X-Tenant-Id, X-Client-Id, X-Request-Id, X-CSRF-Token",
+          "access-control-allow-methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+          "access-control-allow-origin": "http://localhost:3100",
+          "access-control-expose-headers": "X-Total-Count, X-Page-Count, X-Correlation-Id",
+          "connection": "keep-alive",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:06 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-xss-protection": "0"
+        },
+        "response": "",
+        "requestBody": null
+      }
+    },
+    {
+      "phase": "06-admin-ui-gateway-flow",
+      "name": "Gateway project preflight matrix :: disallowed origin",
+      "status": "passed",
+      "timestamp": "2026-02-27T16:56:06.260Z",
+      "details": {
+        "method": "OPTIONS",
+        "url": "http://gateway:3000/api/v1/auth/client/projects",
+        "status": 403,
+        "headers": {
+          "connection": "keep-alive",
+          "content-length": "64",
+          "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+          "content-type": "application/json; charset=utf-8",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "date": "Fri, 27 Feb 2026 16:56:06 GMT",
+          "keep-alive": "timeout=72",
+          "origin-agent-cluster": "?1",
+          "referrer-policy": "no-referrer",
+          "strict-transport-security": "max-age=15552000; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "x-dns-prefetch-control": "off",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-xss-protection": "0"
+        },
+        "response": {
+          "error": "CORS origin not allowed",
+          "code": "cors_origin_blocked"
+        },
+        "requestBody": null
+      }
+    }
+  ],
+  "completedAt": "2026-02-27T16:56:06.260Z"
+}

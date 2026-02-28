@@ -18,6 +18,10 @@ import { config } from '../config/config';
 interface AdminTokenPayload {
     sub: string;
     client_id: string;
+    project_id?: string;
+    project_role?: string;
+    project_stack?: string;
+    project_environment?: 'development' | 'staging' | 'production';
     user_id: string;
     email: string;
     role: 'tenant_admin';
@@ -57,6 +61,7 @@ export class AdminAuthService {
             refresh_token: refreshToken,
             tenant_id: client.tenant_id,
             client_id: client.client_id,
+            project_id: client.active_project_id,
             expires_in: config.jwt.accessTokenExpiry,
         };
     }
@@ -162,6 +167,10 @@ export class AdminAuthService {
         const payload: Omit<AdminTokenPayload, 'iat' | 'exp'> = {
             sub: client.client_id,
             client_id: client.client_id,
+            project_id: client.active_project_id,
+            project_role: 'owner',
+            project_stack: client.active_project_stack,
+            project_environment: client.active_project_environment,
             user_id: client.client_id, // Use client_id as user_id for admin tokens
             email: client.email,
             role: 'tenant_admin' as const,

@@ -5,7 +5,7 @@ import { useToast } from '@/components/providers/ToastProvider';
 export function useApiKeys() {
     return useQuery({
         queryKey: ['api-keys'],
-        queryFn: apiKeysApi.list,
+        queryFn: apiKeysApi.getInventory,
     });
 }
 
@@ -46,7 +46,7 @@ export function useRotateApiKey() {
     const { toast } = useToast();
 
     return useMutation({
-        mutationFn: (clientId: string) => apiKeysApi.rotate(clientId),
+        mutationFn: () => apiKeysApi.rotate(),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['api-keys'] });
             toast({ type: 'success', title: 'Key rotated', description: 'Secondary key generated. Promote when ready.' });
@@ -62,7 +62,7 @@ export function usePromoteApiKey() {
     const { toast } = useToast();
 
     return useMutation({
-        mutationFn: (clientId: string) => apiKeysApi.promote(clientId),
+        mutationFn: () => apiKeysApi.promote(),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['api-keys'] });
             toast({ type: 'success', title: 'Key promoted', description: 'Secondary key is now primary.' });

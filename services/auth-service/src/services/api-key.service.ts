@@ -17,6 +17,8 @@ export interface ApiKeyValidationResult {
         plan: string;
         permissions: string[];
         rate_limit_tier: string;
+        active_project_id?: string;
+        project_ids?: string[];
     };
     error?: string;
 }
@@ -28,6 +30,57 @@ export class ApiKeyService {
 
     constructor() {
         this.clientRepository = new ClientRepository();
+    }
+
+    /**
+     * Get non-secret API key inventory for client portal display
+     */
+    async getApiKeyInventory(client_id: string): Promise<{
+        keys: Array<{
+            key_type: 'primary' | 'secondary';
+            key_prefix: string | null;
+            status: 'active' | 'revoked' | 'missing';
+            created_at: Date | null;
+            last_used_at: Date | null;
+            read_only: boolean;
+        }>;
+    }> {
+        const client = await this.clientRepository.findById(client_id);
+        if (!client) {
+            throw new Error('Client not found');
+        }
+
+        type InventoryStatus = 'active' | 'revoked' | 'missing';
+        const resolveStatus = (key: any): InventoryStatus => {
+            if (!key) return 'missing';
+            return key.revoked ? 'revoked' : 'active';
+        };
+
+        const toEntry = (
+            keyType: 'primary' | 'secondary',
+            key: any
+        ): {
+            key_type: 'primary' | 'secondary';
+            key_prefix: string | null;
+            status: InventoryStatus;
+            created_at: Date | null;
+            last_used_at: Date | null;
+            read_only: boolean;
+        } => ({
+            key_type: keyType,
+            key_prefix: key?.key_prefix || null,
+            status: resolveStatus(key),
+            created_at: key?.created_at || null,
+            last_used_at: key?.last_used || null,
+            read_only: true,
+        });
+
+        return {
+            keys: [
+                toEntry('primary', client.api_keys?.primary),
+                toEntry('secondary', client.api_keys?.secondary),
+            ],
+        };
     }
 
     /**
@@ -131,6 +184,10 @@ export class ApiKeyService {
                 plan: client.plan,
                 permissions,
                 rate_limit_tier: rateLimitTier,
+                active_project_id: client.active_project_id,
+                project_ids: (client.projects || [])
+                    .filter((project: any) => project.status !== 'archived')
+                    .map((project: any) => project.project_id),
             },
         };
 

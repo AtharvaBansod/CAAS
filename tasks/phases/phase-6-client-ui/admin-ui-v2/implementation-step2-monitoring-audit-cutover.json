@@ -1,0 +1,48 @@
+{
+  "artifact_id": "uiv2-step2-monitoring-audit-cutover",
+  "updated_at": "2026-02-27",
+  "checks": [
+    {
+      "id": "CUT-001",
+      "scope": "monitoring",
+      "condition": "cards and services sourced only from GET /api/v1/admin/monitoring",
+      "status": "done"
+    },
+    {
+      "id": "CUT-002",
+      "scope": "monitoring",
+      "condition": "freshness timestamp rendered from generated_at",
+      "status": "done"
+    },
+    {
+      "id": "CUT-003",
+      "scope": "monitoring",
+      "condition": "on error UI displays code + correlation diagnostics",
+      "status": "done"
+    },
+    {
+      "id": "CUT-004",
+      "scope": "audit",
+      "condition": "table sourced from GET /api/v1/audit/query only",
+      "status": "done"
+    },
+    {
+      "id": "CUT-005",
+      "scope": "audit",
+      "condition": "export sourced from GET /api/v1/audit/export",
+      "status": "done"
+    },
+    {
+      "id": "CUT-006",
+      "scope": "audit",
+      "condition": "on error UI displays code + correlation diagnostics",
+      "status": "done"
+    },
+    {
+      "id": "CUT-007",
+      "scope": "production-hygiene",
+      "condition": "no fabricated monitoring/audit values in production pages",
+      "status": "done"
+    }
+  ]
+}

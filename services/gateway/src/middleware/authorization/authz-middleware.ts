@@ -17,7 +17,17 @@ import { AuthzOptions, AuthzRequest } from './types';
 export function createAuthzMiddleware(options: AuthzOptions = {}) {
   const {
     enabled = true,
-    skipRoutes = ['/health', '/docs', '/v1/auth/login', '/v1/auth/register'],
+    skipRoutes = [
+      '/health',
+      '/docs',
+      '/documentation',
+      '/api/v1/auth/client/login',
+      '/api/v1/auth/client/register',
+      '/api/v1/auth/client/refresh',
+      '/api/v1/auth/client/forgot-password',
+      '/api/v1/auth/client/reset-password',
+      '/api/v1/sdk',
+    ],
     auditEnabled = true,
   } = options;
 

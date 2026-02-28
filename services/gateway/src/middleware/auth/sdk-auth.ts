@@ -16,6 +16,7 @@ export class SdkAuthStrategy extends AuthStrategy {
   async authenticate(request: FastifyRequest): Promise<AuthContext | null> {
     const appId = request.headers['x-app-id'] as string;
     const appSecret = request.headers['x-app-secret'] as string;
+    const projectId = request.headers['x-project-id'] as string | undefined;
 
     if (!appId || !appSecret) {
       return null;
@@ -39,12 +40,14 @@ export class SdkAuthStrategy extends AuthStrategy {
 
       return {
         tenant_id: result.client.tenant_id,
+        project_id: projectId,
         auth_type: 'sdk',
         permissions: result.client.permissions || ['*'],
         rate_limit_tier: result.client.rate_limit_tier || 'business',
         metadata: {
           app_id: appId,
           client_id: result.client.client_id,
+          project_id: projectId,
           plan: result.client.plan,
         },
       };

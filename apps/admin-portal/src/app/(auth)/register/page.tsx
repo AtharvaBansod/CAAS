@@ -8,11 +8,24 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { ArrowRight, ArrowLeft, Check, Copy, Shield, Zap, Globe } from 'lucide-react';
-import { copyToClipboard } from '@/lib/utils';
+import { ArrowRight, ArrowLeft, Check, Shield, Zap, Globe, FolderKanban } from 'lucide-react';
 import { useToast } from '@/components/providers/ToastProvider';
 
-type Step = 1 | 2 | 3;
+type Step = 1 | 2 | 3 | 4;
+
+const integrationStacks = [
+    'node',
+    'python',
+    'java',
+    'dotnet',
+    'ruby',
+    'rust',
+    'react',
+    'angular',
+    'flutter',
+    'kotlin',
+    'csharp',
+];
 
 const plans = [
     {
@@ -43,15 +56,16 @@ export default function RegisterPage() {
     const [step, setStep] = React.useState<Step>(1);
     const [loading, setLoading] = React.useState(false);
     const [error, setError] = React.useState('');
-    const [apiKey, setApiKey] = React.useState('');
 
-    // Form state
     const [companyName, setCompanyName] = React.useState('');
     const [email, setEmail] = React.useState('');
     const [password, setPassword] = React.useState('');
     const [confirmPassword, setConfirmPassword] = React.useState('');
     const [plan, setPlan] = React.useState('free');
     const [acceptTerms, setAcceptTerms] = React.useState(false);
+    const [projectName, setProjectName] = React.useState('Primary Project');
+    const [projectStack, setProjectStack] = React.useState('react');
+    const [projectEnvironment, setProjectEnvironment] = React.useState<'development' | 'staging' | 'production'>('development');
 
     const handleSubmit = async () => {
         setError('');
@@ -62,12 +76,15 @@ export default function RegisterPage() {
             email,
             password,
             plan,
+            project: {
+                name: projectName,
+                stack: projectStack,
+                environment: projectEnvironment,
+            },
         });
 
         if (result.success) {
-            setApiKey(result.apiKey || '');
-            toast({ type: 'success', title: 'Registration successful!', description: 'Your account has been created.' });
-            // Auto-login after registration
+            toast({ type: 'success', title: 'Registration successful', description: 'Workspace and project context initialized.' });
             router.push('/login');
         } else {
             setError(result.error || 'Registration failed');
@@ -76,29 +93,35 @@ export default function RegisterPage() {
         setLoading(false);
     };
 
+    const stepLabel = (() => {
+        if (step === 1) return 'Enter your company and admin details';
+        if (step === 2) return 'Define the first project and integration target';
+        if (step === 3) return 'Choose your subscription plan';
+        return 'Accept terms and complete registration';
+    })();
+
     return (
         <div className="animate-fade-in">
-            {/* Progress */}
             <div className="mb-8">
-                <div className="flex items-center gap-2 mb-4">
-                    {[1, 2, 3].map((s) => (
+                <div className="mb-4 flex items-center gap-2">
+                    {[1, 2, 3, 4].map((s) => (
                         <React.Fragment key={s}>
-                            <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold transition-all ${s < step ? 'bg-primary text-primary-foreground' :
-                                    s === step ? 'bg-primary text-primary-foreground ring-4 ring-primary/20' :
-                                        'bg-muted text-muted-foreground'
-                                }`}>
+                            <div
+                                className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold transition-all ${s < step
+                                    ? 'bg-primary text-primary-foreground'
+                                    : s === step
+                                        ? 'bg-primary text-primary-foreground ring-4 ring-primary/20'
+                                        : 'bg-muted text-muted-foreground'
+                                    }`}
+                            >
                                 {s < step ? <Check className="h-4 w-4" /> : s}
                             </div>
-                            {s < 3 && <div className={`h-0.5 flex-1 transition-colors ${s < step ? 'bg-primary' : 'bg-muted'}`} />}
+                            {s < 4 && <div className={`h-0.5 flex-1 transition-colors ${s < step ? 'bg-primary' : 'bg-muted'}`} />}
                         </React.Fragment>
                     ))}
                 </div>
                 <h1 className="text-2xl font-bold tracking-tight">Create your account</h1>
-                <p className="mt-1 text-sm text-muted-foreground">
-                    {step === 1 && 'Enter your company details'}
-                    {step === 2 && 'Choose your plan'}
-                    {step === 3 && 'Accept terms and complete registration'}
-                </p>
+                <p className="mt-1 text-sm text-muted-foreground">{stepLabel}</p>
             </div>
 
             {error && (
@@ -107,7 +130,6 @@ export default function RegisterPage() {
                 </div>
             )}
 
-            {/* Step 1: Company Info */}
             {step === 1 && (
                 <div className="space-y-4 animate-fade-in">
                     <Input
@@ -155,19 +177,69 @@ export default function RegisterPage() {
                 </div>
             )}
 
-            {/* Step 2: Plan Selection */}
             {step === 2 && (
+                <div className="space-y-4 animate-fade-in">
+                    <div className="rounded-xl border border-border/70 bg-card/50 p-4">
+                        <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
+                            <FolderKanban className="h-4 w-4 text-primary" />
+                            Project Setup
+                        </div>
+                        <div className="space-y-4">
+                            <Input
+                                label="Project name"
+                                placeholder="Customer Support App"
+                                value={projectName}
+                                onChange={(e) => setProjectName(e.target.value)}
+                                required
+                            />
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-medium text-foreground">Primary integration stack</label>
+                                <select
+                                    value={projectStack}
+                                    onChange={(e) => setProjectStack(e.target.value)}
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                >
+                                    {integrationStacks.map((stack) => (
+                                        <option key={stack} value={stack}>{stack}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-medium text-foreground">Environment stage</label>
+                                <select
+                                    value={projectEnvironment}
+                                    onChange={(e) => setProjectEnvironment(e.target.value as 'development' | 'staging' | 'production')}
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                >
+                                    <option value="development">development</option>
+                                    <option value="staging">staging</option>
+                                    <option value="production">production</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex gap-3">
+                        <Button variant="outline" className="flex-1" onClick={() => setStep(1)}>
+                            <ArrowLeft className="h-4 w-4" /> Back
+                        </Button>
+                        <Button className="flex-1" onClick={() => setStep(3)} disabled={!projectName.trim()}>
+                            Continue <ArrowRight className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
+            )}
+
+            {step === 3 && (
                 <div className="space-y-4 animate-fade-in">
                     <div className="grid gap-3">
                         {plans.map((p) => (
                             <Card
                                 key={p.value}
-                                className={`cursor-pointer transition-all ${plan === p.value ? 'ring-2 ring-primary border-primary' : 'hover:border-muted-foreground/30'
-                                    }`}
+                                className={`cursor-pointer transition-all ${plan === p.value ? 'ring-2 ring-primary border-primary' : 'hover:border-muted-foreground/30'}`}
                                 onClick={() => setPlan(p.value)}
                             >
                                 <CardContent className="p-4">
-                                    <div className="flex items-center justify-between mb-2">
+                                    <div className="mb-2 flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <h3 className="font-semibold">{p.name}</h3>
                                             {p.popular && <Badge variant="default">Popular</Badge>}
@@ -186,39 +258,38 @@ export default function RegisterPage() {
                         ))}
                     </div>
                     <div className="flex gap-3">
-                        <Button variant="outline" className="flex-1" onClick={() => setStep(1)}>
+                        <Button variant="outline" className="flex-1" onClick={() => setStep(2)}>
                             <ArrowLeft className="h-4 w-4" /> Back
                         </Button>
-                        <Button className="flex-1" onClick={() => setStep(3)}>
+                        <Button className="flex-1" onClick={() => setStep(4)}>
                             Continue <ArrowRight className="h-4 w-4" />
                         </Button>
                     </div>
                 </div>
             )}
 
-            {/* Step 3: Terms */}
-            {step === 3 && (
+            {step === 4 && (
                 <div className="space-y-4 animate-fade-in">
                     <Card>
                         <CardContent className="p-4">
                             <div className="space-y-3 text-sm text-muted-foreground">
                                 <div className="flex items-start gap-3">
-                                    <Shield className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-                                    <div><strong className="text-foreground">Security</strong> — All data encrypted at rest and in transit. SOC 2 Type II compliant infrastructure.</div>
+                                    <Shield className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                                    <div><strong className="text-foreground">Security</strong> - data encrypted at rest and in transit.</div>
                                 </div>
                                 <div className="flex items-start gap-3">
-                                    <Zap className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-                                    <div><strong className="text-foreground">Performance</strong> — Sub-50ms message delivery. 99.9% uptime SLA for Business and Enterprise plans.</div>
+                                    <Zap className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                                    <div><strong className="text-foreground">Performance</strong> - low-latency messaging and horizontal scale.</div>
                                 </div>
                                 <div className="flex items-start gap-3">
-                                    <Globe className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-                                    <div><strong className="text-foreground">Compliance</strong> — GDPR, CCPA, and HIPAA ready. Full audit trail and data residency controls.</div>
+                                    <Globe className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                                    <div><strong className="text-foreground">Compliance</strong> - auditability and policy controls for enterprise usage.</div>
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
 
-                    <label className="flex items-start gap-3 cursor-pointer">
+                    <label className="flex cursor-pointer items-start gap-3">
                         <input
                             type="checkbox"
                             checked={acceptTerms}
@@ -232,7 +303,7 @@ export default function RegisterPage() {
                     </label>
 
                     <div className="flex gap-3">
-                        <Button variant="outline" className="flex-1" onClick={() => setStep(2)}>
+                        <Button variant="outline" className="flex-1" onClick={() => setStep(3)}>
                             <ArrowLeft className="h-4 w-4" /> Back
                         </Button>
                         <Button className="flex-1" disabled={!acceptTerms} loading={loading} onClick={handleSubmit} size="lg">

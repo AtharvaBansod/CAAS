@@ -90,6 +90,9 @@ export class InternalController {
                 payload: {
                     user_id: userId,
                     client_id: payload.client_id || userId,
+                    project_id: payload.project_id,
+                    project_stack: payload.project_stack,
+                    project_environment: payload.project_environment,
                     tenant_id: tenantId,
                     role: payload.role,
                     external_id: payload.external_id,

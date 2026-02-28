@@ -59,6 +59,9 @@ export async function serviceAuthMiddleware(
     if (request.headers[CONTEXT_HEADERS.CLIENT_ID]) {
         context.client_id = request.headers[CONTEXT_HEADERS.CLIENT_ID];
     }
+    if (request.headers[CONTEXT_HEADERS.PROJECT_ID]) {
+        context.project_id = request.headers[CONTEXT_HEADERS.PROJECT_ID];
+    }
     if (request.headers[CONTEXT_HEADERS.EXTERNAL_ID]) {
         context.external_id = request.headers[CONTEXT_HEADERS.EXTERNAL_ID];
     }

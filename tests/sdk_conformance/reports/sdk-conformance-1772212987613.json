@@ -1,0 +1,40 @@
+{
+    "generated_at":  "2026-02-27T17:23:07.6594137Z",
+    "total":  8,
+    "passed":  6,
+    "failed":  2,
+    "results":  [
+                    {
+                        "service":  "sdk-node-ts-tests",
+                        "status":  "failed"
+                    },
+                    {
+                        "service":  "sdk-python-tests",
+                        "status":  "passed"
+                    },
+                    {
+                        "service":  "sdk-java-tests",
+                        "status":  "passed"
+                    },
+                    {
+                        "service":  "sdk-dotnet-tests",
+                        "status":  "failed"
+                    },
+                    {
+                        "service":  "sdk-ruby-tests",
+                        "status":  "passed"
+                    },
+                    {
+                        "service":  "sdk-rust-tests",
+                        "status":  "passed"
+                    },
+                    {
+                        "service":  "sdk-react-tests",
+                        "status":  "passed"
+                    },
+                    {
+                        "service":  "sdk-angular-tests",
+                        "status":  "passed"
+                    }
+                ]
+}

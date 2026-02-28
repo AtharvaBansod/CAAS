@@ -1,6 +1,5 @@
 import { apiClient } from '../api-client';
 
-/* ── Types ────────────────────────────────────────────── */
 export interface ApiKey {
     id: string;
     name: string;
@@ -13,14 +12,29 @@ export interface ApiKey {
     status: 'active' | 'revoked';
 }
 
+export interface ClientApiKeyInventoryEntry {
+    key_type: 'primary' | 'secondary';
+    key_prefix: string | null;
+    status: 'active' | 'revoked' | 'missing';
+    created_at: string | null;
+    last_used_at: string | null;
+    read_only: boolean;
+}
+
+export interface ClientApiKeyInventory {
+    keys: ClientApiKeyInventoryEntry[];
+}
+
 export interface CreateKeyRequest {
     name: string;
     scopes?: string[];
     expires_in_days?: number;
 }
 
-/* ── API ──────────────────────────────────────────────── */
 export const apiKeysApi = {
+    getInventory: () =>
+        apiClient.get<ClientApiKeyInventory>('/api/v1/auth/client/api-keys'),
+
     list: () =>
         apiClient.get<{ api_keys: ApiKey[] }>('/api/v1/auth/api-keys'),
 
@@ -30,12 +44,12 @@ export const apiKeysApi = {
     revoke: (id: string) =>
         apiClient.delete<{ message: string }>(`/api/v1/auth/api-keys/${id}`),
 
-    rotate: (clientId: string) =>
-        apiClient.post<{ secondary_key: string; message: string }>('/api/v1/auth/client/api-keys/rotate', { client_id: clientId }),
+    rotate: () =>
+        apiClient.post<{ secondary_key: string; message: string }>('/api/v1/auth/client/api-keys/rotate'),
 
-    promote: (clientId: string) =>
-        apiClient.post<{ message: string }>('/api/v1/auth/client/api-keys/promote', { client_id: clientId }),
+    promote: () =>
+        apiClient.post<{ message: string }>('/api/v1/auth/client/api-keys/promote'),
 
-    revokeByType: (clientId: string, keyType: 'primary' | 'secondary') =>
-        apiClient.post<{ message: string }>('/api/v1/auth/client/api-keys/revoke', { client_id: clientId, key_type: keyType }),
+    revokeByType: (keyType: 'primary' | 'secondary') =>
+        apiClient.post<{ message: string }>('/api/v1/auth/client/api-keys/revoke', { key_type: keyType }),
 };

@@ -1,0 +1,16 @@
+{
+  "artifact_id": "sdkfe-ssr-hydration-guards",
+  "updated_at": "2026-02-27",
+  "react": {
+    "guard": "CaasProvider only autoConnects when window is available",
+    "test": "apps/sdks/frontend/sdk-react/tests/provider.test.tsx"
+  },
+  "angular": {
+    "guard": "adapter has no direct window/document dependency",
+    "test": "apps/sdks/frontend/sdk-angular/tests/adapter.test.ts"
+  },
+  "theme_bridge": {
+    "react": "theme tokens passed via provider config",
+    "angular": "host app styling tokens propagated externally"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "contract_version": "2026-02-27",
+  "base_routes": {
+    "health": "/api/v1/sdk/health",
+    "capabilities": "/api/v1/sdk/capabilities",
+    "session_create": "/api/v1/sdk/session",
+    "session_refresh": "/api/v1/sdk/refresh",
+    "session_logout": "/api/v1/sdk/logout"
+  },
+  "required_headers": [
+    "x-api-key",
+    "x-correlation-id"
+  ],
+  "optional_headers": [
+    "idempotency-key",
+    "x-timestamp",
+    "x-nonce",
+    "x-signature",
+    "x-project-id",
+    "user-agent"
+  ],
+  "error_shape": {
+    "required": ["error"],
+    "optional": ["code", "message", "details", "diagnostics"]
+  },
+  "security_rules": [
+    "never log raw api keys or bearer tokens",
+    "never place tokens in query strings",
+    "support correlation id propagation"
+  ],
+  "release_channels": ["alpha", "beta", "stable"]
+}

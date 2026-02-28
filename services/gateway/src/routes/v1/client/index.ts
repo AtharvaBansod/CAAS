@@ -1,18 +1,43 @@
-/**
- * Client Routes (Gateway)
- * Phase 4.5.z.x - Task 02: Gateway Route Restructuring
- */
-
-import { FastifyPluginAsync } from 'fastify';
+import { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
+
+function resolveClientIdFromAuth(request: FastifyRequest, reply: FastifyReply): string | null {
+    const auth = (request as any).auth;
+    if (!auth || auth.auth_type !== 'jwt') {
+        reply.status(401).send({
+            error: 'Authentication required',
+            code: 'context_missing',
+        });
+        return null;
+    }
+
+    const authenticatedClientId = auth.metadata?.client_id as string | undefined;
+    if (!authenticatedClientId) {
+        reply.status(401).send({
+            error: 'Client identity missing in authentication context',
+            code: 'context_missing',
+        });
+        return null;
+    }
+
+    const bodyClientId = (request.body as any)?.client_id as string | undefined;
+    const queryClientId = (request.query as any)?.client_id as string | undefined;
+    const providedClientId = bodyClientId || queryClientId;
+
+    if (providedClientId && providedClientId !== authenticatedClientId) {
+        reply.status(403).send({
+            error: 'Provided client_id does not match authenticated context',
+            code: 'identity_context_mismatch',
+        });
+        return null;
+    }
+
+    return authenticatedClientId;
+}
 
 export const clientRoutes: FastifyPluginAsync = async (server) => {
     const authClient = (server as any).authClient;
 
-    /**
-     * POST /api/v1/auth/client/register
-     * Register a new SAAS client
-     */
     server.post('/register', {
         schema: {
             body: z.object({
@@ -20,6 +45,11 @@ export const clientRoutes: FastifyPluginAsync = async (server) => {
                 email: z.string().email(),
                 password: z.string().min(8),
                 plan: z.enum(['free', 'business', 'enterprise']).optional(),
+                project: z.object({
+                    name: z.string().min(2),
+                    stack: z.string().min(1),
+                    environment: z.enum(['development', 'staging', 'production']),
+                }).optional(),
             }),
         },
     }, async (request, reply) => {
@@ -34,10 +64,6 @@ export const clientRoutes: FastifyPluginAsync = async (server) => {
         }
     });
 
-    /**
-     * POST /api/v1/auth/client/login
-     * Login for SAAS client admin
-     */
     server.post('/login', {
         schema: {
             body: z.object({
@@ -57,10 +83,6 @@ export const clientRoutes: FastifyPluginAsync = async (server) => {
         }
     });
 
-    /**
-     * POST /api/v1/auth/client/refresh
-     * Refresh access token
-     */
     server.post('/refresh', {
         schema: {
             body: z.object({
@@ -79,10 +101,6 @@ export const clientRoutes: FastifyPluginAsync = async (server) => {
         }
     });
 
-    /**
-     * POST /api/v1/auth/client/forgot-password
-     * Initiate password recovery
-     */
     server.post('/forgot-password', {
         schema: {
             body: z.object({
@@ -101,10 +119,6 @@ export const clientRoutes: FastifyPluginAsync = async (server) => {
         }
     });
 
-    /**
-     * POST /api/v1/auth/client/reset-password
-     * Reset password using code
-     */
     server.post('/reset-password', {
         schema: {
             body: z.object({
@@ -125,19 +139,190 @@ export const clientRoutes: FastifyPluginAsync = async (server) => {
         }
     });
 
-    /**
-     * POST /api/v1/auth/client/api-keys/rotate
-     * Rotate secondary API key
-     */
-    server.post('/api-keys/rotate', {
+    server.get('/projects', {
+        schema: {
+            querystring: z.object({
+                client_id: z.string().min(1).optional(),
+            }).optional(),
+        },
+    }, async (request, reply) => {
+        const clientId = resolveClientIdFromAuth(request, reply);
+        if (!clientId) return;
+
+        try {
+            const result = await authClient.getClientProjects(clientId);
+            return reply.send(result);
+        } catch (error: any) {
+            request.log.error({ error: error.message }, 'Get client projects failed');
+            return reply.status(error.response?.status || 400).send({
+                error: error.response?.data?.error || 'Failed to get projects',
+            });
+        }
+    });
+
+    server.post('/projects', {
         schema: {
             body: z.object({
-                client_id: z.string().min(1),
+                client_id: z.string().min(1).optional(),
+                name: z.string().min(2),
+                stack: z.string().min(1),
+                environment: z.enum(['development', 'staging', 'production']),
             }),
         },
     }, async (request, reply) => {
+        const clientId = resolveClientIdFromAuth(request, reply);
+        if (!clientId) return;
+
         try {
-            const result = await authClient.rotateClientApiKey(request.body as any);
+            const body = request.body as {
+                name: string;
+                stack: string;
+                environment: 'development' | 'staging' | 'production';
+            };
+            const result = await authClient.createClientProject({
+                client_id: clientId,
+                name: body.name,
+                stack: body.stack,
+                environment: body.environment,
+            });
+            return reply.status(201).send(result);
+        } catch (error: any) {
+            request.log.error({ error: error.message }, 'Create client project failed');
+            return reply.status(error.response?.status || 400).send({
+                error: error.response?.data?.error || 'Failed to create project',
+            });
+        }
+    });
+
+    server.patch('/projects/:project_id', {
+        schema: {
+            params: z.object({
+                project_id: z.string().min(1),
+            }),
+            body: z.object({
+                client_id: z.string().min(1).optional(),
+                name: z.string().min(2).optional(),
+                stack: z.string().min(1).optional(),
+                environment: z.enum(['development', 'staging', 'production']).optional(),
+            }).refine((value) => !!(value.name || value.stack || value.environment), {
+                message: 'At least one project field (name, stack, environment) is required',
+            }),
+        },
+    }, async (request, reply) => {
+        const clientId = resolveClientIdFromAuth(request, reply);
+        if (!clientId) return;
+
+        try {
+            const params = request.params as { project_id: string };
+            const body = request.body as {
+                name?: string;
+                stack?: string;
+                environment?: 'development' | 'staging' | 'production';
+            };
+
+            const result = await authClient.updateClientProject({
+                client_id: clientId,
+                project_id: params.project_id,
+                ...(body.name ? { name: body.name } : {}),
+                ...(body.stack ? { stack: body.stack } : {}),
+                ...(body.environment ? { environment: body.environment } : {}),
+            });
+            return reply.send(result);
+        } catch (error: any) {
+            request.log.error({ error: error.message }, 'Update client project failed');
+            return reply.status(error.response?.status || 400).send({
+                error: error.response?.data?.error || 'Failed to update project',
+            });
+        }
+    });
+
+    server.post('/projects/:project_id/archive', {
+        schema: {
+            params: z.object({
+                project_id: z.string().min(1),
+            }),
+            body: z.object({
+                client_id: z.string().min(1).optional(),
+            }).optional(),
+        },
+    }, async (request, reply) => {
+        const clientId = resolveClientIdFromAuth(request, reply);
+        if (!clientId) return;
+
+        try {
+            const params = request.params as { project_id: string };
+            const result = await authClient.archiveClientProject({
+                client_id: clientId,
+                project_id: params.project_id,
+            });
+            return reply.send(result);
+        } catch (error: any) {
+            request.log.error({ error: error.message }, 'Archive client project failed');
+            return reply.status(error.response?.status || 400).send({
+                error: error.response?.data?.error || 'Failed to archive project',
+            });
+        }
+    });
+
+    server.post('/projects/select', {
+        schema: {
+            body: z.object({
+                client_id: z.string().min(1).optional(),
+                project_id: z.string().min(1),
+            }),
+        },
+    }, async (request, reply) => {
+        const clientId = resolveClientIdFromAuth(request, reply);
+        if (!clientId) return;
+
+        try {
+            const body = request.body as { project_id: string };
+            const result = await authClient.selectClientProject({
+                client_id: clientId,
+                project_id: body.project_id,
+            });
+            return reply.send(result);
+        } catch (error: any) {
+            request.log.error({ error: error.message }, 'Select client project failed');
+            return reply.status(error.response?.status || 400).send({
+                error: error.response?.data?.error || 'Failed to select project',
+            });
+        }
+    });
+
+    server.get('/api-keys', {
+        schema: {
+            querystring: z.object({
+                client_id: z.string().min(1).optional(),
+            }).optional(),
+        },
+    }, async (request, reply) => {
+        const clientId = resolveClientIdFromAuth(request, reply);
+        if (!clientId) return;
+
+        try {
+            const result = await authClient.getClientApiKeys(clientId);
+            return reply.send(result);
+        } catch (error: any) {
+            request.log.error({ error: error.message }, 'Get client API key inventory failed');
+            return reply.status(error.response?.status || 400).send({
+                error: error.response?.data?.error || 'Failed to load API key inventory',
+            });
+        }
+    });
+
+    server.post('/api-keys/rotate', {
+        schema: {
+            body: z.object({
+                client_id: z.string().min(1).optional(),
+            }).optional(),
+        },
+    }, async (request, reply) => {
+        const clientId = resolveClientIdFromAuth(request, reply);
+        if (!clientId) return;
+
+        try {
+            const result = await authClient.rotateClientApiKey({ client_id: clientId });
             return reply.send(result);
         } catch (error: any) {
             request.log.error({ error: error.message }, 'API key rotate failed');
@@ -147,19 +332,18 @@ export const clientRoutes: FastifyPluginAsync = async (server) => {
         }
     });
 
-    /**
-     * POST /api/v1/auth/client/api-keys/promote
-     * Promote secondary API key to primary
-     */
     server.post('/api-keys/promote', {
         schema: {
             body: z.object({
-                client_id: z.string().min(1),
-            }),
+                client_id: z.string().min(1).optional(),
+            }).optional(),
         },
     }, async (request, reply) => {
+        const clientId = resolveClientIdFromAuth(request, reply);
+        if (!clientId) return;
+
         try {
-            const result = await authClient.promoteClientApiKey(request.body as any);
+            const result = await authClient.promoteClientApiKey({ client_id: clientId });
             return reply.send(result);
         } catch (error: any) {
             request.log.error({ error: error.message }, 'API key promote failed');
@@ -169,20 +353,23 @@ export const clientRoutes: FastifyPluginAsync = async (server) => {
         }
     });
 
-    /**
-     * POST /api/v1/auth/client/api-keys/revoke
-     * Revoke API key by type
-     */
     server.post('/api-keys/revoke', {
         schema: {
             body: z.object({
-                client_id: z.string().min(1),
+                client_id: z.string().min(1).optional(),
                 key_type: z.enum(['primary', 'secondary']),
             }),
         },
     }, async (request, reply) => {
+        const clientId = resolveClientIdFromAuth(request, reply);
+        if (!clientId) return;
+
         try {
-            const result = await authClient.revokeClientApiKey(request.body as any);
+            const body = request.body as { key_type: 'primary' | 'secondary' };
+            const result = await authClient.revokeClientApiKey({
+                client_id: clientId,
+                key_type: body.key_type,
+            });
             return reply.send(result);
         } catch (error: any) {
             request.log.error({ error: error.message }, 'API key revoke failed');
@@ -192,20 +379,18 @@ export const clientRoutes: FastifyPluginAsync = async (server) => {
         }
     });
 
-    /**
-     * GET /api/v1/auth/client/ip-whitelist
-     * Get client IP whitelist
-     */
     server.get('/ip-whitelist', {
         schema: {
             querystring: z.object({
-                client_id: z.string().min(1),
-            }),
+                client_id: z.string().min(1).optional(),
+            }).optional(),
         },
     }, async (request, reply) => {
+        const clientId = resolveClientIdFromAuth(request, reply);
+        if (!clientId) return;
+
         try {
-            const { client_id } = request.query as { client_id: string };
-            const result = await authClient.getClientIpWhitelist(client_id);
+            const result = await authClient.getClientIpWhitelist(clientId);
             return reply.send(result);
         } catch (error: any) {
             request.log.error({ error: error.message }, 'Get IP whitelist failed');
@@ -215,20 +400,20 @@ export const clientRoutes: FastifyPluginAsync = async (server) => {
         }
     });
 
-    /**
-     * POST /api/v1/auth/client/ip-whitelist
-     * Add IP to client whitelist
-     */
     server.post('/ip-whitelist', {
         schema: {
             body: z.object({
-                client_id: z.string().min(1),
+                client_id: z.string().min(1).optional(),
                 ip: z.string().min(1),
             }),
         },
     }, async (request, reply) => {
+        const clientId = resolveClientIdFromAuth(request, reply);
+        if (!clientId) return;
+
         try {
-            const result = await authClient.addClientIpWhitelist(request.body as any);
+            const { ip } = request.body as { ip: string };
+            const result = await authClient.addClientIpWhitelist({ client_id: clientId, ip });
             return reply.send(result);
         } catch (error: any) {
             request.log.error({ error: error.message }, 'Add IP whitelist failed');
@@ -238,24 +423,22 @@ export const clientRoutes: FastifyPluginAsync = async (server) => {
         }
     });
 
-    /**
-     * DELETE /api/v1/auth/client/ip-whitelist/:ip
-     * Remove IP from client whitelist
-     */
     server.delete('/ip-whitelist/:ip', {
         schema: {
             params: z.object({
                 ip: z.string().min(1),
             }),
             querystring: z.object({
-                client_id: z.string().min(1),
-            }),
+                client_id: z.string().min(1).optional(),
+            }).optional(),
         },
     }, async (request, reply) => {
+        const clientId = resolveClientIdFromAuth(request, reply);
+        if (!clientId) return;
+
         try {
             const { ip } = request.params as { ip: string };
-            const { client_id } = request.query as { client_id: string };
-            const result = await authClient.removeClientIpWhitelist(client_id, ip);
+            const result = await authClient.removeClientIpWhitelist(clientId, ip);
             return reply.send(result);
         } catch (error: any) {
             request.log.error({ error: error.message }, 'Remove IP whitelist failed');
@@ -265,20 +448,18 @@ export const clientRoutes: FastifyPluginAsync = async (server) => {
         }
     });
 
-    /**
-     * GET /api/v1/auth/client/origin-whitelist
-     * Get client origin whitelist
-     */
     server.get('/origin-whitelist', {
         schema: {
             querystring: z.object({
-                client_id: z.string().min(1),
-            }),
+                client_id: z.string().min(1).optional(),
+            }).optional(),
         },
     }, async (request, reply) => {
+        const clientId = resolveClientIdFromAuth(request, reply);
+        if (!clientId) return;
+
         try {
-            const { client_id } = request.query as { client_id: string };
-            const result = await authClient.getClientOriginWhitelist(client_id);
+            const result = await authClient.getClientOriginWhitelist(clientId);
             return reply.send(result);
         } catch (error: any) {
             request.log.error({ error: error.message }, 'Get origin whitelist failed');
@@ -288,20 +469,20 @@ export const clientRoutes: FastifyPluginAsync = async (server) => {
         }
     });
 
-    /**
-     * POST /api/v1/auth/client/origin-whitelist
-     * Add origin to client whitelist
-     */
     server.post('/origin-whitelist', {
         schema: {
             body: z.object({
-                client_id: z.string().min(1),
+                client_id: z.string().min(1).optional(),
                 origin: z.string().min(1),
             }),
         },
     }, async (request, reply) => {
+        const clientId = resolveClientIdFromAuth(request, reply);
+        if (!clientId) return;
+
         try {
-            const result = await authClient.addClientOriginWhitelist(request.body as any);
+            const { origin } = request.body as { origin: string };
+            const result = await authClient.addClientOriginWhitelist({ client_id: clientId, origin });
             return reply.send(result);
         } catch (error: any) {
             request.log.error({ error: error.message }, 'Add origin whitelist failed');
@@ -311,24 +492,22 @@ export const clientRoutes: FastifyPluginAsync = async (server) => {
         }
     });
 
-    /**
-     * DELETE /api/v1/auth/client/origin-whitelist/:origin
-     * Remove origin from client whitelist
-     */
     server.delete('/origin-whitelist/:origin', {
         schema: {
             params: z.object({
                 origin: z.string().min(1),
             }),
             querystring: z.object({
-                client_id: z.string().min(1),
-            }),
+                client_id: z.string().min(1).optional(),
+            }).optional(),
         },
     }, async (request, reply) => {
+        const clientId = resolveClientIdFromAuth(request, reply);
+        if (!clientId) return;
+
         try {
             const { origin } = request.params as { origin: string };
-            const { client_id } = request.query as { client_id: string };
-            const result = await authClient.removeClientOriginWhitelist(client_id, origin);
+            const result = await authClient.removeClientOriginWhitelist(clientId, origin);
             return reply.send(result);
         } catch (error: any) {
             request.log.error({ error: error.message }, 'Remove origin whitelist failed');

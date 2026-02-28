@@ -1,0 +1,21 @@
+{
+  "artifact_id": "sdk-conformance-harness",
+  "updated_at": "2026-02-27",
+  "docker_profile": "test",
+  "services": [
+    "sdk-node-ts-tests",
+    "sdk-python-tests",
+    "sdk-java-tests",
+    "sdk-dotnet-tests",
+    "sdk-ruby-tests",
+    "sdk-rust-tests",
+    "sdk-react-tests",
+    "sdk-angular-tests"
+  ],
+  "canonical_assertions": [
+    "required header contract support",
+    "project context header support",
+    "transport-independent error handling surface",
+    "no raw secret logging in test output artifacts"
+  ]
+}

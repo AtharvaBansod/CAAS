@@ -14,6 +14,7 @@ import { ClientRepository } from '../repositories/client.repository';
 import { ApiKeyService } from '../services/api-key.service';
 import { IpWhitelistService } from '../services/ip-whitelist.service';
 import bcrypt from 'bcrypt';
+import { v4 as uuidv4 } from 'uuid';
 
 export class ClientController {
     private clientRepository: ClientRepository;
@@ -24,6 +25,14 @@ export class ClientController {
         this.clientRepository = new ClientRepository();
         this.apiKeyService = new ApiKeyService();
         this.ipWhitelistService = new IpWhitelistService();
+    }
+
+    private toProjectSlug(name: string): string {
+        const slug = name
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '');
+        return slug || 'project';
     }
 
     /**
@@ -37,7 +46,21 @@ export class ClientController {
                 email: string;
                 password: string;
                 plan?: 'free' | 'business' | 'enterprise';
+                project?: {
+                    name: string;
+                    stack: string;
+                    environment: 'development' | 'staging' | 'production';
+                };
             };
+
+            const project = (request.body as any).project as
+                | {
+                    name: string;
+                    stack: string;
+                    environment: 'development' | 'staging' | 'production';
+                }
+                | undefined;
+            const projectId = project ? uuidv4() : undefined;
 
             // Check for duplicate email
             const existingClient = await this.clientRepository.findByEmail(email);
@@ -56,6 +79,21 @@ export class ClientController {
                 email,
                 password_hash: passwordHash,
                 plan: plan || 'free',
+                active_project_id: projectId,
+                active_project_name: project?.name,
+                active_project_stack: project?.stack,
+                active_project_environment: project?.environment,
+                projects: project
+                    ? [{
+                        project_id: projectId as string,
+                        slug: this.toProjectSlug(project.name),
+                        name: project.name,
+                        stack: project.stack,
+                        environment: project.environment,
+                        created_at: new Date(),
+                        status: 'active',
+                    }]
+                    : [],
             });
 
             // Generate API key pair
@@ -64,6 +102,7 @@ export class ClientController {
             return reply.status(201).send({
                 client_id: client.client_id,
                 tenant_id: client.tenant_id,
+                project_id: projectId,
                 api_key: keys.primary_key,
                 api_secret: keys.secondary_key,
                 message: 'Registration successful. Store your API keys securely - they cannot be retrieved later.',
@@ -77,6 +116,154 @@ export class ClientController {
     }
 
     // ─── API Key Management ───
+
+    /**
+     * GET /api/v1/auth/client/projects
+     * List projects for authenticated client
+     */
+    async listProjects(request: FastifyRequest, reply: FastifyReply) {
+        try {
+            const { client_id } = request.query as { client_id: string };
+            const projects = await this.clientRepository.listProjects(client_id);
+            return reply.send({ projects });
+        } catch (error: any) {
+            request.log.error({ error }, 'List projects error');
+            return reply.status(400).send({
+                error: error.message || 'Failed to list projects',
+            });
+        }
+    }
+
+    /**
+     * POST /api/v1/auth/client/projects
+     * Create new project for authenticated client
+     */
+    async createProject(request: FastifyRequest, reply: FastifyReply) {
+        try {
+            const { client_id, name, stack, environment } = request.body as {
+                client_id: string;
+                name: string;
+                stack: string;
+                environment: 'development' | 'staging' | 'production';
+            };
+
+            const project = await this.clientRepository.createProject(client_id, {
+                name,
+                stack,
+                environment,
+            });
+
+            return reply.status(201).send({
+                project,
+                active_project_id: project.project_id,
+            });
+        } catch (error: any) {
+            request.log.error({ error }, 'Create project error');
+            return reply.status(400).send({
+                error: error.message || 'Failed to create project',
+            });
+        }
+    }
+
+    /**
+     * PATCH /api/v1/auth/client/projects/:project_id
+     * Update project metadata (name/stack/environment)
+     */
+    async updateProject(request: FastifyRequest, reply: FastifyReply) {
+        try {
+            const { project_id } = request.params as { project_id: string };
+            const { client_id, name, stack, environment } = request.body as {
+                client_id: string;
+                name?: string;
+                stack?: string;
+                environment?: 'development' | 'staging' | 'production';
+            };
+
+            const project = await this.clientRepository.updateProject(client_id, project_id, {
+                name,
+                stack,
+                environment,
+            });
+
+            return reply.send({
+                project,
+                message: 'Project updated successfully',
+            });
+        } catch (error: any) {
+            request.log.error({ error }, 'Update project error');
+            const statusCode = /not found/i.test(error.message || '') ? 404 : 400;
+            return reply.status(statusCode).send({
+                error: error.message || 'Failed to update project',
+            });
+        }
+    }
+
+    /**
+     * POST /api/v1/auth/client/projects/:project_id/archive
+     * Archive project while preserving an active fallback project.
+     */
+    async archiveProject(request: FastifyRequest, reply: FastifyReply) {
+        try {
+            const { project_id } = request.params as { project_id: string };
+            const { client_id } = request.body as { client_id: string };
+
+            const result = await this.clientRepository.archiveProject(client_id, project_id);
+
+            return reply.send({
+                ...result,
+                message: 'Project archived successfully',
+            });
+        } catch (error: any) {
+            request.log.error({ error }, 'Archive project error');
+            const statusCode = /not found/i.test(error.message || '') ? 404 : 400;
+            return reply.status(statusCode).send({
+                error: error.message || 'Failed to archive project',
+            });
+        }
+    }
+
+    /**
+     * POST /api/v1/auth/client/projects/select
+     * Set active project context
+     */
+    async selectProject(request: FastifyRequest, reply: FastifyReply) {
+        try {
+            const { client_id, project_id } = request.body as {
+                client_id: string;
+                project_id: string;
+            };
+
+            const project = await this.clientRepository.selectActiveProject(client_id, project_id);
+            return reply.send({
+                active_project_id: project.project_id,
+                project,
+                message: 'Active project updated',
+            });
+        } catch (error: any) {
+            request.log.error({ error }, 'Select project error');
+            return reply.status(400).send({
+                error: error.message || 'Failed to select project',
+            });
+        }
+    }
+
+    /**
+     * GET /api/v1/auth/client/api-keys
+     * Get API key inventory (non-secret metadata only)
+     */
+    async getApiKeyInventory(request: FastifyRequest, reply: FastifyReply) {
+        try {
+            const { client_id } = request.query as { client_id: string };
+            const result = await this.apiKeyService.getApiKeyInventory(client_id);
+            return reply.send(result);
+        } catch (error: any) {
+            request.log.error({ error }, 'Get API key inventory error');
+            const statusCode = /not found/i.test(error.message || '') ? 404 : 400;
+            return reply.status(statusCode).send({
+                error: error.message || 'Failed to load API key inventory',
+            });
+        }
+    }
 
     /**
      * POST /api/v1/auth/client/api-keys/rotate

@@ -1,0 +1,51 @@
+{
+  "artifact_id": "uiv2-step2-browser-ingress-flow-map",
+  "updated_at": "2026-02-27",
+  "ingress_rule": "browser -> admin-portal or gateway only; no direct browser access to internal services",
+  "flow": [
+    {
+      "ui_route": "/login",
+      "browser_call": "POST /api/auth/login (admin-portal)",
+      "proxy_call": "POST /api/v1/auth/client/login (gateway)",
+      "downstream": "auth-service /api/v1/auth/client/login",
+      "required_headers": ["content-type"],
+      "identity_source": "jwt from gateway response stored in session cookies"
+    },
+    {
+      "ui_route": "/register",
+      "browser_call": "POST /api/auth/register (admin-portal)",
+      "proxy_call": "POST /api/v1/auth/client/register (gateway)",
+      "downstream": "auth-service /api/v1/auth/client/register",
+      "required_headers": ["content-type"],
+      "identity_source": "none (pre-auth)"
+    },
+    {
+      "ui_route": "/dashboard/*",
+      "browser_call": "GET/POST/PUT/DELETE /api/v1/* (gateway)",
+      "required_headers": ["authorization", "x-correlation-id"],
+      "mutating_headers": ["idempotency-key", "x-timestamp", "x-nonce", "x-csrf-token"],
+      "identity_source": "jwt claims validated by gateway middleware"
+    },
+    {
+      "ui_route": "/dashboard/api-keys",
+      "browser_call": "GET /api/v1/auth/client/api-keys + POST lifecycle routes",
+      "downstream": "auth-service client controller",
+      "identity_source": "client_id derived from validated JWT context"
+    },
+    {
+      "ui_route": "/dashboard/security",
+      "browser_call": "GET/POST/DELETE /api/v1/auth/client/(ip-whitelist|origin-whitelist)",
+      "identity_source": "client_id derived from validated JWT context"
+    },
+    {
+      "ui_route": "/dashboard/monitoring",
+      "browser_call": "GET /api/v1/admin/monitoring",
+      "identity_source": "tenant_id derived from validated JWT context"
+    },
+    {
+      "ui_route": "/dashboard/audit-logs",
+      "browser_call": "GET /api/v1/audit/query + GET /api/v1/audit/export",
+      "identity_source": "tenant_id derived from validated JWT context"
+    }
+  ]
+}

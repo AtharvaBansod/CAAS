@@ -7,6 +7,7 @@
 
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { UserRepository } from '../repositories/user.repository';
+import { ClientRepository } from '../repositories/client.repository';
 import { SessionService } from '../services/session.service';
 import { TokenService } from '../services/token.service';
 import { v4 as uuidv4 } from 'uuid';
@@ -14,11 +15,13 @@ import bcrypt from 'bcrypt';
 
 export class SdkController {
     private userRepository: UserRepository;
+    private clientRepository: ClientRepository;
     private sessionService: SessionService;
     private tokenService: TokenService;
 
     constructor() {
         this.userRepository = new UserRepository();
+        this.clientRepository = new ClientRepository();
         this.sessionService = new SessionService();
         this.tokenService = new TokenService();
     }
@@ -31,10 +34,12 @@ export class SdkController {
         try {
             const {
                 user_external_id,
+                project_id,
                 user_data,
                 device_info,
             } = request.body as {
                 user_external_id: string;
+                project_id?: string;
                 user_data?: {
                     name?: string;
                     email?: string;
@@ -47,6 +52,7 @@ export class SdkController {
                     user_agent?: string;
                 };
             };
+            const rawBody = request.body as Record<string, any>;
 
             // The client context should be attached by middleware
             // For internal calls, we get tenant_id from the validated API key context
@@ -58,6 +64,38 @@ export class SdkController {
             }
 
             const tenantId = clientContext.tenant_id;
+            if (rawBody.tenant_id && rawBody.tenant_id !== tenantId) {
+                return reply.status(403).send({
+                    error: 'Provided tenant_id does not match authenticated context',
+                    code: 'identity_context_mismatch',
+                });
+            }
+            if (rawBody.client_id && rawBody.client_id !== clientContext.client_id) {
+                return reply.status(403).send({
+                    error: 'Provided client_id does not match authenticated context',
+                    code: 'identity_context_mismatch',
+                });
+            }
+            if (rawBody.tenant_id || rawBody.client_id) {
+                request.log.warn({
+                    provided_tenant_id: rawBody.tenant_id,
+                    provided_client_id: rawBody.client_id,
+                    authenticated_tenant_id: tenantId,
+                    authenticated_client_id: clientContext.client_id,
+                }, 'Ignoring SDK body identity fields; context is derived from API key auth');
+            }
+
+            const headerProjectId = request.headers['x-project-id'] as string | undefined;
+            let resolvedProjectId = headerProjectId || project_id;
+            let projectContextSource: 'header' | 'body' | 'active_project_fallback' | 'none' =
+                headerProjectId ? 'header' : project_id ? 'body' : 'none';
+
+            if (headerProjectId && project_id && headerProjectId !== project_id) {
+                return reply.status(400).send({
+                    error: 'x-project-id header and project_id body value mismatch',
+                    code: 'project_scope_violation',
+                });
+            }
 
             if (!user_external_id) {
                 return reply.status(400).send({
@@ -65,26 +103,77 @@ export class SdkController {
                 });
             }
 
+            const clientRecord = await this.clientRepository.findById(clientContext.client_id);
+            if (!clientRecord) {
+                return reply.status(401).send({
+                    error: 'Client context is invalid',
+                    code: 'context_missing',
+                });
+            }
+
+            const activeProjectIds = (clientRecord.projects || [])
+                .filter((project: any) => project.status !== 'archived')
+                .map((project: any) => project.project_id);
+
+            if (!resolvedProjectId && clientRecord.active_project_id) {
+                resolvedProjectId = clientRecord.active_project_id;
+                projectContextSource = 'active_project_fallback';
+                request.log.warn({
+                    client_id: clientRecord.client_id,
+                    tenant_id: clientRecord.tenant_id,
+                    project_id: resolvedProjectId,
+                    source: projectContextSource,
+                }, 'SDK session used compatibility fallback project context');
+            }
+
+            if (resolvedProjectId && activeProjectIds.length > 0 && !activeProjectIds.includes(resolvedProjectId)) {
+                return reply.status(403).send({
+                    error: 'Project does not belong to authenticated client context',
+                    code: 'project_scope_violation',
+                });
+            }
+
+            const selectedProject = (clientRecord.projects || []).find(
+                (project: any) => project.project_id === resolvedProjectId
+            );
+
             // Check if user exists by external_id + tenant_id
             let user = await this.findUserByExternalId(user_external_id, tenantId);
 
             if (!user) {
                 // Create new user
                 const email = user_data?.email || `${user_external_id}@sdk.${tenantId}.caas.io`;
-                const placeholderPassword = await bcrypt.hash(uuidv4(), 10);
+                const existingByEmail = await this.findUserByEmail(email, tenantId);
 
-                user = await this.userRepository.createUser({
-                    tenant_id: tenantId,
-                    email,
-                    username: user_data?.name,
-                    password_hash: placeholderPassword,
-                    profile_data: {
-                        external_id: user_external_id,
-                        name: user_data?.name,
-                        avatar: user_data?.avatar,
-                        metadata: user_data?.metadata,
-                    },
-                });
+                if (existingByEmail) {
+                    user = existingByEmail;
+                    await this.userRepository.updateUser(user.user_id, {
+                        username: user_data?.name || user.username,
+                        profile_data: {
+                            ...(user.profile_data || {}),
+                            external_id: user_external_id,
+                            project_id: resolvedProjectId,
+                            name: user_data?.name,
+                            avatar: user_data?.avatar,
+                            metadata: user_data?.metadata,
+                        },
+                    });
+                } else {
+                    const placeholderPassword = await bcrypt.hash(uuidv4(), 10);
+                    user = await this.userRepository.createUser({
+                        tenant_id: tenantId,
+                        email,
+                        username: user_data?.name,
+                        password_hash: placeholderPassword,
+                        profile_data: {
+                            external_id: user_external_id,
+                            project_id: resolvedProjectId,
+                            name: user_data?.name,
+                            avatar: user_data?.avatar,
+                            metadata: user_data?.metadata,
+                        },
+                    });
+                }
             } else {
                 // Update user data if provided
                 if (user_data) {
@@ -93,6 +182,7 @@ export class SdkController {
                         profile_data: {
                             ...(user.profile_data || {}),
                             external_id: user_external_id,
+                            project_id: resolvedProjectId,
                             name: user_data.name,
                             avatar: user_data.avatar,
                             metadata: user_data.metadata,
@@ -117,6 +207,9 @@ export class SdkController {
                     tenant_id: tenantId,
                     email: user.email,
                     external_id: user_external_id,
+                    project_id: resolvedProjectId,
+                    project_stack: selectedProject?.stack,
+                    project_environment: selectedProject?.environment,
                     password_hash: '',
                     mfa_enabled: false,
                     status: 'active',
@@ -138,7 +231,11 @@ export class SdkController {
                     user_id: user.user_id,
                     external_id: user_external_id,
                     tenant_id: tenantId,
+                    project_id: resolvedProjectId,
+                    project_stack: selectedProject?.stack,
+                    project_environment: selectedProject?.environment,
                 },
+                project_context_source: projectContextSource,
                 socket_urls: [socketUrl],
             });
         } catch (error: any) {
@@ -206,6 +303,17 @@ export class SdkController {
 
         return await db.collection('users').findOne({
             'profile_data.external_id': externalId,
+            tenant_id: tenantId,
+            status: 'active',
+        });
+    }
+
+    private async findUserByEmail(email: string, tenantId: string): Promise<any> {
+        const { MongoDBConnection } = await import('../storage/mongodb-connection');
+        const db = MongoDBConnection.getDb();
+
+        return await db.collection('users').findOne({
+            email,
             tenant_id: tenantId,
             status: 'active',
         });
