@@ -1,0 +1,14 @@
+{
+  "name": "@caas/realtime-contracts",
+  "version": "1.0.0",
+  "description": "Shared realtime contracts for CAAS socket and Kafka flows",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.6",
+    "typescript": "^5.3.3"
+  }
+}

@@ -53,7 +53,7 @@ export function registerPresenceNamespace(io: Server) {
     console.log(`[Presence] Client connected: ${socket.id} for user: ${socket.user?.user_id}`);
 
     // Register presence-specific events for this socket
-    registerPresenceEvents(presenceManager)(socket);
+    registerPresenceEvents(presenceManager, redisClient as MinimalRedisClient)(socket);
 
     // Register presence subscription events
     if (presenceSubscriber && presenceAuthorizer) {

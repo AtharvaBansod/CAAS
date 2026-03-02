@@ -13,6 +13,8 @@ import { SearchAuthorization } from './search.authorization';
 import { getLogger } from '../utils/logger';
 import { getCorrelationIdFromSocket } from '../middleware/correlation.middleware';
 import crypto from 'crypto';
+import { createSocketEventResponder } from '../realtime/socket-response';
+import { enforceRealtimeEventGate } from '../realtime/feature-gates';
 
 const logger = getLogger('SearchHandler');
 
@@ -66,9 +68,18 @@ export class SearchHandler {
     return `search:${tenantId}:${hash}`;
   }
 
-  registerHandlers(io: Server, socket: Socket, userId: string, tenantId: string): void {
+  registerHandlers(io: Server, socket: Socket, userId: string, tenantId: string, projectId?: string): void {
     // Search messages
     socket.on('search:messages', async (payload: SearchMessagesPayload, callback: any) => {
+      const respond = createSocketEventResponder(socket, 'search', 'search:messages', callback);
+      if (!enforceRealtimeEventGate({
+        namespace: 'search',
+        event: 'search:messages',
+        tenantId,
+        userId,
+      }, respond)) {
+        return;
+      }
       const correlationId = getCorrelationIdFromSocket(socket);
 
       try {
@@ -81,7 +92,7 @@ export class SearchHandler {
         });
 
         if (!payload.query || payload.query.trim().length === 0) {
-          return callback({
+          return respond({
             status: 'error',
             message: 'Query is required',
           });
@@ -98,7 +109,7 @@ export class SearchHandler {
             userId,
             msg: 'Search rate limit exceeded',
           });
-          return callback({
+          return respond({
             status: 'error',
             message: 'Too many search requests. Please try again later.',
             retry_after_ms: rateLimit.retry_after_ms,
@@ -109,7 +120,8 @@ export class SearchHandler {
         const authResult = await this.authorization.canSearchMessages(
           userId,
           tenantId,
-          payload.conversation_id
+          payload.conversation_id,
+          projectId
         );
         if (!authResult.authorized) {
           logger.warn({
@@ -118,7 +130,7 @@ export class SearchHandler {
             reason: authResult.reason,
             msg: 'Search not authorized',
           });
-          return callback({
+          return respond({
             status: 'error',
             message: authResult.reason || 'Not authorized',
           });
@@ -140,8 +152,9 @@ export class SearchHandler {
               msg: 'Search results from cache',
             });
 
-            return callback({
+            return respond({
               status: 'ok',
+              message: 'Search results loaded',
               ...JSON.parse(cached),
               cached: true,
             });
@@ -156,15 +169,15 @@ export class SearchHandler {
         }
 
         // Search via search service
-        const response = await this.searchClient.post('/api/search/messages', {
-          query: payload.query,
-          tenant_id: tenantId,
-          user_id: userId,
-          conversation_id: payload.conversation_id,
-          conversation_ids: authResult.conversationIds, // Restrict to authorized conversations
-          from_date: payload.from_date,
-          to_date: payload.to_date,
-          limit,
+        const response = await this.searchClient.get('/search/messages', {
+          params: {
+            q: payload.query,
+            tenant_id: tenantId,
+            conversation_id: payload.conversation_id,
+            from_date: payload.from_date,
+            to_date: payload.to_date,
+            limit,
+          },
         });
 
         const results = {
@@ -192,8 +205,9 @@ export class SearchHandler {
           msg: 'Search completed',
         });
 
-        callback({
+        respond({
           status: 'ok',
+          message: 'Search completed',
           ...results,
           cached: false,
         });
@@ -205,7 +219,7 @@ export class SearchHandler {
           msg: 'Search failed',
         });
 
-        callback({
+        respond({
           status: 'error',
           message: 'Search failed',
         });
@@ -214,6 +228,15 @@ export class SearchHandler {
 
     // Search conversations
     socket.on('search:conversations', async (payload: SearchConversationsPayload, callback: any) => {
+      const respond = createSocketEventResponder(socket, 'search', 'search:conversations', callback);
+      if (!enforceRealtimeEventGate({
+        namespace: 'search',
+        event: 'search:conversations',
+        tenantId,
+        userId,
+      }, respond)) {
+        return;
+      }
       const correlationId = getCorrelationIdFromSocket(socket);
 
       try {
@@ -225,7 +248,7 @@ export class SearchHandler {
         });
 
         if (!payload.query || payload.query.trim().length === 0) {
-          return callback({
+          return respond({
             status: 'error',
             message: 'Query is required',
           });
@@ -241,7 +264,7 @@ export class SearchHandler {
             userId,
             msg: 'Search rate limit exceeded',
           });
-          return callback({
+          return respond({
             status: 'error',
             message: 'Too many search requests. Please try again later.',
             retry_after_ms: rateLimit.retry_after_ms,
@@ -257,7 +280,7 @@ export class SearchHandler {
             reason: authResult.reason,
             msg: 'Search not authorized',
           });
-          return callback({
+          return respond({
             status: 'error',
             message: authResult.reason || 'Not authorized',
           });
@@ -275,8 +298,9 @@ export class SearchHandler {
               msg: 'Conversation search results from cache',
             });
 
-            return callback({
+            return respond({
               status: 'ok',
+              message: 'Conversation search results loaded',
               ...JSON.parse(cached),
               cached: true,
             });
@@ -290,11 +314,12 @@ export class SearchHandler {
         }
 
         // Search via search service
-        const response = await this.searchClient.post('/api/search/conversations', {
-          query: payload.query,
-          tenant_id: tenantId,
-          user_id: userId,
-          limit,
+        const response = await this.searchClient.get('/search/conversations', {
+          params: {
+            q: payload.query,
+            tenant_id: tenantId,
+            limit,
+          },
         });
 
         const results = {
@@ -320,8 +345,9 @@ export class SearchHandler {
           msg: 'Conversation search completed',
         });
 
-        callback({
+        respond({
           status: 'ok',
+          message: 'Conversation search completed',
           ...results,
           cached: false,
         });
@@ -333,7 +359,7 @@ export class SearchHandler {
           msg: 'Conversation search failed',
         });
 
-        callback({
+        respond({
           status: 'error',
           message: 'Search failed',
         });
@@ -342,6 +368,15 @@ export class SearchHandler {
 
     // Search users
     socket.on('search:users', async (payload: SearchUsersPayload, callback: any) => {
+      const respond = createSocketEventResponder(socket, 'search', 'search:users', callback);
+      if (!enforceRealtimeEventGate({
+        namespace: 'search',
+        event: 'search:users',
+        tenantId,
+        userId,
+      }, respond)) {
+        return;
+      }
       const correlationId = getCorrelationIdFromSocket(socket);
 
       try {
@@ -353,7 +388,7 @@ export class SearchHandler {
         });
 
         if (!payload.query || payload.query.trim().length === 0) {
-          return callback({
+          return respond({
             status: 'error',
             message: 'Query is required',
           });
@@ -369,7 +404,7 @@ export class SearchHandler {
             userId,
             msg: 'Search rate limit exceeded',
           });
-          return callback({
+          return respond({
             status: 'error',
             message: 'Too many search requests. Please try again later.',
             retry_after_ms: rateLimit.retry_after_ms,
@@ -385,7 +420,7 @@ export class SearchHandler {
             reason: authResult.reason,
             msg: 'Search not authorized',
           });
-          return callback({
+          return respond({
             status: 'error',
             message: authResult.reason || 'Not authorized',
           });
@@ -403,8 +438,9 @@ export class SearchHandler {
               msg: 'User search results from cache',
             });
 
-            return callback({
+            return respond({
               status: 'ok',
+              message: 'User search results loaded',
               ...JSON.parse(cached),
               cached: true,
             });
@@ -418,10 +454,12 @@ export class SearchHandler {
         }
 
         // Search via search service
-        const response = await this.searchClient.post('/api/search/users', {
-          query: payload.query,
-          tenant_id: tenantId,
-          limit,
+        const response = await this.searchClient.get('/search/users', {
+          params: {
+            q: payload.query,
+            tenant_id: tenantId,
+            limit,
+          },
         });
 
         const results = {
@@ -447,8 +485,9 @@ export class SearchHandler {
           msg: 'User search completed',
         });
 
-        callback({
+        respond({
           status: 'ok',
+          message: 'User search completed',
           ...results,
           cached: false,
         });
@@ -460,7 +499,7 @@ export class SearchHandler {
           msg: 'User search failed',
         });
 
-        callback({
+        respond({
           status: 'error',
           message: 'Search failed',
         });

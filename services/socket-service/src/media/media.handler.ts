@@ -12,6 +12,8 @@ import { getLogger } from '../utils/logger';
 import { getCorrelationIdFromSocket } from '../middleware/correlation.middleware';
 import { RedisClientType } from 'redis';
 import { MongoClient } from 'mongodb';
+import { createSocketEventResponder } from '../realtime/socket-response';
+import { enforceRealtimeEventGate } from '../realtime/feature-gates';
 
 const logger = getLogger('MediaHandler');
 
@@ -53,6 +55,15 @@ export class MediaHandler {
   registerHandlers(io: Server, socket: Socket, userId: string, tenantId: string): void {
     // Request upload URL
     socket.on('media:request-upload', async (payload: MediaRequestUploadPayload, callback: any) => {
+      const respond = createSocketEventResponder(socket, 'media', 'media:request-upload', callback);
+      if (!enforceRealtimeEventGate({
+        namespace: 'media',
+        event: 'media:request-upload',
+        tenantId,
+        userId,
+      }, respond)) {
+        return;
+      }
       const correlationId = getCorrelationIdFromSocket(socket);
       
       try {
@@ -67,7 +78,7 @@ export class MediaHandler {
 
         // Validate payload
         if (!payload.file_name || !payload.file_size || !payload.mime_type) {
-          return callback({
+          return respond({
             status: 'error',
             message: 'Missing required fields: file_name, file_size, mime_type',
           });
@@ -75,7 +86,7 @@ export class MediaHandler {
 
         // Validate file size (max 100MB)
         if (payload.file_size > 100 * 1024 * 1024) {
-          return callback({
+          return respond({
             status: 'error',
             message: 'File size exceeds maximum allowed (100MB)',
           });
@@ -89,7 +100,7 @@ export class MediaHandler {
             userId,
             msg: 'Upload rate limit exceeded',
           });
-          return callback({
+          return respond({
             status: 'error',
             message: 'Too many upload requests. Please try again later.',
             retry_after_ms: rateLimit.retry_after_ms,
@@ -105,7 +116,7 @@ export class MediaHandler {
             reason: authResult.reason,
             msg: 'Upload not authorized',
           });
-          return callback({
+          return respond({
             status: 'error',
             message: authResult.reason || 'Not authorized',
           });
@@ -125,8 +136,9 @@ export class MediaHandler {
           msg: 'Upload URL generated',
         });
 
-        callback({
+        respond({
           status: 'ok',
+          message: 'Upload session created',
           upload_url: result.upload_url,
           file_id: result.file_id,
           expires_at: new Date(result.expires_at).getTime(),
@@ -139,7 +151,7 @@ export class MediaHandler {
           msg: 'Failed to request upload URL',
         });
 
-        callback({
+        respond({
           status: 'error',
           message: 'Failed to generate upload URL',
         });
@@ -148,6 +160,15 @@ export class MediaHandler {
 
     // Upload complete notification
     socket.on('media:upload-complete', async (payload: MediaUploadCompletePayload, callback: any) => {
+      const respond = createSocketEventResponder(socket, 'media', 'media:upload-complete', callback);
+      if (!enforceRealtimeEventGate({
+        namespace: 'media',
+        event: 'media:upload-complete',
+        tenantId,
+        userId,
+      }, respond)) {
+        return;
+      }
       const correlationId = getCorrelationIdFromSocket(socket);
 
       try {
@@ -159,7 +180,7 @@ export class MediaHandler {
         });
 
         if (!payload.file_id) {
-          return callback({
+          return respond({
             status: 'error',
             message: 'Missing required field: file_id',
           });
@@ -177,7 +198,7 @@ export class MediaHandler {
             msg: 'File validation failed',
           });
 
-          return callback({
+          return respond({
             status: 'failed',
             message: validation.error || 'File validation failed',
           });
@@ -190,8 +211,9 @@ export class MediaHandler {
           msg: 'File upload validated',
         });
 
-        callback({
+        respond({
           status: 'success',
+          message: 'File upload validated',
           file_metadata: validation.metadata,
         });
       } catch (error: any) {
@@ -203,7 +225,7 @@ export class MediaHandler {
           msg: 'Failed to validate upload',
         });
 
-        callback({
+        respond({
           status: 'failed',
           message: 'Failed to validate upload',
         });
@@ -212,6 +234,15 @@ export class MediaHandler {
 
     // Get download URL
     socket.on('media:get-download-url', async (payload: MediaGetDownloadUrlPayload, callback: any) => {
+      const respond = createSocketEventResponder(socket, 'media', 'media:get-download-url', callback);
+      if (!enforceRealtimeEventGate({
+        namespace: 'media',
+        event: 'media:get-download-url',
+        tenantId,
+        userId,
+      }, respond)) {
+        return;
+      }
       const correlationId = getCorrelationIdFromSocket(socket);
 
       try {
@@ -223,7 +254,7 @@ export class MediaHandler {
         });
 
         if (!payload.file_id) {
-          return callback({
+          return respond({
             status: 'error',
             message: 'Missing required field: file_id',
           });
@@ -237,7 +268,7 @@ export class MediaHandler {
             userId,
             msg: 'Download rate limit exceeded',
           });
-          return callback({
+          return respond({
             status: 'error',
             message: 'Too many download requests. Please try again later.',
             retry_after_ms: rateLimit.retry_after_ms,
@@ -254,7 +285,7 @@ export class MediaHandler {
             reason: authResult.reason,
             msg: 'Download not authorized',
           });
-          return callback({
+          return respond({
             status: 'error',
             message: authResult.reason || 'Not authorized',
           });
@@ -270,8 +301,9 @@ export class MediaHandler {
           msg: 'Download URL generated',
         });
 
-        callback({
+        respond({
           status: 'ok',
+          message: 'Download URL generated',
           download_url: downloadUrl,
           expires_at: Date.now() + 3600000, // 1 hour
         });
@@ -284,7 +316,7 @@ export class MediaHandler {
           msg: 'Failed to get download URL',
         });
 
-        callback({
+        respond({
           status: 'error',
           message: 'Failed to generate download URL',
         });
@@ -293,6 +325,15 @@ export class MediaHandler {
 
     // Delete file
     socket.on('media:delete', async (payload: MediaDeletePayload, callback: any) => {
+      const respond = createSocketEventResponder(socket, 'media', 'media:delete', callback);
+      if (!enforceRealtimeEventGate({
+        namespace: 'media',
+        event: 'media:delete',
+        tenantId,
+        userId,
+      }, respond)) {
+        return;
+      }
       const correlationId = getCorrelationIdFromSocket(socket);
 
       try {
@@ -304,7 +345,7 @@ export class MediaHandler {
         });
 
         if (!payload.file_id) {
-          return callback({
+          return respond({
             status: 'error',
             message: 'Missing required field: file_id',
           });
@@ -318,7 +359,7 @@ export class MediaHandler {
             userId,
             msg: 'Delete rate limit exceeded',
           });
-          return callback({
+          return respond({
             status: 'error',
             message: 'Too many delete requests. Please try again later.',
             retry_after_ms: rateLimit.retry_after_ms,
@@ -335,7 +376,7 @@ export class MediaHandler {
             reason: authResult.reason,
             msg: 'Delete not authorized',
           });
-          return callback({
+          return respond({
             status: 'error',
             message: authResult.reason || 'Not authorized',
           });
@@ -355,8 +396,9 @@ export class MediaHandler {
             msg: 'File deleted',
           });
 
-          callback({
+          respond({
             status: 'success',
+            message: 'File deleted',
           });
         } else {
           logger.warn({
@@ -366,7 +408,7 @@ export class MediaHandler {
             msg: 'File deletion failed',
           });
 
-          callback({
+          respond({
             status: 'failed',
             message: 'Failed to delete file',
           });
@@ -380,7 +422,7 @@ export class MediaHandler {
           msg: 'Error deleting file',
         });
 
-        callback({
+        respond({
           status: 'error',
           message: 'Error deleting file',
         });

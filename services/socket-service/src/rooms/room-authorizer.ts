@@ -1,20 +1,30 @@
-import Redis from 'ioredis';
 import { MongoClient } from 'mongodb';
+
+interface MinimalRedisClient {
+  get(key: string): Promise<string | null>;
+  set(key: string, value: string): Promise<unknown>;
+  setEx?(key: string, ttlSeconds: number, value: string): Promise<unknown>;
+  setex?(key: string, ttlSeconds: number, value: string): Promise<unknown>;
+  del(...keys: string[]): Promise<unknown>;
+  keys(pattern: string): Promise<string[]>;
+}
 
 interface AuthorizationResult {
   authorized: boolean;
+  code?: string;
   reason?: string;
   role?: string;
+  projectId?: string;
 }
 
 interface RoomAuthorizerConfig {
-  redis: Redis;
+  redis: MinimalRedisClient;
   mongoClient: MongoClient;
   cacheTtl?: number;
 }
 
 export class RoomAuthorizer {
-  private redis: Redis;
+  private redis: MinimalRedisClient;
   private mongoClient: MongoClient;
   private cacheTtl: number;
 
@@ -24,16 +34,31 @@ export class RoomAuthorizer {
     this.cacheTtl = config.cacheTtl || 300; // 5 minutes default
   }
 
+  private async setWithExpiry(key: string, ttlSeconds: number, value: string): Promise<void> {
+    if (typeof this.redis.setEx === 'function') {
+      await this.redis.setEx(key, ttlSeconds, value);
+      return;
+    }
+
+    if (typeof this.redis.setex === 'function') {
+      await this.redis.setex(key, ttlSeconds, value);
+      return;
+    }
+
+    throw new Error('Redis client does not support expiry writes');
+  }
+
   /**
    * Check if user can join room
    */
   async canJoinRoom(
     userId: string,
     conversationId: string,
-    tenantId: string
+    tenantId: string,
+    projectId?: string
   ): Promise<AuthorizationResult> {
     // Check cache first
-    const cached = await this.getCachedAuthorization(userId, conversationId, tenantId);
+    const cached = await this.getCachedAuthorization(userId, conversationId, tenantId, projectId);
     if (cached !== null) {
       return cached;
     }
@@ -43,27 +68,40 @@ export class RoomAuthorizer {
     if (isBanned) {
       return {
         authorized: false,
+        code: 'FORBIDDEN',
         reason: 'User is banned from this conversation',
       };
     }
 
     // Check conversation membership
-    const membership = await this.checkConversationMembership(userId, conversationId, tenantId);
+    const membership = await this.checkConversationMembership(userId, conversationId, tenantId, projectId);
     
     if (!membership.isMember) {
       return {
         authorized: false,
-        reason: 'User is not a member of this conversation',
+        code: membership.code || 'FORBIDDEN',
+        reason: membership.reason || 'User is not a member of this conversation',
+        projectId: membership.projectId,
+      };
+    }
+
+    if (projectId && membership.projectId && membership.projectId !== projectId) {
+      return {
+        authorized: false,
+        code: 'FORBIDDEN',
+        reason: 'Conversation belongs to a different project scope',
+        projectId: membership.projectId,
       };
     }
 
     const result: AuthorizationResult = {
       authorized: true,
       role: membership.role,
+      projectId: membership.projectId,
     };
 
     // Cache the result
-    await this.cacheAuthorization(userId, conversationId, tenantId, result);
+    await this.cacheAuthorization(userId, conversationId, tenantId, projectId, result);
 
     return result;
   }
@@ -74,10 +112,11 @@ export class RoomAuthorizer {
   async canSendMessage(
     userId: string,
     conversationId: string,
-    tenantId: string
+    tenantId: string,
+    projectId?: string
   ): Promise<AuthorizationResult> {
     // Check if user can join (includes membership and ban checks)
-    const joinResult = await this.canJoinRoom(userId, conversationId, tenantId);
+    const joinResult = await this.canJoinRoom(userId, conversationId, tenantId, projectId);
     if (!joinResult.authorized) {
       return joinResult;
     }
@@ -87,11 +126,12 @@ export class RoomAuthorizer {
     if (isMuted) {
       return {
         authorized: false,
+        code: 'FORBIDDEN',
         reason: 'User is muted in this conversation',
       };
     }
 
-    return { authorized: true, role: joinResult.role };
+    return { authorized: true, role: joinResult.role, projectId: joinResult.projectId };
   }
 
   /**
@@ -100,20 +140,22 @@ export class RoomAuthorizer {
   async canModerate(
     userId: string,
     conversationId: string,
-    tenantId: string
+    tenantId: string,
+    projectId?: string
   ): Promise<AuthorizationResult> {
-    const joinResult = await this.canJoinRoom(userId, conversationId, tenantId);
+    const joinResult = await this.canJoinRoom(userId, conversationId, tenantId, projectId);
     if (!joinResult.authorized) {
       return joinResult;
     }
 
     const role = joinResult.role;
     if (role === 'owner' || role === 'admin' || role === 'moderator') {
-      return { authorized: true, role };
+      return { authorized: true, role, projectId: joinResult.projectId };
     }
 
     return {
       authorized: false,
+      code: 'FORBIDDEN',
       reason: 'User does not have moderation permissions',
     };
   }
@@ -124,20 +166,22 @@ export class RoomAuthorizer {
   async canAdminister(
     userId: string,
     conversationId: string,
-    tenantId: string
+    tenantId: string,
+    projectId?: string
   ): Promise<AuthorizationResult> {
-    const joinResult = await this.canJoinRoom(userId, conversationId, tenantId);
+    const joinResult = await this.canJoinRoom(userId, conversationId, tenantId, projectId);
     if (!joinResult.authorized) {
       return joinResult;
     }
 
     const role = joinResult.role;
     if (role === 'owner' || role === 'admin') {
-      return { authorized: true, role };
+      return { authorized: true, role, projectId: joinResult.projectId };
     }
 
     return {
       authorized: false,
+      code: 'FORBIDDEN',
       reason: 'User does not have administration permissions',
     };
   }
@@ -148,8 +192,9 @@ export class RoomAuthorizer {
   private async checkConversationMembership(
     userId: string,
     conversationId: string,
-    tenantId: string
-  ): Promise<{ isMember: boolean; role?: string }> {
+    tenantId: string,
+    projectId?: string
+  ): Promise<{ isMember: boolean; role?: string; projectId?: string; code?: string; reason?: string }> {
     try {
       const db = this.mongoClient.db('caas_platform');
       const conversationsCollection = db.collection('conversations');
@@ -157,11 +202,24 @@ export class RoomAuthorizer {
       const conversation = await conversationsCollection.findOne({
         conversation_id: conversationId,
         tenant_id: tenantId,
-        'participants.user_id': userId,
       });
 
       if (!conversation) {
-        return { isMember: false };
+        return {
+          isMember: false,
+          code: 'NOT_FOUND',
+          reason: 'Conversation not found',
+        };
+      }
+
+      const resolvedProjectId = (conversation as any).project_id || 'default';
+      if (projectId && resolvedProjectId !== projectId) {
+        return {
+          isMember: false,
+          code: 'FORBIDDEN',
+          reason: 'Conversation belongs to a different project scope',
+          projectId: resolvedProjectId,
+        };
       }
 
       // Find user's role
@@ -169,9 +227,19 @@ export class RoomAuthorizer {
         (p: any) => p.user_id === userId
       );
 
+      if (!participant) {
+        return {
+          isMember: false,
+          code: 'FORBIDDEN',
+          reason: 'User is not a member of this conversation',
+          projectId: resolvedProjectId,
+        };
+      }
+
       return {
         isMember: true,
         role: participant?.role || 'member',
+        projectId: resolvedProjectId,
       };
     } catch (error) {
       console.error('[RoomAuthorizer] Error checking membership:', error);
@@ -217,7 +285,7 @@ export class RoomAuthorizer {
     const key = `ban:${tenantId}:${conversationId}:${userId}`;
     
     if (durationSeconds) {
-      await this.redis.setex(key, durationSeconds, '1');
+      await this.setWithExpiry(key, durationSeconds, '1');
     } else {
       await this.redis.set(key, '1'); // Permanent ban
     }
@@ -249,7 +317,7 @@ export class RoomAuthorizer {
     const key = `mute:${tenantId}:${conversationId}:${userId}`;
     
     if (durationSeconds) {
-      await this.redis.setex(key, durationSeconds, '1');
+      await this.setWithExpiry(key, durationSeconds, '1');
     } else {
       await this.redis.set(key, '1'); // Permanent mute
     }
@@ -275,9 +343,10 @@ export class RoomAuthorizer {
   private async getCachedAuthorization(
     userId: string,
     conversationId: string,
-    tenantId: string
+    tenantId: string,
+    projectId?: string
   ): Promise<AuthorizationResult | null> {
-    const key = `authz:${tenantId}:${conversationId}:${userId}`;
+    const key = `authz:${tenantId}:${projectId || 'default'}:${conversationId}:${userId}`;
     const cached = await this.redis.get(key);
     
     if (cached) {
@@ -294,25 +363,26 @@ export class RoomAuthorizer {
     userId: string,
     conversationId: string,
     tenantId: string,
+    projectId: string | undefined,
     result: AuthorizationResult
   ): Promise<void> {
-    const key = `authz:${tenantId}:${conversationId}:${userId}`;
-    await this.redis.setex(key, this.cacheTtl, JSON.stringify(result));
+    const key = `authz:${tenantId}:${projectId || 'default'}:${conversationId}:${userId}`;
+    await this.setWithExpiry(key, this.cacheTtl, JSON.stringify(result));
   }
 
   /**
    * Invalidate authorization cache
    */
-  async invalidateCache(userId: string, conversationId: string, tenantId: string): Promise<void> {
-    const key = `authz:${tenantId}:${conversationId}:${userId}`;
+  async invalidateCache(userId: string, conversationId: string, tenantId: string, projectId?: string): Promise<void> {
+    const key = `authz:${tenantId}:${projectId || 'default'}:${conversationId}:${userId}`;
     await this.redis.del(key);
   }
 
   /**
    * Invalidate all authorization caches for a conversation
    */
-  async invalidateConversationCache(conversationId: string, tenantId: string): Promise<void> {
-    const pattern = `authz:${tenantId}:${conversationId}:*`;
+  async invalidateConversationCache(conversationId: string, tenantId: string, projectId?: string): Promise<void> {
+    const pattern = `authz:${tenantId}:${projectId || '*'}:${conversationId}:*`;
     const keys = await this.redis.keys(pattern);
     
     if (keys.length > 0) {

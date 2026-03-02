@@ -1,0 +1,184 @@
+{
+  "schema_version": "1.0.0",
+  "task_id": "SDKFE-COMP-003",
+  "title": "Feature Dependency And Rollout Governance",
+  "last_updated": "2026-02-28",
+
+  "feature_flag_model": {
+    "provider": "Server-side feature flag service (evaluated per-tenant, per-user)",
+    "flag_naming_convention": "caas.<wave>.<feature>.<variant>",
+    "examples": [
+      "caas.w1.chat_window.enabled",
+      "caas.w1.chat_attachments.enabled",
+      "caas.w2.feed_view.enabled",
+      "caas.w2.stories.enabled",
+      "caas.w3.planner_board.enabled",
+      "caas.w4.moderation_controls.enabled"
+    ],
+    "evaluation_strategy": {
+      "default": false,
+      "override_hierarchy": ["global_default", "tenant_override", "user_override", "percentage_rollout"],
+      "caching": "Client SDK caches flags for 5 minutes, refresh on app resume",
+      "fallback_on_error": "Use cached flags; if no cache, all W1 features default ON, W2+ default OFF"
+    },
+    "sdk_integration": {
+      "hook": "sdk.isFeatureEnabled(flagName: string): boolean",
+      "batch": "sdk.getFeatureFlags(): Record<string, boolean>",
+      "update_event": "sdk.onFeatureFlagsChanged(callback: (flags) => void)",
+      "conditional_rendering": "Components self-gate: if (!sdk.isFeatureEnabled('caas.w2.feed_view.enabled')) return <UpgradePrompt />"
+    }
+  },
+
+  "dependency_graph": {
+    "description": "Maps each wave's components to their required backend services, socket namespaces, and Kafka topics",
+    "waves": {
+      "W1-core-chat": {
+        "backend_services": {
+          "auth-service": {"status": "ready", "required_endpoints": ["/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/logout"]},
+          "gateway": {"status": "ready", "required_endpoints": ["proxy routing", "rate limiting", "health check"]},
+          "mongodb-service": {"status": "ready", "required_collections": ["users", "conversations", "messages", "groups"]},
+          "socket-service": {"status": "ready", "required_namespaces": ["chat", "presence"]},
+          "search-service": {"status": "ready", "required_indices": ["conversations", "messages", "contacts"]},
+          "media-service": {"status": "ready", "required_endpoints": ["/api/v1/media/upload", "/api/v1/media/:id"]},
+          "crypto-service": {"status": "ready", "required_endpoints": ["/api/v1/crypto/encrypt", "/api/v1/crypto/decrypt"]}
+        },
+        "kafka_topics": {
+          "chat-events": {"status": "ready", "schema_version": "1.0"},
+          "presence-events": {"status": "ready", "schema_version": "1.0"},
+          "audit-events": {"status": "ready", "schema_version": "1.0"}
+        },
+        "schemas": {
+          "chat-message-schema": {"status": "ready", "location": "packages/realtime-contracts"},
+          "presence-update-schema": {"status": "ready", "location": "packages/realtime-contracts"}
+        },
+        "wave_readiness": "ALL dependencies ready"
+      },
+      "W2-social-media": {
+        "backend_services": {
+          "mongodb-service": {"status": "needs_extension", "required_collections": ["posts", "comments", "reactions", "stories", "highlights"]},
+          "socket-service": {"status": "needs_extension", "required_namespaces": ["feed"]},
+          "media-service": {"status": "ready", "notes": "Existing upload/serve endpoints sufficient"},
+          "search-service": {"status": "needs_extension", "required_indices": ["posts"]}
+        },
+        "kafka_topics": {
+          "feed-events": {"status": "planned", "schema_version": "1.0"},
+          "reaction-events": {"status": "planned", "schema_version": "1.0"}
+        },
+        "schemas": {
+          "post-schema": {"status": "planned", "location": "packages/realtime-contracts"},
+          "comment-schema": {"status": "planned", "location": "packages/realtime-contracts"},
+          "reaction-schema": {"status": "planned", "location": "packages/realtime-contracts"}
+        },
+        "blocking_dependencies": [
+          "mongodb-service: posts/comments/reactions/stories collections",
+          "socket-service: feed namespace",
+          "Kafka: feed-events and reaction-events topics",
+          "Schema: post, comment, reaction schemas in realtime-contracts"
+        ],
+        "wave_readiness": "BLOCKED — requires backend extensions"
+      },
+      "W3-collaboration": {
+        "backend_services": {
+          "mongodb-service": {"status": "needs_extension", "required_collections": ["boards", "tasks", "calendar_events"]},
+          "socket-service": {"status": "needs_extension", "required_namespaces": ["collaboration"]},
+          "auth-service": {"status": "needs_extension", "notes": "Role-aware task permissions"}
+        },
+        "kafka_topics": {
+          "task-events": {"status": "planned", "schema_version": "1.0"}
+        },
+        "schemas": {
+          "task-schema": {"status": "planned", "location": "packages/realtime-contracts"},
+          "board-schema": {"status": "planned", "location": "packages/realtime-contracts"}
+        },
+        "blocking_dependencies": [
+          "mongodb-service: boards/tasks/calendar_events collections",
+          "socket-service: collaboration namespace",
+          "auth-service: role-aware task permissions",
+          "Kafka: task-events topic"
+        ],
+        "wave_readiness": "BLOCKED — requires backend extensions"
+      },
+      "W4-governance-and-presence": {
+        "backend_services": {
+          "mongodb-service": {"status": "needs_extension", "required_collections": ["moderation_actions", "notification_preferences", "presence_rules"]},
+          "socket-service": {"status": "ready", "notes": "Presence namespace already exists"},
+          "compliance-service": {"status": "ready", "notes": "Report handling can use existing compliance pipeline"}
+        },
+        "kafka_topics": {
+          "moderation-events": {"status": "planned", "schema_version": "1.0"}
+        },
+        "schemas": {
+          "moderation-action-schema": {"status": "planned", "location": "packages/realtime-contracts"}
+        },
+        "blocking_dependencies": [
+          "mongodb-service: moderation_actions/notification_preferences collections",
+          "Kafka: moderation-events topic"
+        ],
+        "wave_readiness": "BLOCKED — requires backend extensions"
+      }
+    }
+  },
+
+  "rollout_plan": {
+    "progression_rules": [
+      "Waves MUST be rolled out sequentially: W1 → W2 → W3 → W4",
+      "A wave can only begin rollout when ALL blocking dependencies are resolved",
+      "Initial rollout to internal tenants (dogfooding) for minimum 2 weeks",
+      "Percentage rollout: 1% → 5% → 25% → 50% → 100% with 48h hold at each stage",
+      "Rollback trigger: error rate > 1% or p99 latency > 2x baseline"
+    ],
+    "progressive_enablement": {
+      "strategy": "Feature flags enable individual components within a wave",
+      "example": "W1 can roll out ChatWindow and ChatList first, then SearchBar and GroupManager in a follow-up",
+      "constraint": "Components with hard dependencies (e.g., MessageInput requires ChatWindow) must be enabled together"
+    }
+  },
+
+  "rollback_policy": {
+    "event_schema_mismatch": {
+      "detection": "Consumer receives event with unknown fields or missing required fields → schema validation error",
+      "response": [
+        "1. Log validation error to audit-events topic with full event payload",
+        "2. If error rate > 0.1% of events in 5 minutes → trigger feature flag kill switch for affected wave",
+        "3. Kill switch disables all components in the affected wave for all users",
+        "4. Preserve events in dead-letter queue for replay after schema fix",
+        "5. Alert on-call team via PagerDuty with schema mismatch details"
+      ]
+    },
+    "component_failure": {
+      "detection": "Client-side error boundary catches render/runtime error",
+      "response": [
+        "1. Error boundary renders fallback UI with 'Something went wrong' message",
+        "2. Error reported to observability pipeline with component name, props snapshot, stack trace",
+        "3. If same component error from > 100 unique users in 10 minutes → auto-disable feature flag",
+        "4. User sees graceful degradation (e.g., ChatWindow error → falls back to ChatList only)"
+      ]
+    },
+    "backend_unavailability": {
+      "detection": "SDK circuit breaker opens for a required backend service",
+      "response": [
+        "1. Components dependent on unavailable service show fallback UI (as defined in component catalog)",
+        "2. If service remains unavailable > 15 minutes → disable wave feature flags for new connections",
+        "3. Existing connected users retain cached state but cannot perform write operations"
+      ]
+    }
+  },
+
+  "observability_hooks": {
+    "feature_adoption_metrics": [
+      "feature_flag_evaluated{flag, result, tenant}",
+      "component_rendered{component, wave, viewport}",
+      "component_interaction{component, action, wave}"
+    ],
+    "rollout_health_metrics": [
+      "component_error_count{component, wave, error_type}",
+      "component_render_time_ms{component, wave, viewport}",
+      "event_schema_validation_error_count{topic, schema_version}"
+    ],
+    "dashboards": [
+      "Wave Rollout Health: Per-wave error rate, latency, adoption",
+      "Feature Flag Status: Flag evaluation counts, override distribution",
+      "Schema Compatibility: Validation error rate by topic and version"
+    ]
+  }
+}

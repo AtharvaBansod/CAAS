@@ -1,0 +1,417 @@
+{
+  "schema_version": "1.0.0",
+  "task_id": "SDKFE-COMP-001",
+  "title": "Component Contract Catalog",
+  "last_updated": "2026-02-28",
+
+  "waves": {
+    "W1-core-chat": {
+      "components": {
+        "ChatWindow": {
+          "description": "Main chat conversation view. Renders message list, input bar, and header.",
+          "props": {
+            "conversationId": {"type": "string", "required": true, "description": "Active conversation identifier"},
+            "userId": {"type": "string", "required": true, "description": "Authenticated user ID"},
+            "theme": {"type": "ThemeTokens", "required": false, "description": "Override theme tokens"},
+            "locale": {"type": "string", "required": false, "default": "en", "description": "ISO 639-1 locale for i18n"},
+            "onError": {"type": "(error: SdkError) => void", "required": false, "description": "Error callback for render-time failures"}
+          },
+          "events_emitted": ["chat:message_sent", "chat:typing_started", "chat:typing_stopped", "chat:read_receipt"],
+          "events_consumed": ["chat:message", "chat:typing", "chat:read", "chat:message_deleted", "chat:message_edited"],
+          "socket_dependencies": ["chat namespace connection"],
+          "api_dependencies": ["GET /api/v1/conversations/:id/messages (paginated)", "GET /api/v1/conversations/:id"],
+          "theme_tokens": ["--caas-chat-bg", "--caas-chat-bubble-self", "--caas-chat-bubble-other", "--caas-chat-text", "--caas-chat-timestamp", "--caas-chat-link"],
+          "accessibility": {
+            "role": "log",
+            "aria-live": "polite",
+            "keyboard_navigation": "Arrow keys scroll messages, Enter sends, Escape cancels reply",
+            "screen_reader": "Each message announced with sender name and timestamp"
+          },
+          "fallback_behavior": {
+            "socket_unavailable": "Show cached messages from local storage, display 'Reconnecting...' banner",
+            "api_unavailable": "Show empty state with retry button",
+            "partial_data": "Render available messages, placeholder for missing user profiles"
+          }
+        },
+        "MessageInput": {
+          "description": "Composable input bar with text, attachments, voice recording hooks.",
+          "props": {
+            "conversationId": {"type": "string", "required": true},
+            "allowAttachments": {"type": "boolean", "required": false, "default": true},
+            "allowVoice": {"type": "boolean", "required": false, "default": true},
+            "maxAttachmentSizeMb": {"type": "number", "required": false, "default": 25},
+            "placeholder": {"type": "string", "required": false, "default": "Type a message..."}
+          },
+          "events_emitted": ["chat:message_sent", "chat:typing_started", "chat:typing_stopped", "chat:attachment_upload_started", "chat:attachment_upload_complete"],
+          "events_consumed": [],
+          "api_dependencies": ["POST /api/v1/conversations/:id/messages", "POST /api/v1/media/upload"],
+          "theme_tokens": ["--caas-input-bg", "--caas-input-text", "--caas-input-border", "--caas-input-placeholder", "--caas-input-send-btn"],
+          "accessibility": {
+            "role": "textbox",
+            "aria-label": "Message input",
+            "keyboard_navigation": "Enter sends, Shift+Enter newline, Tab to attachment button"
+          },
+          "fallback_behavior": {
+            "offline": "Queue message locally, show pending indicator, replay on reconnect",
+            "upload_failure": "Retry 3 times with backoff, then show error with manual retry"
+          }
+        },
+        "ChatList": {
+          "description": "Scrollable list of conversations with last message preview, unread badge, timestamp.",
+          "props": {
+            "userId": {"type": "string", "required": true},
+            "filter": {"type": "'all' | 'unread' | 'groups' | 'direct'", "required": false, "default": "all"},
+            "onConversationSelect": {"type": "(conversationId: string) => void", "required": true}
+          },
+          "events_emitted": ["ui:conversation_selected"],
+          "events_consumed": ["chat:message", "presence:update"],
+          "api_dependencies": ["GET /api/v1/conversations?userId=:userId"],
+          "socket_dependencies": ["chat namespace (for real-time last-message updates)", "presence namespace"],
+          "theme_tokens": ["--caas-list-bg", "--caas-list-item-hover", "--caas-list-unread-badge", "--caas-list-divider"],
+          "accessibility": {
+            "role": "listbox",
+            "keyboard_navigation": "Arrow keys navigate, Enter selects conversation",
+            "screen_reader": "Each item announces: contact name, last message preview, unread count, timestamp"
+          },
+          "fallback_behavior": {
+            "api_unavailable": "Show cached conversation list from local storage",
+            "empty_state": "Show 'No conversations yet' with create button"
+          }
+        },
+        "SearchBar": {
+          "description": "Global search across conversations, messages, and contacts.",
+          "props": {
+            "userId": {"type": "string", "required": true},
+            "scope": {"type": "'conversations' | 'messages' | 'contacts' | 'all'", "required": false, "default": "all"},
+            "debounceMs": {"type": "number", "required": false, "default": 300}
+          },
+          "events_emitted": ["ui:search_result_selected"],
+          "events_consumed": [],
+          "api_dependencies": ["GET /api/v1/search?q=:query&scope=:scope"],
+          "theme_tokens": ["--caas-search-bg", "--caas-search-text", "--caas-search-icon", "--caas-search-result-highlight"],
+          "accessibility": {
+            "role": "searchbox",
+            "aria-label": "Search conversations and contacts",
+            "keyboard_navigation": "Type to search, arrow keys in results, Enter selects"
+          },
+          "fallback_behavior": {
+            "search_unavailable": "Show error inline with retry, disable search input"
+          }
+        },
+        "UserProfileCard": {
+          "description": "Displays user avatar, name, status, and basic info.",
+          "props": {
+            "userId": {"type": "string", "required": true},
+            "compact": {"type": "boolean", "required": false, "default": false}
+          },
+          "events_emitted": ["ui:profile_action"],
+          "events_consumed": ["presence:update"],
+          "api_dependencies": ["GET /api/v1/users/:userId/profile"],
+          "socket_dependencies": ["presence namespace"],
+          "theme_tokens": ["--caas-profile-bg", "--caas-profile-name", "--caas-profile-status-online", "--caas-profile-status-offline"],
+          "accessibility": {
+            "role": "article",
+            "screen_reader": "Announces user name, online status, and status message"
+          },
+          "fallback_behavior": {
+            "profile_unavailable": "Show avatar placeholder with userId as fallback text"
+          }
+        },
+        "GroupManager": {
+          "description": "Create group, add/remove members, edit group settings.",
+          "props": {
+            "groupId": {"type": "string | null", "required": true, "description": "null for create mode"},
+            "userId": {"type": "string", "required": true},
+            "onGroupCreated": {"type": "(groupId: string) => void", "required": false}
+          },
+          "events_emitted": ["group:created", "group:member_added", "group:member_removed", "group:settings_updated"],
+          "events_consumed": ["group:member_joined", "group:member_left"],
+          "api_dependencies": [
+            "POST /api/v1/groups",
+            "PUT /api/v1/groups/:groupId",
+            "POST /api/v1/groups/:groupId/members",
+            "DELETE /api/v1/groups/:groupId/members/:memberId"
+          ],
+          "theme_tokens": ["--caas-group-bg", "--caas-group-header", "--caas-group-member-item"],
+          "accessibility": {
+            "role": "dialog",
+            "keyboard_navigation": "Tab through fields, Enter submits"
+          },
+          "fallback_behavior": {
+            "api_failure": "Show error toast, preserve form state for retry"
+          }
+        },
+        "MessageActions": {
+          "description": "Context menu for save, forward, reply, copy, delete message actions.",
+          "props": {
+            "messageId": {"type": "string", "required": true},
+            "conversationId": {"type": "string", "required": true},
+            "permissions": {"type": "MessagePermissions", "required": true}
+          },
+          "events_emitted": ["chat:message_forwarded", "chat:message_saved", "chat:message_deleted", "ui:reply_to_message"],
+          "events_consumed": [],
+          "api_dependencies": [
+            "POST /api/v1/conversations/:id/messages/:messageId/forward",
+            "POST /api/v1/saved-messages",
+            "DELETE /api/v1/conversations/:id/messages/:messageId"
+          ],
+          "theme_tokens": ["--caas-action-menu-bg", "--caas-action-menu-item", "--caas-action-menu-danger"],
+          "accessibility": {
+            "role": "menu",
+            "keyboard_navigation": "Arrow keys navigate, Enter selects, Escape closes"
+          },
+          "fallback_behavior": {
+            "action_failure": "Show error toast with retry option"
+          }
+        }
+      }
+    },
+
+    "W2-social-media": {
+      "components": {
+        "FeedView": {
+          "description": "Scrollable feed of posts and reels with infinite scroll.",
+          "props": {
+            "userId": {"type": "string", "required": true},
+            "feedType": {"type": "'home' | 'explore' | 'user'", "required": false, "default": "home"},
+            "targetUserId": {"type": "string", "required": false, "description": "Required when feedType is 'user'"}
+          },
+          "events_emitted": ["ui:post_selected", "ui:reel_selected", "feed:refresh_requested"],
+          "events_consumed": ["feed:new_post", "feed:post_updated"],
+          "api_dependencies": ["GET /api/v1/feed?type=:feedType&cursor=:cursor"],
+          "socket_dependencies": ["feed namespace (for real-time new post notifications)"],
+          "theme_tokens": ["--caas-feed-bg", "--caas-feed-card-bg", "--caas-feed-divider"],
+          "accessibility": {
+            "role": "feed",
+            "keyboard_navigation": "J/K navigate posts, Enter opens, R refreshes"
+          },
+          "fallback_behavior": {
+            "api_unavailable": "Show cached feed from local storage with stale indicator"
+          }
+        },
+        "CommentThread": {
+          "description": "Nested threaded comments with reply, like, and report.",
+          "props": {
+            "postId": {"type": "string", "required": true},
+            "maxDepth": {"type": "number", "required": false, "default": 3},
+            "sortOrder": {"type": "'newest' | 'oldest' | 'popular'", "required": false, "default": "newest"}
+          },
+          "events_emitted": ["comment:posted", "comment:liked", "comment:reported"],
+          "events_consumed": ["comment:new", "comment:deleted"],
+          "api_dependencies": [
+            "GET /api/v1/posts/:postId/comments?sort=:sort&cursor=:cursor",
+            "POST /api/v1/posts/:postId/comments",
+            "POST /api/v1/comments/:commentId/like"
+          ],
+          "theme_tokens": ["--caas-comment-bg", "--caas-comment-indent-line", "--caas-comment-author"],
+          "accessibility": {
+            "role": "tree",
+            "screen_reader": "Nested replies announced with depth level"
+          },
+          "fallback_behavior": {
+            "load_failure": "Show retry button, preserve any draft comment"
+          }
+        },
+        "ReactionBar": {
+          "description": "Like, save, share actions for posts/reels.",
+          "props": {
+            "contentId": {"type": "string", "required": true},
+            "contentType": {"type": "'post' | 'reel' | 'comment'", "required": true},
+            "currentUserReaction": {"type": "string | null", "required": false}
+          },
+          "events_emitted": ["reaction:toggled", "content:saved", "content:shared"],
+          "events_consumed": ["reaction:updated"],
+          "api_dependencies": ["POST /api/v1/reactions", "DELETE /api/v1/reactions/:reactionId"],
+          "theme_tokens": ["--caas-reaction-active", "--caas-reaction-inactive", "--caas-reaction-count"],
+          "accessibility": {
+            "role": "toolbar",
+            "keyboard_navigation": "Tab between actions, Enter/Space toggles"
+          },
+          "fallback_behavior": {
+            "offline": "Optimistic update with queue for sync on reconnect"
+          }
+        },
+        "StoryViewer": {
+          "description": "Full-screen story/highlight viewer with auto-advance.",
+          "props": {
+            "storyIds": {"type": "string[]", "required": true},
+            "startIndex": {"type": "number", "required": false, "default": 0},
+            "autoAdvanceMs": {"type": "number", "required": false, "default": 5000}
+          },
+          "events_emitted": ["story:viewed", "story:completed", "story:reply_sent"],
+          "events_consumed": [],
+          "api_dependencies": ["GET /api/v1/stories/:storyId", "POST /api/v1/stories/:storyId/view"],
+          "theme_tokens": ["--caas-story-progress-bar", "--caas-story-overlay-text"],
+          "accessibility": {
+            "role": "dialog",
+            "keyboard_navigation": "Left/Right arrows navigate, Space pause/resume, Escape close"
+          },
+          "fallback_behavior": {
+            "media_load_failure": "Skip to next story, show toast"
+          }
+        },
+        "MediaViewer": {
+          "description": "Full-screen image/video viewer with zoom, swipe, and download.",
+          "props": {
+            "mediaUrls": {"type": "MediaItem[]", "required": true},
+            "startIndex": {"type": "number", "required": false, "default": 0}
+          },
+          "events_emitted": ["media:downloaded", "media:shared"],
+          "events_consumed": [],
+          "api_dependencies": [],
+          "theme_tokens": ["--caas-media-overlay-bg", "--caas-media-controls"],
+          "accessibility": {
+            "role": "dialog",
+            "keyboard_navigation": "Arrow keys navigate, +/- zoom, Escape close"
+          },
+          "fallback_behavior": {
+            "media_unavailable": "Show placeholder with file type icon and download link"
+          }
+        }
+      }
+    },
+
+    "W3-collaboration": {
+      "components": {
+        "PlannerBoard": {
+          "description": "Kanban-style task board with drag-and-drop columns.",
+          "props": {
+            "boardId": {"type": "string", "required": true},
+            "userId": {"type": "string", "required": true},
+            "columns": {"type": "ColumnConfig[]", "required": false, "default": "[todo, in-progress, done]"}
+          },
+          "events_emitted": ["task:moved", "task:created", "task:assigned", "task:completed"],
+          "events_consumed": ["task:updated", "task:created_by_other"],
+          "api_dependencies": [
+            "GET /api/v1/boards/:boardId/tasks",
+            "POST /api/v1/boards/:boardId/tasks",
+            "PATCH /api/v1/tasks/:taskId"
+          ],
+          "socket_dependencies": ["collaboration namespace"],
+          "theme_tokens": ["--caas-board-bg", "--caas-board-column-bg", "--caas-board-card-bg", "--caas-board-card-border"],
+          "accessibility": {
+            "role": "application",
+            "keyboard_navigation": "Arrow keys move between cards and columns, Space grabs card, Enter opens"
+          },
+          "fallback_behavior": {
+            "socket_unavailable": "Show cached board state, disable real-time updates, poll every 30s"
+          }
+        },
+        "TaskCard": {
+          "description": "Individual task card within planner board.",
+          "props": {
+            "taskId": {"type": "string", "required": true},
+            "onAssign": {"type": "(userId: string) => void", "required": false},
+            "onDueChange": {"type": "(date: string) => void", "required": false}
+          },
+          "events_emitted": ["task:assigned", "task:due_changed", "task:opened"],
+          "events_consumed": ["task:updated"],
+          "api_dependencies": ["GET /api/v1/tasks/:taskId", "PATCH /api/v1/tasks/:taskId"],
+          "theme_tokens": ["--caas-task-priority-high", "--caas-task-priority-medium", "--caas-task-priority-low"],
+          "accessibility": {
+            "role": "listitem",
+            "screen_reader": "Announces task title, assignee, due date, priority"
+          },
+          "fallback_behavior": {
+            "update_failure": "Revert drag position, show error toast"
+          }
+        },
+        "CalendarView": {
+          "description": "Month/week/day calendar view showing tasks and events.",
+          "props": {
+            "userId": {"type": "string", "required": true},
+            "view": {"type": "'month' | 'week' | 'day'", "required": false, "default": "month"},
+            "boardIds": {"type": "string[]", "required": false, "description": "Filter tasks by boards"}
+          },
+          "events_emitted": ["calendar:date_selected", "calendar:event_clicked"],
+          "events_consumed": ["task:updated", "task:created_by_other"],
+          "api_dependencies": ["GET /api/v1/calendar?userId=:userId&start=:start&end=:end"],
+          "theme_tokens": ["--caas-calendar-bg", "--caas-calendar-today", "--caas-calendar-event"],
+          "accessibility": {
+            "role": "grid",
+            "keyboard_navigation": "Arrow keys navigate dates, Enter selects, Page Up/Down change month"
+          },
+          "fallback_behavior": {
+            "api_unavailable": "Show cached calendar data with stale indicator"
+          }
+        }
+      }
+    },
+
+    "W4-governance-and-presence": {
+      "components": {
+        "PresenceIndicator": {
+          "description": "Online/offline/away/busy status dot with optional last-seen text.",
+          "props": {
+            "userId": {"type": "string", "required": true},
+            "showLastSeen": {"type": "boolean", "required": false, "default": true},
+            "size": {"type": "'sm' | 'md' | 'lg'", "required": false, "default": "md"}
+          },
+          "events_emitted": [],
+          "events_consumed": ["presence:update"],
+          "socket_dependencies": ["presence namespace"],
+          "api_dependencies": [],
+          "theme_tokens": ["--caas-presence-online", "--caas-presence-away", "--caas-presence-busy", "--caas-presence-offline"],
+          "accessibility": {
+            "role": "status",
+            "screen_reader": "Announces 'User online' or 'Last seen 5 minutes ago'"
+          },
+          "fallback_behavior": {
+            "socket_unavailable": "Show last known state with '(cached)' suffix"
+          }
+        },
+        "ModerationControls": {
+          "description": "Mute, block, report actions for users and content.",
+          "props": {
+            "targetUserId": {"type": "string", "required": true},
+            "currentUserId": {"type": "string", "required": true},
+            "context": {"type": "'profile' | 'chat' | 'group'", "required": true}
+          },
+          "events_emitted": ["moderation:muted", "moderation:blocked", "moderation:reported"],
+          "events_consumed": [],
+          "api_dependencies": [
+            "POST /api/v1/moderation/mute",
+            "POST /api/v1/moderation/block",
+            "POST /api/v1/moderation/report"
+          ],
+          "theme_tokens": ["--caas-mod-btn-warning", "--caas-mod-btn-danger"],
+          "accessibility": {
+            "role": "toolbar",
+            "keyboard_navigation": "Tab between actions, Enter confirms with dialog"
+          },
+          "fallback_behavior": {
+            "api_failure": "Show error toast, don't update UI optimistically for moderation actions"
+          }
+        },
+        "NotificationPreferences": {
+          "description": "Per-conversation and global notification settings panel.",
+          "props": {
+            "userId": {"type": "string", "required": true},
+            "conversationId": {"type": "string | null", "required": false, "description": "null for global settings"}
+          },
+          "events_emitted": ["notification:settings_updated"],
+          "events_consumed": [],
+          "api_dependencies": [
+            "GET /api/v1/users/:userId/notification-preferences",
+            "PUT /api/v1/users/:userId/notification-preferences"
+          ],
+          "theme_tokens": ["--caas-settings-bg", "--caas-settings-toggle-on", "--caas-settings-toggle-off"],
+          "accessibility": {
+            "role": "form",
+            "keyboard_navigation": "Tab through toggles, Space toggles, Enter saves"
+          },
+          "fallback_behavior": {
+            "api_failure": "Show current cached settings, disable save button, show error"
+          }
+        }
+      }
+    }
+  },
+
+  "global_dependency_rules": {
+    "no_hidden_events": "Every socket event consumed or emitted by a component MUST be listed in the realtime-contracts package schemas",
+    "api_contract_binding": "Every API dependency MUST match a route defined in gateway OpenAPI spec",
+    "theme_token_registry": "All --caas-* tokens MUST be registered in the shared theme token catalog",
+    "fallback_mandatory": "Every component MUST define fallback_behavior for graceful degradation"
+  }
+}

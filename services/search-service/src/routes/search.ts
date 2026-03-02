@@ -18,6 +18,10 @@ const searchQuerySchema = {
   },
 };
 
+const MESSAGE_SORT: any = [{ created_at: { order: 'desc' } }, { id: { order: 'desc' } }];
+const CONVERSATION_SORT: any = [{ updated_at: { order: 'desc' } }, { id: { order: 'desc' } }];
+const USER_SORT: any = [{ _score: { order: 'desc' } }, { id: { order: 'desc' } }];
+
 interface SearchContext {
   esClient: ElasticsearchClient;
   redis: Redis;
@@ -102,7 +106,7 @@ export async function searchRoutes(
           index: 'messages',
           query: { bool: { must } },
           size: limitVal,
-          sort: [{ created_at: { order: 'desc' as const } }, { _id: { order: 'desc' as const } }],
+          sort: MESSAGE_SORT,
           search_after: searchAfter,
           highlight: {
             fields: {
@@ -196,7 +200,7 @@ export async function searchRoutes(
           index: 'conversations',
           query: { bool: { must } },
           size: limitVal,
-          sort: [{ updated_at: { order: 'desc' as const } }, { _id: { order: 'desc' as const } }],
+          sort: CONVERSATION_SORT,
           search_after: searchAfter,
           highlight: {
             fields: {
@@ -215,14 +219,14 @@ export async function searchRoutes(
         }));
 
         const nextCursor =
-          hits.length === limit
+          hits.length === limitVal
             ? Buffer.from(JSON.stringify(hits[hits.length - 1].sort)).toString('base64')
             : null;
 
         return reply.send({
           results: conversations,
           cursor: nextCursor,
-          has_more: hits.length === limit,
+          has_more: hits.length === limitVal,
           total: result.hits.total,
         });
       } catch (error) {
@@ -277,7 +281,7 @@ export async function searchRoutes(
           index: 'users',
           query: { bool: { must } },
           size: limitVal,
-          sort: [{ _score: { order: 'desc' as const } }, { _id: { order: 'desc' as const } }],
+          sort: USER_SORT,
           search_after: searchAfter,
         });
 

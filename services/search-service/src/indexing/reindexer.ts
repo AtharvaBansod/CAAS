@@ -36,6 +36,7 @@ export class Reindexer {
           index: 'messages',
           id: message._id.toString(),
           document: {
+            id: message._id.toString(),
             tenant_id: message.tenant_id || tenantId,
             conversation_id: message.conversation_id?.toString(),
             sender_id: message.sender_id,
@@ -83,6 +84,7 @@ export class Reindexer {
           index: 'conversations',
           id: conversation._id.toString(),
           document: {
+            id: conversation._id.toString(),
             tenant_id: conversation.tenant_id || tenantId,
             name: conversation.name,
             type: conversation.type,
@@ -122,14 +124,16 @@ export class Reindexer {
 
     let count = 0;
     for await (const user of cursor) {
-      await this.bulkIndexer.addOperation({
-        index: 'users',
-        id: user._id.toString(),
-        document: {
-          tenant_id: user.tenant_id,
-          username: user.username,
-          display_name: user.display_name,
-          email: user.email,
+        await this.bulkIndexer.addOperation({
+          index: 'users',
+          id: user._id.toString(),
+          document: {
+            id: user._id.toString(),
+            tenant_id: user.tenant_id,
+            name: user.display_name || user.username,
+            username: user.username,
+            display_name: user.display_name,
+            email: user.email,
           created_at: user.created_at?.toISOString(),
           updated_at: user.updated_at?.toISOString(),
           indexed_at: new Date().toISOString(),

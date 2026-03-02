@@ -441,6 +441,31 @@ try {
     if ($waited -ge $maxWait) {
         Write-Host "Warning: Search Service health check timeout" -ForegroundColor Yellow
     }
+
+    # Wait for Kafka Service
+    Write-Host "Waiting for Kafka Service to be healthy..." -ForegroundColor Yellow
+    $maxWait = 60
+    $waited = 0
+    while ($waited -lt $maxWait) {
+        try {
+            $health = Invoke-WebRequest -Uri "http://localhost:3010/health" -UseBasicParsing -TimeoutSec 2 2>&1
+            if ($health.StatusCode -eq 200) {
+                Write-Host "Kafka Service is healthy!" -ForegroundColor Green
+                break
+            }
+        } catch {}
+
+        if ($waited % 10 -eq 0) {
+            Write-Host "  Still waiting... ($waited/$maxWait seconds)" -ForegroundColor Gray
+        }
+
+        Start-Sleep -Seconds 3
+        $waited += 3
+    }
+
+    if ($waited -ge $maxWait) {
+        Write-Host "Warning: Kafka Service health check timeout" -ForegroundColor Yellow
+    }
     
     Write-Host ""
     Write-Host "Service Status:" -ForegroundColor Cyan
@@ -487,6 +512,7 @@ try {
     Write-Host "  Compliance Service: http://localhost:3008/health" -ForegroundColor White
     Write-Host "  Crypto Service:     http://localhost:3009/health" -ForegroundColor White
     Write-Host "  Search Service:     http://localhost:3006/health" -ForegroundColor White
+    Write-Host "  Kafka Service:      http://localhost:3010/health" -ForegroundColor White
     Write-Host "  Socket Service 1:   http://localhost:3002/health" -ForegroundColor White
     Write-Host "  Socket Service 2:   http://localhost:3003/health" -ForegroundColor White
     Write-Host "  Elasticsearch:      http://localhost:9200" -ForegroundColor White

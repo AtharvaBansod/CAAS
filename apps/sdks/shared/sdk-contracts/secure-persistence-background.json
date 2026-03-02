@@ -1,0 +1,160 @@
+{
+  "schema_version": "1.0.0",
+  "task_id": "SDKFE-PLAT-004",
+  "title": "Secure Local Persistence & Background Reliability",
+  "last_updated": "2026-02-28",
+
+  "secure_storage": {
+    "principle": "All tokens and sensitive payloads encrypted at rest using platform-native keystores",
+    "platforms": {
+      "android": {
+        "mechanism": "EncryptedSharedPreferences (Jetpack Security)",
+        "key_storage": "Android Keystore (hardware-backed when available)",
+        "encryption": "AES-256-GCM with MasterKey",
+        "items_stored": ["access_token", "refresh_token", "device_id", "encryption_key_material"],
+        "fallback": "If hardware keystore unavailable, use software-backed MasterKey with additional PIN/biometric gate"
+      },
+      "ios": {
+        "mechanism": "Keychain Services",
+        "accessibility": "kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly",
+        "protection_class": "Complete protection when locked, available after first unlock",
+        "items_stored": ["access_token", "refresh_token", "device_id", "encryption_key_material"],
+        "sync_policy": "kSecAttrSynchronizableNO — never synced to iCloud Keychain"
+      },
+      "flutter": {
+        "mechanism": "flutter_secure_storage (wraps Keychain on iOS, EncryptedSharedPreferences on Android)",
+        "options": {"android": {"encryptedSharedPreferences": true}, "ios": {"accessibility": "first_unlock_this_device"}},
+        "items_stored": ["access_token", "refresh_token", "device_id", "encryption_key_material"]
+      },
+      "unity": {
+        "mechanism": "Platform-specific: Android → EncryptedSharedPreferences via JNI bridge, iOS → Keychain via native plugin, Desktop → DPAPI (Windows) / Keychain (macOS)",
+        "items_stored": ["access_token", "refresh_token", "device_id"],
+        "additional": "PlayerPrefs MUST NOT be used for tokens — it is plaintext"
+      },
+      "web": {
+        "mechanism": "httpOnly secure cookies for tokens (set by gateway), IndexedDB with Web Crypto AES-GCM for offline message cache",
+        "items_stored": ["offline_event_queue"],
+        "note": "Tokens never stored in localStorage or sessionStorage"
+      }
+    },
+
+    "data_classification": {
+      "sensitive": {
+        "items": ["access_token", "refresh_token", "encryption_key_material", "api_key"],
+        "storage": "Platform keystore only",
+        "lifetime": "Purged on logout, token revocation, or account deletion"
+      },
+      "internal": {
+        "items": ["device_id", "session_metadata", "user_preferences"],
+        "storage": "Encrypted local storage",
+        "lifetime": "Purged on logout or explicit user request"
+      },
+      "cached": {
+        "items": ["offline_event_queue", "last_known_conversation_list", "recent_presence_snapshot"],
+        "storage": "Encrypted local storage",
+        "lifetime": "Purged on logout; evicted by LRU when cache exceeds 50 MB"
+      }
+    }
+  },
+
+  "background_reliability": {
+    "reconnect_policy": {
+      "trigger": "WebSocket disconnect detected (close event, heartbeat miss, or network change)",
+      "backoff": {
+        "strategy": "Exponential with jitter",
+        "base_ms": 1000,
+        "max_ms": 30000,
+        "jitter_factor": 0.3,
+        "max_attempts": 10
+      },
+      "token_check": "Before each reconnect attempt, verify access_token validity; if expired, attempt refresh first",
+      "on_max_attempts_exceeded": "Transition to 'disconnected' state, surface UI banner, stop retrying until explicit user action or network change event"
+    },
+
+    "foreground_resume": {
+      "trigger": "App resumes from background (onResume / applicationDidBecomeActive / OnApplicationFocus)",
+      "steps": [
+        "1. Check token expiry — if expired, attempt silent refresh",
+        "2. If refresh fails → transition to unauthenticated, show login prompt",
+        "3. If refresh succeeds → reconnect WebSocket",
+        "4. On reconnect, send reconciliation request with last_event_sequence_id",
+        "5. Server responds with missed events since last_event_sequence_id",
+        "6. Client applies missed events in order, then resumes normal dispatch"
+      ],
+      "max_reconciliation_events": 500,
+      "if_gap_too_large": "Server returns 'full_sync_required' flag; client clears local cache and re-fetches"
+    },
+
+    "battery_and_network_awareness": {
+      "low_battery_mode": {
+        "threshold_percent": 15,
+        "adjustments": [
+          "Increase heartbeat interval from 30s to 60s",
+          "Disable presence broadcasting (stop sending own presence updates)",
+          "Reduce max_events_per_frame to 8 (game adapter only)",
+          "Disable background keep-alive"
+        ]
+      },
+      "network_quality_adaptation": {
+        "detection": "Monitor WebSocket round-trip latency on heartbeat responses",
+        "thresholds": {
+          "good": {"latency_ms": "<200", "actions": "Normal operation"},
+          "degraded": {"latency_ms": "200-1000", "actions": "Buffer non-critical events, reduce heartbeat frequency"},
+          "poor": {"latency_ms": ">1000", "actions": "Queue all outbound events, show degraded connection banner"}
+        }
+      },
+      "offline_queue": {
+        "description": "When network is unavailable, outbound events are queued locally",
+        "max_queue_size": 200,
+        "persistence": "Encrypted local storage (survives app restart)",
+        "replay_on_reconnect": "Events replayed in order with original client_event_id for idempotent processing",
+        "ttl_hours": 24,
+        "expired_handling": "Events older than TTL are discarded with warning callback"
+      }
+    }
+  },
+
+  "data_purge_policy": {
+    "on_logout": {
+      "immediate": ["access_token", "refresh_token", "encryption_key_material", "api_key", "offline_event_queue"],
+      "deferred_30s": ["session_metadata", "user_preferences", "cached conversation lists"],
+      "reason": "Deferred purge allows logout confirmation UI to complete before wiping"
+    },
+    "on_token_revocation": {
+      "immediate": ["access_token", "refresh_token"],
+      "cascade": "Transition to 'unauthenticated' state, clear offline queue (events can no longer be replayed without valid session)"
+    },
+    "on_account_deletion": {
+      "immediate": ["ALL stored data — tokens, keys, caches, preferences, device_id"],
+      "verification": "After purge, read back all storage keys and assert empty"
+    }
+  },
+
+  "test_scenarios": [
+    {
+      "name": "token_survives_app_restart",
+      "steps": ["Store tokens via secure storage", "Kill app process", "Relaunch app", "Assert tokens retrieved successfully"],
+      "acceptance": "Tokens available after cold restart without re-authentication"
+    },
+    {
+      "name": "logout_purges_all_sensitive_data",
+      "steps": ["Authenticate and store tokens", "Call sdk.logout()", "Attempt to read all storage keys"],
+      "acceptance": "All sensitive items return null/empty"
+    },
+    {
+      "name": "offline_queue_replayed_on_reconnect",
+      "steps": ["Disconnect network", "Send 10 chat messages", "Reconnect network", "Verify all 10 messages delivered with correct order"],
+      "acceptance": "All messages delivered, no duplicates, correct sequence"
+    },
+    {
+      "name": "background_to_foreground_reconciliation",
+      "steps": ["Connect and receive events", "Background app for 5 minutes", "Have server send 50 events", "Resume app"],
+      "acceptance": "All 50 missed events received via reconciliation, state consistent"
+    },
+    {
+      "name": "low_battery_reduces_overhead",
+      "steps": ["Set battery level to 10%", "Observe heartbeat interval and presence broadcasting"],
+      "acceptance": "Heartbeat interval increased to 60s, presence broadcasting disabled"
+    }
+  ]
+}

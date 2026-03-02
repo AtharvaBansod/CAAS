@@ -14,6 +14,18 @@ export const usersIndexMapping = {
           },
         },
       },
+      username: {
+        type: 'text',
+        fields: {
+          keyword: { type: 'keyword' },
+        },
+      },
+      display_name: {
+        type: 'text',
+        fields: {
+          keyword: { type: 'keyword' },
+        },
+      },
       email: { type: 'keyword' },
       avatar_url: { type: 'keyword' },
     },

@@ -13,6 +13,7 @@ export const conversationsIndexMapping = {
       participant_ids: { type: 'keyword' },
       participant_names: { type: 'text' },
       created_at: { type: 'date' },
+      updated_at: { type: 'date' },
       last_message_at: { type: 'date' },
     },
   },

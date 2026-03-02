@@ -227,6 +227,64 @@ export class MessageSerializer {
       );
     }
   }
+
+  /**
+   * RT-KAF-002: Deserialize with fallback strategy for staged rollouts.
+   *
+   * Attempts to decode using Schema Registry first. If that fails (e.g. the
+   * message was produced without schema encoding, or uses a newer schema the
+   * consumer doesn't yet know about), falls back to plain JSON parse. Records
+   * which path was taken so callers can meter schema adoption.
+   */
+  public async deserializeWithFallback<T = any>(
+    raw: Buffer | string,
+    options?: { subject?: string; acceptedVersions?: number[] }
+  ): Promise<DeserializationResult<T> & { fallback: boolean }> {
+    const buf = typeof raw === 'string' ? Buffer.from(raw, 'utf-8') : raw;
+
+    // 1. Try schema-registry decoded path
+    try {
+      const result = await this.deserialize<T>(buf);
+
+      // If caller specified accepted schema versions, reject unknown versions
+      if (options?.acceptedVersions && result.version !== undefined) {
+        if (!options.acceptedVersions.includes(result.version)) {
+          console.warn(
+            `[Serializer] Schema version ${result.version} not in accepted window [${options.acceptedVersions.join(',')}] – using fallback`
+          );
+          throw new Error('schema_version_outside_accepted_window');
+        }
+      }
+
+      return { ...result, fallback: false };
+    } catch {
+      // fall through to JSON parse
+    }
+
+    // 2. Fallback: plain JSON parse
+    try {
+      const text = typeof raw === 'string' ? raw : raw.toString('utf-8');
+      const data = JSON.parse(text) as T;
+
+      // Optionally validate against schema if subject provided
+      if (options?.subject) {
+        try {
+          await this.schemaValidator.validateOrThrow(options.subject, data);
+        } catch {
+          // Even validation failure doesn't block the fallback – the
+          // consumer is expected to handle missing optional fields.
+          console.warn(`[Serializer] Fallback JSON payload did not pass schema validation for subject=${options.subject}`);
+        }
+      }
+
+      return { data, schemaId: -1, fallback: true };
+    } catch (parseErr) {
+      throw new DeserializationError(
+        `Both schema-registry and JSON-fallback deserialization failed: ${parseErr instanceof Error ? parseErr.message : 'Unknown error'}`,
+        'DESERIALIZATION_FALLBACK_ERROR'
+      );
+    }
+  }
 }
 
 // Type definitions for payloads

@@ -5,3 +5,4 @@ export * from './presence-update.schema';
 export * from './notification.schema';
 export * from './analytics-event.schema';
 export * from './audit-log.schema';
+export * from './realtime-expanded.schema';

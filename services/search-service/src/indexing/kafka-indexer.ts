@@ -1,6 +1,7 @@
 import { Kafka, Consumer, EachMessagePayload } from 'kafkajs';
 import { Client as ElasticsearchClient } from '@elastic/elasticsearch';
 import { BulkIndexer, IndexMetrics } from './bulk-indexer.js';
+import { isRealtimeEnvelope, RealtimeEnvelope } from '@caas/realtime-contracts';
 
 export class KafkaIndexer {
   private kafka: Kafka;
@@ -91,19 +92,24 @@ export class KafkaIndexer {
   }
 
   private async handleMessageEvent(event: any): Promise<void> {
-    const { event: eventType, message_id, tenant_id, conversation_id, sender_id, content, timestamp } = event;
+    const normalized = isRealtimeEnvelope(event)
+      ? this.normalizeRealtimeEnvelope(event)
+      : this.normalizeLegacyEvent(event);
+    const { eventType, messageId, tenantId, conversationId, senderId, content, timestamp } = normalized;
 
     switch (eventType) {
       case 'message.created':
         await this.bulkIndexer.addOperation({
           index: 'messages',
-          id: message_id,
+          id: messageId,
           document: {
-            tenant_id,
-            conversation_id,
-            sender_id,
+            id: messageId,
+            tenant_id: tenantId,
+            conversation_id: conversationId,
+            sender_id: senderId,
             content,
             created_at: timestamp,
+            updated_at: timestamp,
             indexed_at: new Date().toISOString(),
           },
         });
@@ -112,7 +118,7 @@ export class KafkaIndexer {
       case 'message.updated':
         await this.bulkIndexer.addOperation({
           index: 'messages',
-          id: message_id,
+          id: messageId,
           document: {
             content,
             updated_at: timestamp,
@@ -124,7 +130,7 @@ export class KafkaIndexer {
       case 'message.deleted':
         await this.bulkIndexer.addOperation({
           index: 'messages',
-          id: message_id,
+          id: messageId,
           isDelete: true,
         });
         break;
@@ -132,6 +138,33 @@ export class KafkaIndexer {
       default:
         console.log(`Unhandled message event: ${eventType}`);
     }
+  }
+
+  private normalizeRealtimeEnvelope(event: RealtimeEnvelope<any>) {
+    return {
+      eventType: event.event_type,
+      messageId: `${event.payload?.message_id || event.event_id}`,
+      tenantId: event.tenant_id,
+      conversationId: `${event.payload?.conversation_id || event.metadata?.conversation_id || ''}`,
+      senderId: `${event.payload?.sender_id || event.metadata?.user_id || ''}`,
+      content:
+        typeof event.payload?.content?.text === 'string'
+          ? event.payload.content.text
+          : event.payload?.content,
+      timestamp: event.occurred_at,
+    };
+  }
+
+  private normalizeLegacyEvent(event: any) {
+    return {
+      eventType: event.event,
+      messageId: event.message_id,
+      tenantId: event.tenant_id,
+      conversationId: event.conversation_id,
+      senderId: event.sender_id,
+      content: event.content,
+      timestamp: event.timestamp,
+    };
   }
 
   private async handleConversationEvent(event: any): Promise<void> {
@@ -143,6 +176,7 @@ export class KafkaIndexer {
           index: 'conversations',
           id: conversation_id,
           document: {
+            id: conversation_id,
             tenant_id,
             type: event.type,
             member_ids: event.member_ids || [],
@@ -155,6 +189,7 @@ export class KafkaIndexer {
 
       case 'conversation.updated':
         const updateDoc: any = {
+          id: conversation_id,
           updated_at: timestamp,
         };
 
@@ -179,6 +214,7 @@ export class KafkaIndexer {
           index: 'conversations',
           id: conversation_id,
           document: {
+            id: conversation_id,
             archived_at: timestamp,
             updated_at: timestamp,
           },

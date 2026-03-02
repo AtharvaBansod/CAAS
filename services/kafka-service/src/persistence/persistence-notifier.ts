@@ -17,8 +17,9 @@ export class PersistenceNotifier {
     this.kafka = kafka;
     this.topic = topic;
     this.producer = this.kafka.producer({
-      idempotent: true,
-      maxInFlightRequests: 1,
+      idempotent: false,
+      maxInFlightRequests: 5,
+      retry: { retries: 1, initialRetryTime: 200, maxRetryTime: 1000 },
     });
   }
 
@@ -124,12 +125,12 @@ export class PersistenceNotifier {
 
     try {
       const messages = results.map((result) => {
-        const event: PersistenceEvent = {
-          message_id: result.messageId,
-          status: result.success ? 'success' : 'failure',
-          timestamp: new Date(),
-          error: result.error,
-        };
+      const event: PersistenceEvent = {
+        message_id: result.messageId,
+        status: result.success ? 'success' : 'failure',
+        timestamp: new Date(),
+        ...(result.error ? { error: result.error } : {}),
+      };
 
         return {
           key: result.messageId,

@@ -1,0 +1,148 @@
+{
+  "schema_version": "1.0.0",
+  "task_id": "SDKFE-PLAT-001",
+  "title": "Mobile Platform Contract Adapters",
+  "last_updated": "2026-02-28",
+
+  "platforms": {
+    "kotlin-android": {
+      "transport": {
+        "websocket_library": "OkHttp WebSocket",
+        "http_library": "OkHttp / Retrofit",
+        "reconnect_strategy": {
+          "type": "exponential_backoff_with_jitter",
+          "base_delay_ms": 1500,
+          "max_delay_ms": 30000,
+          "jitter_factor": 0.25,
+          "network_awareness": true,
+          "notes": "Use ConnectivityManager to detect network type changes and trigger reconnect proactively"
+        },
+        "background_handling": {
+          "mechanism": "WorkManager for deferred reconnects, Foreground Service for active calls",
+          "doze_mode": "Defer socket operations; reconnect on IDLE_MAINTENANCE window",
+          "battery_optimization": "Respect battery optimization settings; reduce polling frequency in low battery"
+        }
+      },
+      "token_lifecycle": {
+        "storage": "Android Keystore (EncryptedSharedPreferences)",
+        "refresh_trigger": "Background JobScheduler 60s before expiry",
+        "revocation": "Clear Keystore entry + disconnect socket on logout"
+      },
+      "push_notification_hooks": {
+        "service": "Firebase Cloud Messaging (FCM)",
+        "event_alignment": {
+          "new_message": "Maps to socket 'chat:message' or FCM data payload",
+          "presence_update": "Maps to socket 'presence:update'",
+          "call_incoming": "Maps to socket 'webrtc:call_incoming' + high-priority FCM"
+        },
+        "fallback": "When socket disconnected, FCM delivers event; on socket reconnect, deduplicate via event_id"
+      }
+    },
+
+    "java-android": {
+      "transport": {
+        "websocket_library": "OkHttp WebSocket (same as Kotlin)",
+        "http_library": "OkHttp / HttpURLConnection",
+        "reconnect_strategy": "Same as kotlin-android",
+        "background_handling": "Same as kotlin-android"
+      },
+      "token_lifecycle": "Same as kotlin-android (Android Keystore)",
+      "push_notification_hooks": "Same as kotlin-android (FCM)"
+    },
+
+    "flutter": {
+      "transport": {
+        "websocket_library": "web_socket_channel (Dart)",
+        "http_library": "http / dio",
+        "reconnect_strategy": {
+          "type": "exponential_backoff_with_jitter",
+          "base_delay_ms": 1500,
+          "max_delay_ms": 30000,
+          "jitter_factor": 0.25,
+          "network_awareness": "connectivity_plus plugin for network state detection"
+        },
+        "background_handling": {
+          "android": "flutter_background_service + WorkManager integration",
+          "ios": "Background App Refresh + Silent Push for reconnect triggers",
+          "platform_channel": "Method channel for native background task coordination"
+        }
+      },
+      "token_lifecycle": {
+        "storage": {
+          "android": "flutter_secure_storage (backed by Android Keystore)",
+          "ios": "flutter_secure_storage (backed by iOS Keychain)"
+        },
+        "refresh_trigger": "Timer.periodic in isolate, 60s before expiry",
+        "revocation": "Delete all secure storage entries + disconnect"
+      },
+      "push_notification_hooks": {
+        "service": "firebase_messaging (cross-platform)",
+        "event_alignment": "Same event mapping as kotlin-android"
+      }
+    },
+
+    "csharp-unity": {
+      "transport": {
+        "websocket_library": "NativeWebSocket / System.Net.WebSockets",
+        "http_library": "UnityWebRequest / HttpClient",
+        "reconnect_strategy": {
+          "type": "exponential_backoff_with_jitter",
+          "base_delay_ms": 2000,
+          "max_delay_ms": 60000,
+          "jitter_factor": 0.3,
+          "notes": "Higher base delay for game contexts to avoid reconnect storms during gameplay"
+        },
+        "background_handling": {
+          "mechanism": "OnApplicationPause / OnApplicationFocus callbacks",
+          "behavior": "Disconnect socket on pause, reconnect on resume with session validation",
+          "game_loop_safety": "All network callbacks dispatched on main thread via Update() queue"
+        }
+      },
+      "token_lifecycle": {
+        "storage": {
+          "desktop": "DPAPI-encrypted PlayerPrefs or OS keyring",
+          "mobile": "Platform keychain via native plugin",
+          "webgl": "Encrypted localStorage"
+        },
+        "refresh_trigger": "Coroutine timer, 60s before expiry",
+        "revocation": "Clear stored tokens + disconnect + reset game session state"
+      },
+      "push_notification_hooks": {
+        "service": "Platform-specific (FCM on Android, APNs on iOS, none on desktop/WebGL)",
+        "event_alignment": "Same event mapping; desktop uses long-poll fallback"
+      }
+    }
+  },
+
+  "core_event_semantics_preservation": {
+    "requirement": "All mobile adapters MUST preserve the same event semantics as web-core SDK",
+    "events_preserved": [
+      "stateChange (unauthenticated → token-refresh → connected → degraded → disconnected)",
+      "error (same error payload shape)",
+      "socket:connected / socket:disconnected",
+      "socket:event (same namespace + eventName + payload shape)",
+      "reconciliation (sequence gap and replay conflict detection)"
+    ],
+    "auth_flow_preserved": [
+      "createSession → tokens stored → socket connect",
+      "refreshSession → tokens updated → socket stays connected",
+      "logoutSession → tokens cleared → socket disconnected → state → unauthenticated"
+    ]
+  },
+
+  "background_foreground_session_integrity": {
+    "invariants": [
+      "Background → foreground transition MUST NOT corrupt session tokens",
+      "If token expired during background, auto-refresh on foreground resume",
+      "Socket reconnect on foreground MUST validate token before connecting",
+      "Offline queue items queued during background are replayed on foreground reconnect",
+      "Duplicate event detection (client_event_id) prevents double-delivery"
+    ],
+    "test_scenarios": [
+      "App backgrounded for 5 minutes → foregrounded → session valid → socket reconnects",
+      "App backgrounded for 30 minutes → foregrounded → token expired → auto-refresh → socket reconnects",
+      "App killed → relaunched → tokens loaded from secure storage → session validated → socket connects",
+      "App backgrounded → network disconnected → network restored → foregrounded → reconnect"
+    ]
+  }
+}

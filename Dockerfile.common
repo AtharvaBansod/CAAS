@@ -18,11 +18,17 @@ ENV NODE_ENV=production
 FROM base AS package-builder
 ENV NODE_ENV=development
 COPY packages/compliance-client/package*.json ./packages/compliance-client/
+COPY packages/realtime-contracts/package*.json ./packages/realtime-contracts/
 RUN --mount=type=cache,target=/root/.npm \
     cd packages/compliance-client && (npm ci --no-audit --no-fund --prefer-offline || npm install --no-audit --no-fund --prefer-offline)
+RUN --mount=type=cache,target=/root/.npm \
+    cd packages/realtime-contracts && (npm ci --no-audit --no-fund --prefer-offline || npm install --no-audit --no-fund --prefer-offline)
 COPY packages/compliance-client/tsconfig.json ./packages/compliance-client/
+COPY packages/realtime-contracts/tsconfig.json ./packages/realtime-contracts/
 COPY packages/compliance-client/src ./packages/compliance-client/src
+COPY packages/realtime-contracts/src ./packages/realtime-contracts/src
 RUN cd packages/compliance-client && npm run build
+RUN cd packages/realtime-contracts && npm run build
 
 # ============================================
 # Stage 3: AUTH SERVICE
@@ -40,6 +46,7 @@ RUN npm prune --omit=dev
 FROM base AS auth-service
 WORKDIR /app/services/auth-service
 COPY --from=package-builder /app/packages/compliance-client /app/packages/compliance-client
+COPY --from=package-builder /app/packages/realtime-contracts /app/packages/realtime-contracts
 COPY --from=auth-builder /app/services/auth-service/dist ./dist
 COPY --from=auth-builder /app/services/auth-service/node_modules ./node_modules
 COPY --from=auth-builder /app/services/auth-service/package.json ./package.json
@@ -63,6 +70,7 @@ RUN npm prune --omit=dev
 FROM base AS gateway-service
 WORKDIR /app/services/gateway
 COPY --from=package-builder /app/packages/compliance-client /app/packages/compliance-client
+COPY --from=package-builder /app/packages/realtime-contracts /app/packages/realtime-contracts
 COPY --from=gateway-builder /app/services/gateway/dist ./dist
 COPY --from=gateway-builder /app/services/gateway/node_modules ./node_modules
 COPY --from=gateway-builder /app/services/gateway/package.json ./package.json
@@ -108,6 +116,7 @@ RUN npm prune --omit=dev
 FROM base AS search-service
 WORKDIR /app/services/search-service
 COPY --from=package-builder /app/packages/compliance-client /app/packages/compliance-client
+COPY --from=package-builder /app/packages/realtime-contracts /app/packages/realtime-contracts
 COPY --from=search-builder /app/services/search-service/dist ./dist
 COPY --from=search-builder /app/services/search-service/node_modules ./node_modules
 COPY --from=search-builder /app/services/search-service/package.json ./package.json
@@ -131,6 +140,7 @@ RUN npm prune --omit=dev
 FROM base AS socket-service
 WORKDIR /app/services/socket-service
 COPY --from=package-builder /app/packages/compliance-client /app/packages/compliance-client
+COPY --from=package-builder /app/packages/realtime-contracts /app/packages/realtime-contracts
 COPY --from=socket-builder /app/services/socket-service/dist ./dist
 COPY --from=socket-builder /app/services/socket-service/node_modules ./node_modules
 COPY --from=socket-builder /app/services/socket-service/package.json ./package.json
@@ -154,6 +164,7 @@ RUN npm prune --omit=dev
 FROM base AS media-service
 WORKDIR /app/services/media-service
 COPY --from=package-builder /app/packages/compliance-client /app/packages/compliance-client
+COPY --from=package-builder /app/packages/realtime-contracts /app/packages/realtime-contracts
 COPY --from=media-builder /app/services/media-service/dist ./dist
 COPY --from=media-builder /app/services/media-service/node_modules ./node_modules
 COPY --from=media-builder /app/services/media-service/package.json ./package.json
@@ -177,9 +188,34 @@ RUN npm prune --omit=dev
 FROM base AS crypto-service
 WORKDIR /app/services/crypto-service
 COPY --from=package-builder /app/packages/compliance-client /app/packages/compliance-client
+COPY --from=package-builder /app/packages/realtime-contracts /app/packages/realtime-contracts
 COPY --from=crypto-builder /app/services/crypto-service/dist ./dist
 COPY --from=crypto-builder /app/services/crypto-service/node_modules ./node_modules
 COPY --from=crypto-builder /app/services/crypto-service/package.json ./package.json
 USER node
 EXPOSE 3009
 CMD ["node", "dist/src/server.js"]
+
+# ============================================
+# Stage 10: KAFKA SERVICE
+# ============================================
+FROM package-builder AS kafka-builder
+WORKDIR /app/services/kafka-service
+COPY services/kafka-service/package*.json ./
+RUN --mount=type=cache,target=/root/.npm \
+    (npm ci --no-audit --no-fund --prefer-offline || npm install --no-audit --no-fund --prefer-offline)
+COPY services/kafka-service/tsconfig.json ./
+COPY services/kafka-service/tsconfig.runtime.json ./
+COPY services/kafka-service/src ./src
+RUN npm run build
+RUN npm prune --omit=dev
+
+FROM base AS kafka-service
+WORKDIR /app/services/kafka-service
+COPY --from=package-builder /app/packages/realtime-contracts /app/packages/realtime-contracts
+COPY --from=kafka-builder /app/services/kafka-service/dist ./dist
+COPY --from=kafka-builder /app/services/kafka-service/node_modules ./node_modules
+COPY --from=kafka-builder /app/services/kafka-service/package.json ./package.json
+USER node
+EXPOSE 3010
+CMD ["node", "dist/runtime.js"]

@@ -704,6 +704,10 @@ services:
       # Phase 4.5.z.x: Auth service integration
       - AUTH_SERVICE_URL=http://auth-service:3001
       - SERVICE_SECRET=${SERVICE_SECRET:-dev-service-secret}
+      - REALTIME_DISABLED_NAMESPACES=${REALTIME_DISABLED_NAMESPACES:-}
+      - REALTIME_DISABLED_EVENTS=${REALTIME_DISABLED_EVENTS:-}
+      - REALTIME_CANARY_EVENTS=${REALTIME_CANARY_EVENTS:-}
+      - REALTIME_CANARY_PERCENT=${REALTIME_CANARY_PERCENT:-100}
     depends_on:
       redis-socket:
         condition: service_healthy
@@ -743,6 +747,10 @@ services:
       # Phase 4.5.z.x: Auth service integration
       - AUTH_SERVICE_URL=http://auth-service:3001
       - SERVICE_SECRET=${SERVICE_SECRET:-dev-service-secret}
+      - REALTIME_DISABLED_NAMESPACES=${REALTIME_DISABLED_NAMESPACES:-}
+      - REALTIME_DISABLED_EVENTS=${REALTIME_DISABLED_EVENTS:-}
+      - REALTIME_CANARY_EVENTS=${REALTIME_CANARY_EVENTS:-}
+      - REALTIME_CANARY_PERCENT=${REALTIME_CANARY_PERCENT:-100}
     depends_on:
       redis-socket:
         condition: service_healthy
@@ -797,6 +805,8 @@ services:
         condition: service_healthy
       media-service:
         condition: service_healthy
+      kafka-service:
+        condition: service_healthy
       socket-service-1:
         condition: service_started
       socket-service-2:
@@ -826,6 +836,10 @@ services:
       - SOCKET1_URL=http://socket-service-1:3001
       - SOCKET2_URL=http://socket-service-2:3001
       - ADMIN_PORTAL_URL=http://admin-portal:3100
+      - MONGODB_URI=mongodb://caas_admin:caas_secret_2026@mongodb-primary:27017/caas_platform?authSource=admin&replicaSet=caas-rs
+      - KAFKA_BROKERS=kafka-1:29092,kafka-2:29092,kafka-3:29092
+      - KAFKA_MESSAGES_TOPIC=chat.messages
+      - KAFKA_INTERNAL_DLQ_TOPIC=internal.dlq
     depends_on:
       gateway:
         condition: service_healthy
@@ -838,6 +852,8 @@ services:
       search-service:
         condition: service_healthy
       media-service:
+        condition: service_healthy
+      kafka-service:
         condition: service_healthy
       socket-service-1:
         condition: service_started
@@ -1050,6 +1066,49 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    restart: unless-stopped
+
+  kafka-service:
+    build:
+      context: .
+      dockerfile: ./Dockerfile.common
+      target: kafka-service
+    container_name: caas-kafka-service
+    hostname: kafka-service
+    ports:
+      - "3010:3010"
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=3010
+      - KAFKA_BROKERS=kafka-1:29092,kafka-2:29092,kafka-3:29092
+      - KAFKA_CLIENT_ID=kafka-service-runtime
+      - MONGODB_URI=mongodb://${MONGO_ROOT_USER:-caas_admin}:${MONGO_ROOT_PASSWORD:-caas_secret_2026}@mongodb-primary:27017/caas_platform?authSource=admin&replicaSet=caas-rs
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-caas_redis_2026}@redis-shared:6379/0
+      - MESSAGE_PERSISTENCE_TOPIC=chat.messages
+      - MESSAGE_PERSISTENCE_GROUP_ID=message-persistence
+      - MESSAGE_PERSISTENCE_BATCH_SIZE=25
+      - MESSAGE_PERSISTENCE_FLUSH_INTERVAL_MS=2000
+      - MESSAGE_PERSISTENCE_ALLOWED_EVENT_TYPES=${MESSAGE_PERSISTENCE_ALLOWED_EVENT_TYPES:-message.created}
+      - MESSAGE_PERSISTENCE_DLQ_TOPIC=${MESSAGE_PERSISTENCE_DLQ_TOPIC:-internal.dlq}
+      - CONVERSATION_PERSISTENCE_TOPIC=conversation-events
+      - CONVERSATION_PERSISTENCE_GROUP_ID=conversation-persistence
+      - PERSISTENCE_NOTIFIER_TOPIC=chat.persistence.events
+    depends_on:
+      mongodb-primary:
+        condition: service_healthy
+      redis-shared:
+        condition: service_healthy
+      kafka-1:
+        condition: service_healthy
+    networks:
+      caas-network:
+        ipv4_address: 172.28.10.3
+    healthcheck:
+      test: ["CMD", "node", "-e", "const http = require('http'); http.get('http://127.0.0.1:3010/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     restart: unless-stopped
 
   # ============================================

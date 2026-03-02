@@ -1,5 +1,5 @@
 import { RedisClientType } from 'redis';
-import { MongoClient } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 import { getLogger } from '../utils/logger';
 
 const logger = getLogger('MediaAuthorization');
@@ -53,10 +53,11 @@ export class MediaAuthorization {
       }
 
       // Query MongoDB for file ownership or conversation membership
-      const db = this.mongoClient.db(`tenant_${tenantId}`);
-      const filesCollection = db.collection('files');
+      const db = this.mongoClient.db('caas_platform');
+      const filesCollection = db.collection(`tenant_${tenantId}_media_files`);
       
-      const file = await filesCollection.findOne({ file_id: fileId });
+      const objectId = ObjectId.isValid(fileId) ? new ObjectId(fileId) : fileId;
+      const file = await filesCollection.findOne({ _id: objectId as any });
       
       if (!file) {
         const result = { authorized: false, reason: 'File not found' };
@@ -65,7 +66,7 @@ export class MediaAuthorization {
       }
 
       // Check if user is file owner
-      if (file.uploaded_by === userId) {
+      if (file.uploader_id === userId) {
         const result = { authorized: true };
         await this.redisClient.setEx(cacheKey, 300, JSON.stringify(result));
         return result;
@@ -76,7 +77,8 @@ export class MediaAuthorization {
         const conversationsCollection = db.collection('conversations');
         const conversation = await conversationsCollection.findOne({
           conversation_id: file.conversation_id,
-          participants: userId,
+          tenant_id: tenantId,
+          'participants.user_id': userId,
         });
 
         if (conversation) {
@@ -114,12 +116,12 @@ export class MediaAuthorization {
       }
 
       // Query MongoDB for file ownership
-      const db = this.mongoClient.db(`tenant_${tenantId}`);
-      const filesCollection = db.collection('files');
+      const db = this.mongoClient.db('caas_platform');
+      const filesCollection = db.collection(`tenant_${tenantId}_media_files`);
       
       const file = await filesCollection.findOne({ 
-        file_id: fileId,
-        uploaded_by: userId,
+        _id: (ObjectId.isValid(fileId) ? new ObjectId(fileId) : fileId) as any,
+        uploader_id: userId,
       });
       
       if (!file) {

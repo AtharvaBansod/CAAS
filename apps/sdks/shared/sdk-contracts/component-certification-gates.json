@@ -1,0 +1,222 @@
+{
+  "schema_version": "1.0.0",
+  "task_id": "SDKFE-COMP-004",
+  "title": "Component Certification Gates And Release Readiness Scoring",
+  "last_updated": "2026-02-28",
+
+  "certification_checklist": {
+    "description": "Every component MUST pass all gates before entering stable release",
+    "gates": {
+      "accessibility": {
+        "weight": 20,
+        "criteria": [
+          {"id": "a11y-01", "description": "All interactive elements keyboard-accessible", "evidence": "Manual test report"},
+          {"id": "a11y-02", "description": "WCAG AA color contrast (4.5:1 normal, 3:1 large)", "evidence": "axe-core scan report (0 violations)"},
+          {"id": "a11y-03", "description": "Screen reader tested (VoiceOver + TalkBack + NVDA)", "evidence": "Screen reader test matrix signed off"},
+          {"id": "a11y-04", "description": "Focus management correct (no focus trap, logical tab order)", "evidence": "Manual test report"},
+          {"id": "a11y-05", "description": "aria-live regions for dynamic content", "evidence": "Code review + manual verification"},
+          {"id": "a11y-06", "description": "Touch targets minimum 44x44px on mobile", "evidence": "Layout inspection report"}
+        ],
+        "pass_threshold": "ALL criteria must pass"
+      },
+      "internationalization": {
+        "weight": 15,
+        "criteria": [
+          {"id": "i18n-01", "description": "All user-visible strings externalized to locale files", "evidence": "grep for hardcoded strings = 0 results"},
+          {"id": "i18n-02", "description": "Date/time/number formatting uses Intl API or equivalent", "evidence": "Code review"},
+          {"id": "i18n-03", "description": "Pluralization rules correct for test locales (en, ar, zh, ru)", "evidence": "Locale test suite"},
+          {"id": "i18n-04", "description": "No string concatenation for sentences (use ICU MessageFormat)", "evidence": "Code review"},
+          {"id": "i18n-05", "description": "Tested with longest locale strings (de-DE) — no overflow/truncation", "evidence": "Visual regression test"}
+        ],
+        "pass_threshold": "ALL criteria must pass"
+      },
+      "rtl_support": {
+        "weight": 10,
+        "criteria": [
+          {"id": "rtl-01", "description": "Layout mirrors correctly with dir='rtl'", "evidence": "Visual regression test (ar-SA locale)"},
+          {"id": "rtl-02", "description": "Logical CSS properties used (margin-inline-start, not margin-left)", "evidence": "Stylelint rule + CI check"},
+          {"id": "rtl-03", "description": "Directional icons mirrored appropriately", "evidence": "Visual review"},
+          {"id": "rtl-04", "description": "Text input direction correct for mixed LTR/RTL content", "evidence": "Manual test with Arabic + English mixed text"}
+        ],
+        "pass_threshold": "ALL criteria must pass"
+      },
+      "performance": {
+        "weight": 20,
+        "criteria": [
+          {"id": "perf-01", "description": "Initial render within budget (see responsive-layout-standards.json)", "evidence": "Lighthouse CI / custom perf test"},
+          {"id": "perf-02", "description": "Scroll performance ≥ 60 FPS on mid-tier device", "evidence": "Chrome DevTools / Android Profiler trace"},
+          {"id": "perf-03", "description": "No memory leaks (stable heap over 5-minute session)", "evidence": "Memory profiler report"},
+          {"id": "perf-04", "description": "Virtualization implemented for lists > 50 items", "evidence": "Code review"},
+          {"id": "perf-05", "description": "Lazy loading for media and heavy sub-components", "evidence": "Network waterfall analysis"},
+          {"id": "perf-06", "description": "Bundle size contribution within budget", "evidence": "Webpack bundle analyzer or equivalent"}
+        ],
+        "pass_threshold": "ALL criteria must pass"
+      },
+      "test_coverage": {
+        "weight": 20,
+        "criteria": [
+          {"id": "test-01", "description": "Unit test coverage ≥ 80% (lines)", "evidence": "Coverage report from CI"},
+          {"id": "test-02", "description": "Integration tests cover all API/socket dependencies", "evidence": "Test matrix cross-referenced with component catalog"},
+          {"id": "test-03", "description": "Contract tests bind emitted/consumed events to canonical schemas", "evidence": "Contract test suite pass"},
+          {"id": "test-04", "description": "Visual regression tests for all viewports defined in layout standards", "evidence": "Visual diff report (Storybook Chromatic or equivalent)"},
+          {"id": "test-05", "description": "Error/fallback paths tested (API down, socket disconnect, empty state)", "evidence": "Test cases for each fallback_behavior in component catalog"}
+        ],
+        "pass_threshold": "ALL criteria must pass"
+      },
+      "security": {
+        "weight": 15,
+        "criteria": [
+          {"id": "sec-01", "description": "No XSS vectors (all user content sanitized/escaped)", "evidence": "SAST scan report + manual review"},
+          {"id": "sec-02", "description": "No sensitive data in component state/props that could leak to logs", "evidence": "Code review checklist"},
+          {"id": "sec-03", "description": "File upload components validate file type and size client-side", "evidence": "Test case"},
+          {"id": "sec-04", "description": "No direct DOM manipulation bypassing framework sanitization", "evidence": "Lint rule + code review"}
+        ],
+        "pass_threshold": "ALL criteria must pass"
+      }
+    }
+  },
+
+  "contract_test_generation": {
+    "description": "Automatically generates contract tests binding component events to canonical schemas",
+    "rules": [
+      {
+        "rule_id": "CT-001",
+        "description": "For every event in events_emitted, generate a test that verifies the emitted payload matches the canonical schema in packages/realtime-contracts",
+        "template": {
+          "test_name": "emits_{event_name}_with_valid_schema",
+          "steps": [
+            "1. Mount component with test fixtures",
+            "2. Trigger user action that emits the event",
+            "3. Capture emitted event payload",
+            "4. Validate payload against JSON schema from realtime-contracts",
+            "5. Assert validation passes with zero errors"
+          ]
+        }
+      },
+      {
+        "rule_id": "CT-002",
+        "description": "For every event in events_consumed, generate a test that verifies the component correctly handles the canonical event shape",
+        "template": {
+          "test_name": "handles_{event_name}_from_server",
+          "steps": [
+            "1. Mount component with test fixtures",
+            "2. Inject mock event matching canonical schema",
+            "3. Assert component state updates correctly",
+            "4. Assert UI reflects the event (snapshot or assertion)"
+          ]
+        }
+      },
+      {
+        "rule_id": "CT-003",
+        "description": "For every event in events_consumed, generate a negative test with malformed payload",
+        "template": {
+          "test_name": "rejects_malformed_{event_name}",
+          "steps": [
+            "1. Mount component with test fixtures",
+            "2. Inject event with missing required fields",
+            "3. Assert component does not crash (error boundary not triggered)",
+            "4. Assert warning logged to console/observability"
+          ]
+        }
+      }
+    ],
+    "automation": {
+      "trigger": "CI pipeline generates contract tests from component-contract-catalog.json + realtime-contracts schemas",
+      "output": "tests/contract/ directory with generated test files",
+      "regeneration": "On any change to component catalog or realtime-contracts schemas"
+    }
+  },
+
+  "wave_readiness_scoring": {
+    "description": "Composite score determining whether a wave is ready for production rollout",
+    "model": {
+      "total_score": 100,
+      "components": {
+        "dependency_readiness": {
+          "weight": 30,
+          "calculation": "Percentage of blocking dependencies resolved (from feature-rollout-governance.json)",
+          "threshold": 100,
+          "note": "ALL blocking dependencies must be resolved — no partial score"
+        },
+        "component_certification": {
+          "weight": 40,
+          "calculation": "Average certification score across all components in the wave",
+          "threshold": 95,
+          "note": "Weighted average of gate scores (a11y, i18n, rtl, perf, test, security)"
+        },
+        "contract_test_pass_rate": {
+          "weight": 20,
+          "calculation": "Percentage of generated contract tests passing",
+          "threshold": 100,
+          "note": "ALL contract tests must pass"
+        },
+        "operational_risk": {
+          "weight": 10,
+          "calculation": "Inverse risk score: deducts points for known issues, tech debt, missing monitoring",
+          "threshold": 80,
+          "deductions": {
+            "open_p1_bug": -20,
+            "open_p2_bug": -10,
+            "missing_dashboard": -5,
+            "missing_runbook": -5,
+            "no_load_test": -15,
+            "no_chaos_test": -10
+          }
+        }
+      },
+      "promotion_thresholds": {
+        "internal_dogfood": {"min_score": 70, "description": "Internal testing with engineering team"},
+        "beta": {"min_score": 85, "description": "Limited external rollout (1-5%)"},
+        "general_availability": {"min_score": 95, "description": "Full production rollout"}
+      }
+    },
+    "visibility": {
+      "dashboard": "Wave Readiness Dashboard showing per-wave score breakdown",
+      "api": "GET /api/v1/internal/wave-readiness?wave=W1 returns JSON score breakdown",
+      "ci_output": "Wave readiness score printed in CI pipeline summary for every merge to main"
+    }
+  },
+
+  "escalation_policy": {
+    "description": "Process when component dependencies lag behind planned feature wave timeline",
+    "tiers": [
+      {
+        "tier": 1,
+        "trigger": "Dependency delivery delayed by 1-2 weeks",
+        "actions": [
+          "Notify dependent team leads via Slack/Teams channel",
+          "Update dependency status in feature-rollout-governance.json",
+          "Adjust wave timeline estimate"
+        ],
+        "owner": "Feature team lead"
+      },
+      {
+        "tier": 2,
+        "trigger": "Dependency delivery delayed by 2-4 weeks OR blocks other waves",
+        "actions": [
+          "Escalate to engineering manager",
+          "Schedule cross-team sync meeting",
+          "Explore stub/mock alternatives for unblocking frontend work",
+          "Consider partial wave rollout (ship non-blocked components)"
+        ],
+        "owner": "Engineering manager"
+      },
+      {
+        "tier": 3,
+        "trigger": "Dependency delivery delayed by > 4 weeks OR critical path impacted",
+        "actions": [
+          "Escalate to VP Engineering",
+          "Formal re-planning of wave timeline",
+          "Resource reallocation decision",
+          "Communicate revised timeline to stakeholders"
+        ],
+        "owner": "VP Engineering"
+      }
+    ],
+    "tracking": {
+      "tool": "JIRA / Linear — escalation tickets with tier label and SLA timer",
+      "review_cadence": "Weekly in sprint planning, daily during Tier 2+",
+      "resolution_criteria": "Dependency delivered and integrated, or alternative approach approved"
+    }
+  }
+}

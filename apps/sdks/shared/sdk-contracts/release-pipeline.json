@@ -1,0 +1,131 @@
+{
+  "schema_version": "1.0.0",
+  "last_updated": "2026-02-28",
+  "description": "Automated publishing workflow per ecosystem with signing/checksum support",
+
+  "pipelines": {
+    "node-ts": {
+      "package_manager": "npm",
+      "registry": "https://registry.npmjs.org",
+      "build_command": "npm run build",
+      "test_command": "npm test",
+      "publish_command": "npm publish --provenance --access public",
+      "signing": {
+        "method": "npm-provenance",
+        "notes": "npm v9+ supports --provenance generating SLSA v1.0 attestations via Sigstore"
+      },
+      "checksum": {
+        "method": "npm-integrity",
+        "algorithm": "sha512",
+        "verification": "npm audit signatures"
+      },
+      "docker_test": "docker compose run sdk-node-ts npm test",
+      "artifacts": ["dist/index.js", "dist/index.d.ts", "package.json"]
+    },
+    "python": {
+      "package_manager": "pip / twine",
+      "registry": "https://pypi.org",
+      "build_command": "python -m build",
+      "test_command": "pytest",
+      "publish_command": "twine upload dist/*",
+      "signing": {
+        "method": "sigstore-python",
+        "notes": "Use sigstore-python for keyless signing of wheel/sdist"
+      },
+      "checksum": {
+        "method": "sha256",
+        "verification": "pip hash verification via requirements --require-hashes"
+      },
+      "docker_test": "docker compose run sdk-python pytest",
+      "artifacts": ["dist/*.whl", "dist/*.tar.gz"]
+    },
+    "java": {
+      "package_manager": "maven",
+      "registry": "https://repo1.maven.org/maven2/",
+      "build_command": "mvn package -DskipTests",
+      "test_command": "mvn test",
+      "publish_command": "mvn deploy -P release",
+      "signing": {
+        "method": "gpg",
+        "notes": "Maven Central requires GPG signing of all artifacts"
+      },
+      "checksum": {
+        "method": "sha1 + md5",
+        "verification": "Maven verifies checksums on download"
+      },
+      "docker_test": "docker compose run sdk-java mvn test",
+      "artifacts": ["target/sdk-java-*.jar", "target/sdk-java-*.pom"]
+    },
+    "dotnet": {
+      "package_manager": "nuget",
+      "registry": "https://api.nuget.org/v3/index.json",
+      "build_command": "dotnet build -c Release",
+      "test_command": "dotnet test",
+      "publish_command": "dotnet nuget push **/*.nupkg --source nuget.org --api-key $NUGET_KEY",
+      "signing": {
+        "method": "nuget-sign",
+        "notes": "dotnet nuget sign with code-signing certificate"
+      },
+      "checksum": {
+        "method": "sha512",
+        "verification": "NuGet package signature verification"
+      },
+      "docker_test": "docker compose run sdk-dotnet dotnet test",
+      "artifacts": ["**/*.nupkg", "**/*.snupkg"]
+    },
+    "ruby": {
+      "package_manager": "rubygems",
+      "registry": "https://rubygems.org",
+      "build_command": "gem build caas_sdk.gemspec",
+      "test_command": "ruby -Itest test/client_test.rb",
+      "publish_command": "gem push caas_sdk-*.gem",
+      "signing": {
+        "method": "gem-cert",
+        "notes": "Gem signing with RSA certificate"
+      },
+      "checksum": {
+        "method": "sha256",
+        "verification": "gem install --trust-policy HighSecurity"
+      },
+      "docker_test": "docker compose run sdk-ruby ruby -Itest test/client_test.rb",
+      "artifacts": ["caas_sdk-*.gem"]
+    },
+    "rust": {
+      "package_manager": "cargo",
+      "registry": "https://crates.io",
+      "build_command": "cargo build --release",
+      "test_command": "cargo test",
+      "publish_command": "cargo publish",
+      "signing": {
+        "method": "cargo-audit + sigstore",
+        "notes": "Crates.io authenticates via API token; use sigstore for additional provenance"
+      },
+      "checksum": {
+        "method": "sha256",
+        "verification": "cargo verify-project"
+      },
+      "docker_test": "docker compose run sdk-rust cargo test",
+      "artifacts": ["target/release/libcaas_sdk_rust.*"]
+    }
+  },
+
+  "release_workflow": {
+    "steps": [
+      "1. Version bump in package manifest (semver strict)",
+      "2. Run full test suite in Docker (conformance + unit)",
+      "3. Generate SBOM and provenance attestation",
+      "4. Build release artifacts",
+      "5. Sign artifacts per ecosystem policy",
+      "6. Generate checksums (SHA-256 / SHA-512)",
+      "7. Publish to package registry",
+      "8. Tag git commit with version",
+      "9. Update compatibility matrix",
+      "10. Notify changelog / release notes"
+    ],
+    "traceability": {
+      "git_tag_format": "sdk-{language}-v{version}",
+      "contract_version_header": "x-contract-version",
+      "example_tag": "sdk-node-ts-v0.1.0-alpha.1"
+    }
+  }
+}

@@ -4,15 +4,22 @@
  * Handles message persistence to MongoDB
  */
 
-import { MongoClient, Collection, BulkWriteOperation } from 'mongodb';
+import { MongoClient, Collection, AnyBulkWriteOperation } from 'mongodb';
 
 export interface Message {
   message_id: string;
   conversation_id: string;
   sender_id: string;
   tenant_id: string;
-  content: string;
-  message_type: string;
+  project_id?: string;
+  content: {
+    type: string;
+    text?: string;
+    media_url?: string;
+    metadata?: Record<string, any>;
+    [key: string]: any;
+  };
+  message_type?: string;
   metadata?: Record<string, any>;
   created_at: Date;
   updated_at?: Date;
@@ -20,8 +27,8 @@ export interface Message {
 }
 
 export class MessageRepository {
-  private client?: MongoClient;
-  private collection?: Collection<Message>;
+  private client: MongoClient | undefined;
+  private collection: Collection<Message> | undefined;
 
   constructor(mongoClient?: MongoClient) {
     this.client = mongoClient;
@@ -72,7 +79,7 @@ export class MessageRepository {
 
     const collection = this.getCollection();
 
-    const operations: BulkWriteOperation<Message>[] = messages.map((message) => ({
+    const operations: AnyBulkWriteOperation<Message>[] = messages.map((message) => ({
       insertOne: {
         document: {
           ...message,
@@ -151,8 +158,11 @@ export class MessageRepository {
   async checkDuplicate(messageId: string, tenantId: string): Promise<boolean> {
     const collection = this.getCollection();
     const count = await collection.countDocuments({
-      message_id: messageId,
       tenant_id: tenantId,
+      $or: [
+        { message_id: messageId },
+        { 'metadata.event_id': messageId },
+      ],
     } as any);
     return count > 0;
   }

@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "src/runtime.ts",
+    "src/runtime/realtime-dlq.ts",
+    "src/consumers/message-persistence-consumer.ts",
+    "src/consumers/conversation-persistence.consumer.ts",
+    "src/persistence/message-repository.ts",
+    "src/persistence/conversation-cache.ts",
+    "src/persistence/persistence-notifier.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}

@@ -94,7 +94,9 @@ export class ConversationPersistenceConsumer {
       .collection('conversations');
 
     const updates: any = {
-      updated_at: new Date(event.timestamp),
+      $set: {
+        updated_at: new Date(event.timestamp),
+      },
     };
 
     // Apply specific updates based on event type
@@ -102,29 +104,32 @@ export class ConversationPersistenceConsumer {
       case 'created':
         // Conversation already created, just update metadata
         if (event.metadata) {
-          updates.metadata = event.metadata;
+          updates.$set.metadata = event.metadata;
         }
         break;
 
       case 'participant_added':
-        if (event.metadata.user_id) {
+        if (event.metadata['user_id']) {
           updates.$addToSet = {
-            participants: event.metadata.user_id,
+            participants: {
+              user_id: event.metadata['user_id'],
+              role: event.metadata['role'] || 'member',
+            },
           };
         }
         break;
 
       case 'participant_removed':
-        if (event.metadata.user_id) {
+        if (event.metadata['user_id']) {
           updates.$pull = {
-            participants: event.metadata.user_id,
+            participants: { user_id: event.metadata['user_id'] },
           };
         }
         break;
 
       case 'settings_changed':
-        if (event.metadata.settings) {
-          updates['metadata.settings'] = event.metadata.settings;
+        if (event.metadata['settings']) {
+          updates.$set['metadata.settings'] = event.metadata['settings'];
         }
         break;
     }
@@ -134,9 +139,8 @@ export class ConversationPersistenceConsumer {
         conversation_id: event.conversation_id,
         tenant_id: event.tenant_id,
       },
-      {
-        $set: updates,
-      }
+      updates,
+      { upsert: event.update_type === 'created' }
     );
   }
 

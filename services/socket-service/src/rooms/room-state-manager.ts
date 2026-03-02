@@ -1,5 +1,12 @@
-import Redis from 'ioredis';
 import { EventEmitter } from 'events';
+
+interface MinimalRedisClient {
+  get(key: string): Promise<string | null>;
+  setEx?(key: string, ttlSeconds: number, value: string): Promise<unknown>;
+  setex?(key: string, ttlSeconds: number, value: string): Promise<unknown>;
+  del(...keys: string[]): Promise<unknown>;
+  keys(pattern: string): Promise<string[]>;
+}
 
 interface RoomMember {
   user_id: string;
@@ -28,13 +35,27 @@ interface RoomMetrics {
 }
 
 export class RoomStateManager extends EventEmitter {
-  private redis: Redis;
+  private redis: MinimalRedisClient;
   private ttlHours: number;
 
-  constructor(redis: Redis, ttlHours: number = 24) {
+  constructor(redis: MinimalRedisClient, ttlHours: number = 24) {
     super();
     this.redis = redis;
     this.ttlHours = ttlHours;
+  }
+
+  private async setWithExpiry(key: string, ttlSeconds: number, value: string): Promise<void> {
+    if (typeof this.redis.setEx === 'function') {
+      await this.redis.setEx(key, ttlSeconds, value);
+      return;
+    }
+
+    if (typeof this.redis.setex === 'function') {
+      await this.redis.setex(key, ttlSeconds, value);
+      return;
+    }
+
+    throw new Error('Redis client does not support expiry writes');
   }
 
   /**
@@ -358,7 +379,7 @@ export class RoomStateManager extends EventEmitter {
   private async saveRoomState(roomState: RoomState): Promise<void> {
     const key = this.getRoomKey(roomState.room_id, roomState.tenant_id);
     const ttlSeconds = this.ttlHours * 60 * 60;
-    await this.redis.setex(key, ttlSeconds, JSON.stringify(roomState));
+    await this.setWithExpiry(key, ttlSeconds, JSON.stringify(roomState));
   }
 
   /**

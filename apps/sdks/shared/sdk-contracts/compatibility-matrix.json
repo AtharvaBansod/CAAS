@@ -1,0 +1,75 @@
+{
+  "schema_version": "1.0.0",
+  "last_updated": "2026-02-28",
+  "description": "Compatibility matrix mapping SDK versions to gateway/auth API versions",
+
+  "gateway_api_versions": {
+    "v1": {
+      "routes": [
+        "GET  /api/v1/sdk/health",
+        "GET  /api/v1/sdk/capabilities",
+        "POST /api/v1/sdk/session",
+        "POST /api/v1/sdk/refresh",
+        "POST /api/v1/sdk/logout"
+      ],
+      "required_headers": [
+        "x-api-key",
+        "x-correlation-id",
+        "content-type"
+      ],
+      "optional_headers": [
+        "x-project-id",
+        "idempotency-key",
+        "x-timestamp",
+        "x-nonce",
+        "x-signature"
+      ],
+      "auth_model": "api-key + session-token",
+      "status": "current"
+    }
+  },
+
+  "sdk_compatibility": {
+    "@caas/sdk-node-ts": {
+      "0.1.0-alpha.1": { "gateway_api": "v1", "min_gateway_version": "1.0.0", "status": "current" }
+    },
+    "caas-sdk-python": {
+      "0.1.0a1": { "gateway_api": "v1", "min_gateway_version": "1.0.0", "status": "current" }
+    },
+    "com.caas:sdk-java": {
+      "0.1.0-alpha.1": { "gateway_api": "v1", "min_gateway_version": "1.0.0", "status": "current" }
+    },
+    "Caas.Sdk": {
+      "0.1.0-alpha.1": { "gateway_api": "v1", "min_gateway_version": "1.0.0", "status": "current" }
+    },
+    "caas_sdk (ruby)": {
+      "0.1.0.alpha.1": { "gateway_api": "v1", "min_gateway_version": "1.0.0", "status": "current" }
+    },
+    "caas-sdk-rust": {
+      "0.1.0-alpha.1": { "gateway_api": "v1", "min_gateway_version": "1.0.0", "status": "current" }
+    },
+    "@caas/sdk-web-core": {
+      "0.1.0-alpha.1": { "gateway_api": "v1", "min_gateway_version": "1.0.0", "status": "current" }
+    },
+    "@caas/sdk-react": {
+      "0.1.0-alpha.1": { "gateway_api": "v1", "min_gateway_version": "1.0.0", "status": "current" }
+    }
+  },
+
+  "deprecation_policy": {
+    "notice_period_days": 90,
+    "breaking_change_policy": "Breaking contract changes require explicit major-version bump. All breaking changes must go through the deprecation workflow.",
+    "deprecation_workflow": [
+      "1. Open deprecation RFC with migration guide",
+      "2. Emit runtime deprecation warnings in affected SDK versions for 30+ days",
+      "3. Release new major version with breaking change",
+      "4. Support previous major for 90 days (security fixes only)",
+      "5. Mark previous major as EOL in compatibility matrix"
+    ],
+    "semver_rules": {
+      "patch": "Bug fixes, no API changes",
+      "minor": "New features, backward compatible",
+      "major": "Breaking changes — requires deprecation workflow"
+    }
+  }
+}

@@ -1,0 +1,114 @@
+{
+  "schema_version": "1.0.0",
+  "task_id": "SDKFE-PLAT-003",
+  "title": "C# Game/Realtime Adapter",
+  "last_updated": "2026-02-28",
+
+  "profile": {
+    "target": "Unity 2022 LTS+ / .NET Standard 2.1",
+    "optimization_goals": [
+      "Zero per-frame GC allocations for event processing",
+      "Predictable memory footprint (pooled buffers)",
+      "Frame-safe dispatch (no Unity API calls from non-main thread)"
+    ]
+  },
+
+  "allocation_strategy": {
+    "buffer_pooling": {
+      "description": "Reuse byte arrays for WebSocket message read/write to avoid GC pressure",
+      "implementation": "ArrayPool<byte>.Shared.Rent / Return",
+      "max_buffer_size": 65536,
+      "pool_size": 32
+    },
+    "event_object_pooling": {
+      "description": "Pre-allocate event wrapper objects to avoid per-event heap allocation",
+      "implementation": "ObjectPool<SocketEvent> with reset-on-return",
+      "pool_capacity": 128
+    },
+    "string_interning": {
+      "description": "Intern frequently used event names and namespace strings",
+      "events": ["chat:message", "chat:typing", "chat:read", "presence:update", "webrtc:call_incoming"]
+    }
+  },
+
+  "event_buffering_and_dispatch": {
+    "architecture": "Producer-Consumer with ring buffer",
+    "inbound_pipeline": [
+      "1. WebSocket thread receives raw message bytes",
+      "2. Deserialize to SocketEvent struct (off main thread, using pooled buffer)",
+      "3. Enqueue event into ConcurrentQueue<SocketEvent>",
+      "4. Main thread drains queue during Update() — max N events per frame"
+    ],
+    "max_events_per_frame": 16,
+    "frame_budget_ms": 2.0,
+    "overflow_policy": "If queue exceeds 256 items, drop oldest non-critical events (typing indicators first)",
+    "priority_levels": {
+      "critical": ["chat:message", "webrtc:call_incoming", "webrtc:sdp_offer", "presence:update"],
+      "normal": ["chat:typing", "chat:read", "webrtc:ice_candidate"],
+      "low": ["presence:lastseen"]
+    },
+    "dispatch_order": "Critical events processed first, then normal, then low within frame budget"
+  },
+
+  "realtime_state_sync": {
+    "multiplayer_chat_overlay": {
+      "description": "Overlay chat UI rendered as Unity UI Canvas, updated from dispatched events",
+      "state_model": {
+        "active_conversations": "Dictionary<string, ConversationState>",
+        "online_users": "HashSet<string>",
+        "unread_counts": "Dictionary<string, int>",
+        "typing_indicators": "Dictionary<string, DateTime>"
+      },
+      "guidance": [
+        "State mutations ONLY on main thread via dispatched events",
+        "Use observer pattern (C# events/delegates) for UI binding",
+        "Debounce typing indicators (500ms window)",
+        "Invalidate typing indicator after 5s timeout"
+      ]
+    },
+    "conflict_resolution": {
+      "strategy": "Last-write-wins with sequence number validation",
+      "sequence_gap_handling": "Request reconciliation from server for gaps > 1",
+      "duplicate_detection": "client_event_id deduplication set (max 1000 entries, LRU eviction)"
+    }
+  },
+
+  "connection_state_machine": {
+    "states": ["unauthenticated", "connecting", "connected", "degraded", "disconnected", "paused"],
+    "transitions": {
+      "unauthenticated → connecting": "On createSession success",
+      "connecting → connected": "On WebSocket handshake complete",
+      "connected → degraded": "On WebSocket disconnect (auto-reconnect scheduled)",
+      "connected → paused": "On OnApplicationPause(true)",
+      "paused → connecting": "On OnApplicationFocus(true) with valid token",
+      "paused → unauthenticated": "On OnApplicationFocus(true) with expired token (refresh failed)",
+      "degraded → connecting": "On reconnect timer",
+      "degraded → disconnected": "On max reconnect attempts exceeded",
+      "any → unauthenticated": "On logout"
+    },
+    "deterministic_inspection": {
+      "current_state": "sdk.ConnectionState",
+      "state_change_event": "sdk.OnConnectionStateChanged += (prev, next) => { }",
+      "can_send": "sdk.CanSendEvents (true only in 'connected' state)"
+    }
+  },
+
+  "test_scenarios": [
+    {
+      "name": "high_frequency_event_stream",
+      "description": "Receive 1000 events/second for 60 seconds",
+      "acceptance": "No frame drops below 30 FPS, no GC spike > 1ms",
+      "measurement": "Unity Profiler memory + frame time"
+    },
+    {
+      "name": "background_resume",
+      "description": "App paused 10 minutes, resumed",
+      "acceptance": "Socket reconnects within 3 seconds, no duplicate events, state consistent"
+    },
+    {
+      "name": "network_flap",
+      "description": "Network toggles every 5 seconds for 2 minutes",
+      "acceptance": "State transitions are deterministic, no crash, offline queue preserved"
+    }
+  ]
+}

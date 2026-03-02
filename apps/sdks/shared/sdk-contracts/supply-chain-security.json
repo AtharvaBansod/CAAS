@@ -1,0 +1,139 @@
+{
+  "schema_version": "1.0.0",
+  "last_updated": "2026-02-28",
+  "description": "Supply chain security, SBOM, provenance attestation, and compliance packaging for SDK releases",
+
+  "sbom_generation": {
+    "format": "CycloneDX 1.5 + SPDX 2.3",
+    "tools": {
+      "node-ts": "npx @cyclonedx/cyclonedx-npm --output-format json --output-file sbom.cdx.json",
+      "python": "cyclonedx-py requirements -o sbom.cdx.json",
+      "java": "mvn org.cyclonedx:cyclonedx-maven-plugin:makeBom",
+      "dotnet": "dotnet CycloneDX -o sbom.cdx.json",
+      "ruby": "cyclonedx-ruby -o sbom.cdx.json",
+      "rust": "cargo cyclonedx --format json"
+    },
+    "verification": "SBOM must list all direct and transitive dependencies with exact versions",
+    "storage": "SBOM artifacts stored alongside release packages and linked in release notes"
+  },
+
+  "provenance_attestation": {
+    "standard": "SLSA v1.0 Level 2",
+    "method": {
+      "node-ts": "npm publish --provenance (Sigstore Rekor transparency log)",
+      "python": "sigstore-python sign dist/*.whl",
+      "java": "GPG-signed POM + Sigstore attestation",
+      "dotnet": "dotnet nuget sign + Sigstore bundle",
+      "ruby": "gem cert + Sigstore attestation",
+      "rust": "cargo publish + Sigstore attestation"
+    },
+    "transparency_log": "https://rekor.sigstore.dev",
+    "attestation_fields": [
+      "build_commit_sha",
+      "build_timestamp",
+      "build_environment_digest",
+      "contract_version",
+      "sbom_digest"
+    ]
+  },
+
+  "artifact_signing_and_checksum": {
+    "signing_policy": {
+      "requirement": "All release artifacts MUST be signed before publishing",
+      "key_management": "Signing keys stored in CI/CD secrets vault (not in repo)",
+      "key_rotation": "Signing keys rotated annually or on compromise"
+    },
+    "checksum_policy": {
+      "algorithms": ["SHA-256", "SHA-512"],
+      "distribution": "Checksums published as .sha256 / .sha512 files alongside release artifacts",
+      "verification_commands": {
+        "node-ts": "npm audit signatures",
+        "python": "pip install --require-hashes -r requirements.txt",
+        "java": "mvn verify (checksums validated automatically)",
+        "dotnet": "dotnet nuget verify *.nupkg",
+        "ruby": "gem install --trust-policy MediumSecurity",
+        "rust": "cargo verify-project"
+      }
+    },
+    "integrity_check_doc": "Consumers can verify package integrity by:\n1. Download package + checksum file\n2. Run: sha256sum -c package.sha256\n3. Verify Sigstore attestation: cosign verify-blob --bundle attestation.json package.tar.gz"
+  },
+
+  "security_scanning_gates": {
+    "pre_release_gates": [
+      {
+        "gate": "dependency_vulnerability_scan",
+        "tools": {
+          "node-ts": "npm audit --audit-level=critical",
+          "python": "pip-audit --strict",
+          "java": "mvn org.owasp:dependency-check-maven:check",
+          "dotnet": "dotnet list package --vulnerable",
+          "ruby": "bundle audit check",
+          "rust": "cargo audit"
+        },
+        "policy": "FAIL on critical/high CVEs. Medium CVEs must be triaged within 7 days.",
+        "bypass": "Only with written security-team approval and mitigation plan"
+      },
+      {
+        "gate": "license_compliance_scan",
+        "tools": {
+          "node-ts": "npx license-checker --onlyAllow 'MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC'",
+          "python": "pip-licenses --allow-only 'MIT;Apache-2.0;BSD'",
+          "java": "mvn license:check",
+          "dotnet": "dotnet-project-licenses --check",
+          "ruby": "license_finder",
+          "rust": "cargo deny check licenses"
+        },
+        "allowed_licenses": [
+          "MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "Unlicense", "0BSD"
+        ],
+        "policy": "FAIL on GPL, AGPL, SSPL, or unknown licenses"
+      },
+      {
+        "gate": "secret_scan",
+        "tool": "gitleaks detect --source . --config .gitleaks.toml",
+        "policy": "FAIL on any detected secret (API keys, tokens, passwords)"
+      },
+      {
+        "gate": "static_analysis",
+        "scope": "SDK source code only (not test fixtures)",
+        "policy": "No critical findings allowed"
+      }
+    ],
+    "pipeline_enforcement": "All gates run in CI. Release pipeline BLOCKS on any unresolved critical security or license violation."
+  },
+
+  "security_advisory_workflow": {
+    "vulnerability_disclosure": {
+      "channel": "security@caas-platform.io",
+      "response_sla": {
+        "critical": "24 hours acknowledgment, 72 hours patch",
+        "high": "48 hours acknowledgment, 7 days patch",
+        "medium": "7 days acknowledgment, 30 days patch"
+      }
+    },
+    "advisory_process": [
+      "1. Receive vulnerability report via disclosure channel",
+      "2. Triage: assign severity (CVSS), identify affected SDK versions",
+      "3. Develop fix in private branch",
+      "4. Release patched versions for all affected SDKs simultaneously",
+      "5. Publish security advisory (GitHub Advisory / CVE)",
+      "6. Notify consumers via release notes + advisory feed",
+      "7. Update compatibility matrix with minimum safe versions"
+    ],
+    "advisory_format": {
+      "platform": "GitHub Security Advisories",
+      "fields": ["CVE ID", "Affected versions", "Patched version", "CVSS score", "Description", "Workaround"]
+    }
+  },
+
+  "consumer_verification_guide": {
+    "steps": [
+      "1. Install SDK package from official registry",
+      "2. Verify package signature using ecosystem-specific tools (see checksum_policy.verification_commands)",
+      "3. For additional assurance, verify Sigstore attestation using cosign",
+      "4. Compare SBOM against your organizational allowed-dependency list",
+      "5. Monitor advisory feed for vulnerability notifications"
+    ],
+    "documentation": "See apps/sdks/docs/api-key-rotation-and-ops.md for operational guidance"
+  }
+}

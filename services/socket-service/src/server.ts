@@ -142,7 +142,7 @@ export async function createSocketServer(httpServer: http.Server): Promise<Serve
 
       // Register media and search handlers for this socket
       mediaHandler.registerHandlers(io, socket, userId, tenantId);
-      searchHandler.registerHandlers(io, socket, userId, tenantId);
+      searchHandler.registerHandlers(io, socket, userId, tenantId, socket.user?.project_id);
 
       logger.info(`Socket ${socket.id} connected and bound to user ${userId}`);
     } else {

@@ -30,25 +30,37 @@ export class SearchAuthorization {
   async canSearchMessages(
     userId: string,
     tenantId: string,
-    conversationId?: string
+    conversationId?: string,
+    projectId?: string
   ): Promise<AuthorizationResult> {
     try {
       // If specific conversation, check membership
       if (conversationId) {
-        const cacheKey = `search:auth:conversation:${tenantId}:${userId}:${conversationId}`;
+        const cacheKey = `search:auth:conversation:${tenantId}:${projectId || 'default'}:${userId}:${conversationId}`;
         const cached = await this.redisClient.get(cacheKey);
         
         if (cached) {
           return JSON.parse(cached);
         }
 
-        const db = this.mongoClient.db(`tenant_${tenantId}`);
+        const db = this.mongoClient.db('caas_platform');
         const conversationsCollection = db.collection('conversations');
         
         const conversation = await conversationsCollection.findOne({
           conversation_id: conversationId,
-          participants: userId,
+          tenant_id: tenantId,
+          'participants.user_id': userId,
         });
+
+        const conversationProjectId = (conversation as any)?.project_id || 'default';
+        if (conversation && projectId && conversationProjectId !== projectId) {
+          const result = {
+            authorized: false,
+            reason: 'Conversation belongs to a different project scope',
+          };
+          await this.redisClient.setEx(cacheKey, 60, JSON.stringify(result));
+          return result;
+        }
 
         if (!conversation) {
           const result = { 
@@ -65,19 +77,23 @@ export class SearchAuthorization {
       }
 
       // Get all conversations user is part of
-      const cacheKey = `search:auth:conversations:${tenantId}:${userId}`;
+      const cacheKey = `search:auth:conversations:${tenantId}:${projectId || 'default'}:${userId}`;
       const cached = await this.redisClient.get(cacheKey);
       
       if (cached) {
         return JSON.parse(cached);
       }
 
-      const db = this.mongoClient.db(`tenant_${tenantId}`);
+      const db = this.mongoClient.db('caas_platform');
       const conversationsCollection = db.collection('conversations');
       
       const conversations = await conversationsCollection
-        .find({ participants: userId })
-        .project({ conversation_id: 1 })
+        .find({
+          tenant_id: tenantId,
+          'participants.user_id': userId,
+          ...(projectId ? { project_id: projectId } : {}),
+        })
+        .project({ conversation_id: 1, project_id: 1 })
         .toArray();
 
       const conversationIds = conversations.map(c => c.conversation_id);
@@ -126,7 +142,7 @@ export class SearchAuthorization {
    */
   async invalidateUserCache(userId: string, tenantId: string): Promise<void> {
     try {
-      const pattern = `search:auth:*:${tenantId}:${userId}:*`;
+      const pattern = `search:auth:*:${tenantId}:*:${userId}:*`;
       // Note: In production, use SCAN instead of KEYS for better performance
       const keys = await this.redisClient.keys(pattern);
       

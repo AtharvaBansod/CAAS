@@ -27,6 +27,10 @@ const envSchema = z.object({
   // Phase 4.5.z.x: Auth Service integration
   AUTH_SERVICE_URL: z.string().default('http://auth-service:3001'),
   SERVICE_SECRET: z.string().default('dev-service-secret'),
+  REALTIME_DISABLED_NAMESPACES: z.string().default(''),
+  REALTIME_DISABLED_EVENTS: z.string().default(''),
+  REALTIME_CANARY_EVENTS: z.string().default(''),
+  REALTIME_CANARY_PERCENT: z.string().transform(Number).default('100'),
 });
 
 const env = envSchema.parse(process.env);
@@ -70,5 +74,11 @@ export const config = {
   authService: {
     url: env.AUTH_SERVICE_URL,
     serviceSecret: env.SERVICE_SECRET,
+  },
+  realtime: {
+    disabledNamespaces: env.REALTIME_DISABLED_NAMESPACES,
+    disabledEvents: env.REALTIME_DISABLED_EVENTS,
+    canaryEvents: env.REALTIME_CANARY_EVENTS,
+    canaryPercent: env.REALTIME_CANARY_PERCENT,
   },
 };

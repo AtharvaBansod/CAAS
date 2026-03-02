@@ -11,6 +11,8 @@ import { CallStore } from '../webrtc/call-store';
 import { MediaType } from '../webrtc/call-types';
 import { RTCSessionDescriptionInit, RTCIceCandidateInit } from '../webrtc/signaling-types';
 import { getLogger } from '../utils/logger';
+import { createSocketEventResponder } from '../realtime/socket-response';
+import { enforceRealtimeEventGate } from '../realtime/feature-gates';
 
 const logger = getLogger('WebRTCNamespace');
 
@@ -54,6 +56,17 @@ export function registerWebRTCNamespace(io: Server) {
             return;
         }
 
+        const ensureEventEnabled = (event: string, respond: (response: Record<string, unknown>) => void): boolean =>
+            enforceRealtimeEventGate(
+                {
+                    namespace: 'webrtc',
+                    event,
+                    tenantId,
+                    userId,
+                },
+                respond
+            );
+
         // Get ICE servers
         socket.on('webrtc:get-ice-servers', async (
             payloadOrCallback?: Record<string, any> | ((response: any) => void),
@@ -62,17 +75,17 @@ export function registerWebRTCNamespace(io: Server) {
             const callback = typeof payloadOrCallback === 'function'
                 ? payloadOrCallback
                 : maybeCallback;
+            const respond = createSocketEventResponder(socket, 'webrtc', 'webrtc:get-ice-servers', callback);
+            if (!ensureEventEnabled('webrtc:get-ice-servers', respond)) {
+                return;
+            }
 
             try {
                 const iceServers = await iceServerProvider.getIceServers(userId!, tenantId!);
-                if (callback) {
-                    callback({ status: 'ok', ice_servers: iceServers });
-                }
+                respond({ status: 'ok', message: 'ICE servers loaded', ice_servers: iceServers });
             } catch (error: any) {
                 logger.error(`Failed to get ICE servers for user ${userId}`, error);
-                if (callback) {
-                    callback({ status: 'error', message: 'Failed to get ICE servers' });
-                }
+                respond({ status: 'error', message: 'Failed to get ICE servers' });
             }
         });
 
@@ -81,12 +94,16 @@ export function registerWebRTCNamespace(io: Server) {
             data: { target_user_id: string; sdp: RTCSessionDescriptionInit; call_id?: string },
             callback?: (response: any) => void
         ) => {
+            const respond = createSocketEventResponder(socket, 'webrtc', 'webrtc:offer', callback);
+            if (!ensureEventEnabled('webrtc:offer', respond)) {
+                return;
+            }
             try {
                 await signalingHandler.handleOffer(socket, data.sdp, data.target_user_id, data.call_id);
-                if (callback) callback({ status: 'ok' });
+                respond({ status: 'ok', message: 'Offer relayed' });
             } catch (error: any) {
                 logger.error(`Failed to handle offer from ${userId}`, error);
-                if (callback) callback({ status: 'error', message: error.message });
+                respond({ status: 'error', message: error.message });
             }
         });
 
@@ -95,12 +112,16 @@ export function registerWebRTCNamespace(io: Server) {
             data: { target_user_id: string; sdp: RTCSessionDescriptionInit; call_id?: string },
             callback?: (response: any) => void
         ) => {
+            const respond = createSocketEventResponder(socket, 'webrtc', 'webrtc:answer', callback);
+            if (!ensureEventEnabled('webrtc:answer', respond)) {
+                return;
+            }
             try {
                 await signalingHandler.handleAnswer(socket, data.sdp, data.target_user_id, data.call_id);
-                if (callback) callback({ status: 'ok' });
+                respond({ status: 'ok', message: 'Answer relayed' });
             } catch (error: any) {
                 logger.error(`Failed to handle answer from ${userId}`, error);
-                if (callback) callback({ status: 'error', message: error.message });
+                respond({ status: 'error', message: error.message });
             }
         });
 
@@ -109,12 +130,16 @@ export function registerWebRTCNamespace(io: Server) {
             data: { target_user_id: string; candidate: RTCIceCandidateInit; call_id?: string },
             callback?: (response: any) => void
         ) => {
+            const respond = createSocketEventResponder(socket, 'webrtc', 'webrtc:ice-candidate', callback);
+            if (!ensureEventEnabled('webrtc:ice-candidate', respond)) {
+                return;
+            }
             try {
                 await signalingHandler.handleIceCandidate(socket, data.candidate, data.target_user_id, data.call_id);
-                if (callback) callback({ status: 'ok' });
+                respond({ status: 'ok', message: 'ICE candidate relayed' });
             } catch (error: any) {
                 logger.error(`Failed to handle ICE candidate from ${userId}`, error);
-                if (callback) callback({ status: 'error', message: error.message });
+                respond({ status: 'error', message: error.message });
             }
         });
 
@@ -123,6 +148,10 @@ export function registerWebRTCNamespace(io: Server) {
             data: { callee_id: string; media_type: MediaType },
             callback: (response: any) => void
         ) => {
+            const respond = createSocketEventResponder(socket, 'webrtc', 'call:initiate', callback);
+            if (!ensureEventEnabled('call:initiate', respond)) {
+                return;
+            }
             try {
                 const call = await callManager.initiateCall(userId!, data.callee_id, data.media_type, tenantId!);
 
@@ -137,10 +166,10 @@ export function registerWebRTCNamespace(io: Server) {
                     created_at: call.created_at,
                 });
 
-                callback({ status: 'ok', call_id: call.id, call });
+                respond({ status: 'ok', message: 'Call initiated', call_id: call.id, call });
             } catch (error: any) {
                 logger.error(`Failed to initiate call from ${userId} to ${data.callee_id}`, error);
-                callback({ status: 'error', message: error.message });
+                respond({ status: 'error', message: error.message });
             }
         });
 
@@ -149,6 +178,10 @@ export function registerWebRTCNamespace(io: Server) {
             data: { call_id: string },
             callback?: (response: any) => void
         ) => {
+            const respond = createSocketEventResponder(socket, 'webrtc', 'call:answer', callback);
+            if (!ensureEventEnabled('call:answer', respond)) {
+                return;
+            }
             try {
                 const call = await callManager.answerCall(data.call_id, userId!);
 
@@ -162,10 +195,10 @@ export function registerWebRTCNamespace(io: Server) {
                     answered_at: call.started_at,
                 });
 
-                if (callback) callback({ status: 'ok', call });
+                respond({ status: 'ok', message: 'Call answered', call });
             } catch (error: any) {
                 logger.error(`Failed to answer call ${data.call_id}`, error);
-                if (callback) callback({ status: 'error', message: error.message });
+                respond({ status: 'error', message: error.message });
             }
         });
 
@@ -174,6 +207,10 @@ export function registerWebRTCNamespace(io: Server) {
             data: { call_id: string; reason?: string },
             callback?: (response: any) => void
         ) => {
+            const respond = createSocketEventResponder(socket, 'webrtc', 'call:reject', callback);
+            if (!ensureEventEnabled('call:reject', respond)) {
+                return;
+            }
             try {
                 await callManager.rejectCall(data.call_id, userId!, data.reason);
 
@@ -184,10 +221,10 @@ export function registerWebRTCNamespace(io: Server) {
                     reason: data.reason,
                 });
 
-                if (callback) callback({ status: 'ok' });
+                respond({ status: 'ok', message: 'Call rejected' });
             } catch (error: any) {
                 logger.error(`Failed to reject call ${data.call_id}`, error);
-                if (callback) callback({ status: 'error', message: error.message });
+                respond({ status: 'error', message: error.message });
             }
         });
 
@@ -196,16 +233,20 @@ export function registerWebRTCNamespace(io: Server) {
             data: { call_id: string },
             callback?: (response: any) => void
         ) => {
+            const respond = createSocketEventResponder(socket, 'webrtc', 'call:hangup', callback);
+            if (!ensureEventEnabled('call:hangup', respond)) {
+                return;
+            }
             try {
                 await callTerminator.endCall(data.call_id, userId!, 'user_hangup');
 
                 // Leave call room
                 socket.leave(`call:${data.call_id}`);
 
-                if (callback) callback({ status: 'ok' });
+                respond({ status: 'ok', message: 'Call ended' });
             } catch (error: any) {
                 logger.error(`Failed to hang up call ${data.call_id}`, error);
-                if (callback) callback({ status: 'error', message: error.message });
+                respond({ status: 'error', message: error.message });
             }
         });
 
@@ -222,6 +263,10 @@ export function registerWebRTCNamespace(io: Server) {
             data: { call_id: string },
             callback?: (response: any) => void
         ) => {
+            const respond = createSocketEventResponder(socket, 'webrtc', 'screen:start', callback);
+            if (!ensureEventEnabled('screen:start', respond)) {
+                return;
+            }
             try {
                 // Notify other participants that screen sharing started
                 socket.to(`call:${data.call_id}`).emit('screen:started', {
@@ -231,10 +276,10 @@ export function registerWebRTCNamespace(io: Server) {
                 });
 
                 logger.info(`[WebRTC] User ${userId} started screen sharing in call ${data.call_id}`);
-                if (callback) callback({ status: 'ok' });
+                respond({ status: 'ok', message: 'Screen sharing started' });
             } catch (error: any) {
                 logger.error(`Failed to start screen sharing for ${userId}`, error);
-                if (callback) callback({ status: 'error', message: error.message });
+                respond({ status: 'error', message: error.message });
             }
         });
 
@@ -242,6 +287,10 @@ export function registerWebRTCNamespace(io: Server) {
             data: { call_id: string },
             callback?: (response: any) => void
         ) => {
+            const respond = createSocketEventResponder(socket, 'webrtc', 'screen:stop', callback);
+            if (!ensureEventEnabled('screen:stop', respond)) {
+                return;
+            }
             try {
                 // Notify other participants that screen sharing stopped
                 socket.to(`call:${data.call_id}`).emit('screen:stopped', {
@@ -251,10 +300,10 @@ export function registerWebRTCNamespace(io: Server) {
                 });
 
                 logger.info(`[WebRTC] User ${userId} stopped screen sharing in call ${data.call_id}`);
-                if (callback) callback({ status: 'ok' });
+                respond({ status: 'ok', message: 'Screen sharing stopped' });
             } catch (error: any) {
                 logger.error(`Failed to stop screen sharing for ${userId}`, error);
-                if (callback) callback({ status: 'error', message: error.message });
+                respond({ status: 'error', message: error.message });
             }
         });
 
@@ -263,16 +312,20 @@ export function registerWebRTCNamespace(io: Server) {
             data: { target_user_id: string; sdp: RTCSessionDescriptionInit; call_id: string },
             callback?: (response: any) => void
         ) => {
+            const respond = createSocketEventResponder(socket, 'webrtc', 'screen:offer', callback);
+            if (!ensureEventEnabled('screen:offer', respond)) {
+                return;
+            }
             try {
                 await signalingRelay.relayToUser(data.target_user_id, 'screen:offer', {
                     sdp: data.sdp,
                     call_id: data.call_id,
                     from_user_id: userId,
                 });
-                if (callback) callback({ status: 'ok' });
+                respond({ status: 'ok', message: 'Screen offer relayed' });
             } catch (error: any) {
                 logger.error(`Failed to relay screen offer from ${userId}`, error);
-                if (callback) callback({ status: 'error', message: error.message });
+                respond({ status: 'error', message: error.message });
             }
         });
 
@@ -280,16 +333,20 @@ export function registerWebRTCNamespace(io: Server) {
             data: { target_user_id: string; sdp: RTCSessionDescriptionInit; call_id: string },
             callback?: (response: any) => void
         ) => {
+            const respond = createSocketEventResponder(socket, 'webrtc', 'screen:answer', callback);
+            if (!ensureEventEnabled('screen:answer', respond)) {
+                return;
+            }
             try {
                 await signalingRelay.relayToUser(data.target_user_id, 'screen:answer', {
                     sdp: data.sdp,
                     call_id: data.call_id,
                     from_user_id: userId,
                 });
-                if (callback) callback({ status: 'ok' });
+                respond({ status: 'ok', message: 'Screen answer relayed' });
             } catch (error: any) {
                 logger.error(`Failed to relay screen answer from ${userId}`, error);
-                if (callback) callback({ status: 'error', message: error.message });
+                respond({ status: 'error', message: error.message });
             }
         });
     });

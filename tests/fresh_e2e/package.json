@@ -4,9 +4,12 @@
   "private": true,
   "description": "Fresh Docker-only E2E suite for latest CAAS implementation",
   "scripts": {
-    "test": "node run-fresh.js"
+    "test": "node run-fresh.js",
+    "test:realtime": "node run-realtime-phase9.js"
   },
   "dependencies": {
+    "kafkajs": "^2.2.4",
+    "mongodb": "^6.18.0",
     "socket.io-client": "^4.8.1"
   }
 }

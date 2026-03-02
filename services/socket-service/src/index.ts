@@ -4,6 +4,7 @@ import { createSocketServer } from './server';
 import { registerChatNamespace } from './namespaces/chat';
 import { registerPresenceNamespace } from './namespaces/presence';
 import { registerWebRTCNamespace } from './namespaces/webrtc';
+import { registerSocialNamespace } from './namespaces/social';
 import { config } from './config';
 import { socketMetrics } from './metrics/socket-metrics';
 import { initializeComplianceClient } from './middleware/compliance.middleware';
@@ -87,6 +88,7 @@ async function bootstrap() {
   registerChatNamespace(io);
   registerPresenceNamespace(io);
   registerWebRTCNamespace(io);
+  registerSocialNamespace(io);
 
   httpServer.listen(config.port, () => {
     console.log(`Socket service listening on port ${config.port}`);

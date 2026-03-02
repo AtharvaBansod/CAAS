@@ -1,0 +1,183 @@
+{
+  "schema_version": "1.0.0",
+  "task_id": "SDKFE-COMP-002",
+  "title": "Responsive Layout Standards",
+  "last_updated": "2026-02-28",
+
+  "viewport_breakpoints": {
+    "xs": {"min_width": 0, "max_width": 479, "label": "Small phone", "columns": 1},
+    "sm": {"min_width": 480, "max_width": 767, "label": "Large phone / small tablet", "columns": 1},
+    "md": {"min_width": 768, "max_width": 1023, "label": "Tablet portrait", "columns": 2},
+    "lg": {"min_width": 1024, "max_width": 1439, "label": "Laptop / tablet landscape", "columns": 3},
+    "xl": {"min_width": 1440, "max_width": 1919, "label": "Desktop", "columns": 3},
+    "xxl": {"min_width": 1920, "max_width": null, "label": "Large monitor / ultrawide", "columns": 4}
+  },
+
+  "layout_rules": {
+    "ChatWindow": {
+      "xs_sm": {
+        "layout": "Full-screen conversation view, chat list hidden (navigation via back button)",
+        "input_position": "Fixed bottom",
+        "message_bubble_max_width": "85%"
+      },
+      "md": {
+        "layout": "Chat list (40%) + conversation (60%) side-by-side",
+        "input_position": "Inline bottom of conversation pane",
+        "message_bubble_max_width": "75%"
+      },
+      "lg_xl_xxl": {
+        "layout": "Chat list (25%) + conversation (50%) + detail panel (25%)",
+        "input_position": "Inline bottom of conversation pane",
+        "message_bubble_max_width": "65%",
+        "detail_panel": "User profile, shared media, pinned messages"
+      }
+    },
+    "ChatList": {
+      "xs_sm": {
+        "layout": "Full-screen list view with floating action button for new conversation",
+        "item_height": 72,
+        "avatar_size": 48
+      },
+      "md_lg_xl_xxl": {
+        "layout": "Side panel with scrollable list",
+        "item_height": 64,
+        "avatar_size": 40,
+        "show_search_bar": true
+      }
+    },
+    "FeedView": {
+      "xs_sm": {
+        "layout": "Single-column full-width cards",
+        "card_max_width": "100%",
+        "media_aspect_ratio": "1:1 or 4:5"
+      },
+      "md": {
+        "layout": "Single-column centered cards",
+        "card_max_width": 600,
+        "media_aspect_ratio": "1:1 or 16:9"
+      },
+      "lg_xl_xxl": {
+        "layout": "Center column (600px max) with sidebar navigation and suggestions",
+        "card_max_width": 600,
+        "sidebar_width": 300
+      }
+    },
+    "PlannerBoard": {
+      "xs_sm": {
+        "layout": "Horizontal swipeable columns, one visible at a time",
+        "column_width": "100vw - 32px",
+        "card_actions": "Swipe gestures (left: move, right: edit)"
+      },
+      "md": {
+        "layout": "Two columns visible with horizontal scroll",
+        "column_width": "calc(50% - 12px)"
+      },
+      "lg_xl_xxl": {
+        "layout": "All columns visible with drag-and-drop",
+        "column_width": "min(300px, calc(100% / column_count))",
+        "drag_enabled": true
+      }
+    },
+    "StoryViewer": {
+      "all_viewports": {
+        "layout": "Full-screen overlay",
+        "navigation": "Tap left/right halves on mobile, arrow keys on desktop",
+        "progress_bar": "Top of screen, segmented by story count"
+      }
+    },
+    "CalendarView": {
+      "xs_sm": {
+        "default_view": "day",
+        "month_view": "Compact grid with dot indicators only (no event text)",
+        "week_view": "Horizontal scroll with 3 days visible"
+      },
+      "md": {
+        "default_view": "week",
+        "month_view": "Standard grid with truncated event text"
+      },
+      "lg_xl_xxl": {
+        "default_view": "month",
+        "month_view": "Full grid with event cards"
+      }
+    }
+  },
+
+  "gesture_keyboard_parity": {
+    "principle": "Every gesture interaction MUST have a keyboard equivalent",
+    "mappings": [
+      {"gesture": "Swipe left on message", "keyboard": "Shift+Left Arrow or context menu → Reply", "component": "ChatWindow"},
+      {"gesture": "Swipe right on message", "keyboard": "Shift+Right Arrow or context menu → Forward", "component": "ChatWindow"},
+      {"gesture": "Long press on message", "keyboard": "Shift+F10 or context menu key", "component": "ChatWindow"},
+      {"gesture": "Pull to refresh", "keyboard": "F5 or Ctrl+R", "component": "ChatList, FeedView"},
+      {"gesture": "Pinch to zoom", "keyboard": "+ / - keys", "component": "MediaViewer"},
+      {"gesture": "Swipe between stories", "keyboard": "Left/Right Arrow keys", "component": "StoryViewer"},
+      {"gesture": "Drag task card", "keyboard": "Space to grab, Arrow keys to move, Space to drop", "component": "PlannerBoard"},
+      {"gesture": "Swipe to dismiss notification", "keyboard": "Delete key", "component": "NotificationPreferences"},
+      {"gesture": "Tap avatar for profile", "keyboard": "Enter on focused avatar", "component": "UserProfileCard"}
+    ]
+  },
+
+  "performance_budgets": {
+    "chat_timeline": {
+      "initial_render_ms": 200,
+      "scroll_fps": 60,
+      "max_dom_nodes": 500,
+      "virtualization": "Required — only render visible messages + 10 buffer above/below",
+      "image_lazy_loading": "Required — IntersectionObserver or equivalent",
+      "typing_indicator_render_ms": 50
+    },
+    "feed_cards": {
+      "initial_render_ms": 300,
+      "scroll_fps": 60,
+      "max_dom_nodes": 300,
+      "virtualization": "Required for feed list",
+      "media_preload": "Preload next 2 items in scroll direction",
+      "video_autoplay": "Only when >50% visible, muted by default"
+    },
+    "planner_board": {
+      "initial_render_ms": 400,
+      "drag_response_ms": 16,
+      "max_cards_per_column": 100,
+      "virtualization": "Required within columns if card count > 50"
+    },
+    "story_viewer": {
+      "transition_ms": 200,
+      "media_preload": "Preload next 2 stories",
+      "max_concurrent_video_decode": 2
+    },
+    "global": {
+      "first_contentful_paint_ms": 1500,
+      "time_to_interactive_ms": 3000,
+      "total_js_bundle_kb": 350,
+      "largest_contentful_paint_ms": 2500,
+      "cumulative_layout_shift": 0.1
+    }
+  },
+
+  "accessibility_baseline": {
+    "wcag_level": "AA",
+    "requirements": [
+      "All interactive elements must be focusable and operable via keyboard",
+      "Color contrast ratio minimum 4.5:1 for normal text, 3:1 for large text",
+      "Focus indicators visible with minimum 2px outline",
+      "All images and media must have alt text or aria-label",
+      "Dynamic content updates announced via aria-live regions",
+      "Touch targets minimum 44x44px on mobile",
+      "Reduced motion: respect prefers-reduced-motion media query — disable animations",
+      "High contrast: respect prefers-contrast media query — increase borders and reduce gradients",
+      "Screen reader testing required with VoiceOver (iOS/macOS) and TalkBack (Android) and NVDA (Windows)"
+    ]
+  },
+
+  "rtl_support": {
+    "requirement": "All components must support RTL layout via dir='rtl' attribute",
+    "rules": [
+      "Use logical CSS properties (margin-inline-start vs margin-left)",
+      "Mirror horizontal icons (arrows, chevrons) but NOT symmetric icons (search, settings)",
+      "Chat bubbles: self-messages on left in RTL, other-messages on right",
+      "Swipe directions reversed in RTL mode",
+      "Text alignment follows content direction, not fixed"
+    ],
+    "test_locales": ["ar-SA", "he-IL", "fa-IR"]
+  }
+}

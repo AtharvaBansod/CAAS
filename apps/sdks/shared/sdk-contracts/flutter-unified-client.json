@@ -1,0 +1,129 @@
+{
+  "schema_version": "1.0.0",
+  "task_id": "SDKFE-PLAT-002",
+  "title": "Flutter Unified Client",
+  "last_updated": "2026-02-28",
+
+  "package": {
+    "name": "caas_sdk_flutter",
+    "version": "0.1.0-alpha.1",
+    "sdk_constraint": ">=3.0.0 <4.0.0",
+    "dependencies": {
+      "web_socket_channel": "^2.4.0",
+      "http": "^1.1.0",
+      "flutter_secure_storage": "^9.0.0",
+      "connectivity_plus": "^5.0.0"
+    }
+  },
+
+  "event_mapping": {
+    "chat": {
+      "message_sent": { "backend_event": "chat:message", "direction": "bidirectional" },
+      "message_received": { "backend_event": "chat:message", "direction": "inbound" },
+      "typing_indicator": { "backend_event": "chat:typing", "direction": "bidirectional" },
+      "read_receipt": { "backend_event": "chat:read", "direction": "bidirectional" },
+      "message_deleted": { "backend_event": "chat:delete", "direction": "bidirectional" },
+      "message_edited": { "backend_event": "chat:edit", "direction": "bidirectional" }
+    },
+    "presence": {
+      "user_online": { "backend_event": "presence:update", "direction": "inbound" },
+      "user_offline": { "backend_event": "presence:update", "direction": "inbound" },
+      "last_seen": { "backend_event": "presence:lastseen", "direction": "inbound" }
+    },
+    "webrtc": {
+      "call_incoming": { "backend_event": "webrtc:call_incoming", "direction": "inbound" },
+      "call_accepted": { "backend_event": "webrtc:call_accepted", "direction": "outbound" },
+      "call_rejected": { "backend_event": "webrtc:call_rejected", "direction": "outbound" },
+      "call_ended": { "backend_event": "webrtc:call_ended", "direction": "bidirectional" },
+      "ice_candidate": { "backend_event": "webrtc:ice_candidate", "direction": "bidirectional" },
+      "sdp_offer": { "backend_event": "webrtc:sdp_offer", "direction": "bidirectional" },
+      "sdp_answer": { "backend_event": "webrtc:sdp_answer", "direction": "bidirectional" }
+    }
+  },
+
+  "model_serialization": {
+    "format": "JSON",
+    "interop_safety": {
+      "dart_to_backend": "All models use json_serializable with @JsonKey annotations for snake_case mapping",
+      "type_coercion": "Strict typing — no dynamic deserialization. Unknown fields ignored gracefully.",
+      "null_safety": "All models are null-safe with required vs optional field distinctions"
+    },
+    "core_models": [
+      {
+        "name": "ChatMessage",
+        "fields": {
+          "message_id": "String",
+          "sender_id": "String",
+          "content": "String",
+          "timestamp": "DateTime (ISO 8601)",
+          "attachments": "List<Attachment>?",
+          "metadata": "Map<String, dynamic>?"
+        }
+      },
+      {
+        "name": "PresenceUpdate",
+        "fields": {
+          "user_id": "String",
+          "status": "PresenceStatus (online|offline|away|dnd)",
+          "last_seen": "DateTime?",
+          "platform": "String?"
+        }
+      },
+      {
+        "name": "SessionTokenBundle",
+        "fields": {
+          "access_token": "String",
+          "refresh_token": "String",
+          "expires_in": "int",
+          "token_type": "String"
+        }
+      }
+    ],
+    "contract_test_binding": "Models are validated against canonical-contract.json schema via automated contract tests"
+  },
+
+  "ui_binding_helpers": {
+    "chat_list": {
+      "widget": "CaasChatList",
+      "data_source": "Stream<List<ChatConversation>>",
+      "features": ["pull-to-refresh", "infinite scroll", "unread badge", "last message preview"],
+      "builder_pattern": "CaasChatList(stream: sdk.chatListStream, onTap: (conv) => navigate(conv))"
+    },
+    "message_stream": {
+      "widget": "CaasMessageStream",
+      "data_source": "Stream<ChatMessage>",
+      "features": ["auto-scroll to bottom", "date separators", "typing indicator", "read receipts"],
+      "builder_pattern": "CaasMessageStream(stream: sdk.messageStream(channelId), currentUserId: userId)"
+    },
+    "connection_indicator": {
+      "widget": "CaasConnectionBanner",
+      "data_source": "Stream<ConnectionState>",
+      "features": ["auto-hide on connected", "retry button on disconnected", "animated transitions"]
+    }
+  },
+
+  "token_refresh_and_reconnect": {
+    "refresh_flow": [
+      "1. Timer fires 60s before access_token expiry",
+      "2. Call POST /api/v1/sdk/refresh with refresh_token",
+      "3. Store new tokens in flutter_secure_storage",
+      "4. Update socket auth payload (no disconnect needed if server accepts)",
+      "5. On refresh failure → transition to unauthenticated → prompt re-login"
+    ],
+    "socket_reconnect_flow": [
+      "1. Socket disconnect detected",
+      "2. Check network connectivity (connectivity_plus)",
+      "3. If online → exponential backoff reconnect with jitter",
+      "4. Before reconnect → validate token (refresh if needed)",
+      "5. On reconnect success → flush offline queue → emit reconciliation if sequence gap"
+    ]
+  },
+
+  "contract_test_assertions": [
+    "All Dart model fields map 1:1 to canonical-contract.json error_shape and route payloads",
+    "Serialization/deserialization round-trip produces identical JSON",
+    "Unknown fields in server response do not crash deserialization",
+    "Enum values map to documented string constants",
+    "Token bundle shape matches backend session create/refresh response"
+  ]
+}

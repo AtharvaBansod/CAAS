@@ -1,5 +1,9 @@
 import { Kafka, Producer, ProducerRecord, RecordMetadata } from 'kafkajs';
 import { EventEmitter } from 'events';
+import {
+  buildRealtimeEnvelope,
+  getRealtimeTopicForEvent,
+} from '@caas/realtime-contracts';
 
 interface KafkaProducerConfig {
   brokers: string[];
@@ -14,6 +18,7 @@ interface MessageEnvelope {
   message_id: string;
   conversation_id: string;
   tenant_id: string;
+  project_id?: string;
   sender_id: string;
   content: {
     type: 'text' | 'image' | 'file' | 'audio' | 'video';
@@ -123,18 +128,45 @@ export class SocketMessageProducer extends EventEmitter {
     const startTime = Date.now();
 
     try {
+      const envelope = buildRealtimeEnvelope({
+        eventId: message.message_id,
+        eventType: 'message.created',
+        tenantId: message.tenant_id,
+        projectId: message.project_id,
+        correlationId: message.metadata?.correlation_id,
+        producerId: this.config.clientId,
+        partitionKey: `${message.tenant_id}:${message.conversation_id}`,
+        payload: {
+          message_id: message.message_id,
+          conversation_id: message.conversation_id,
+          sender_id: message.sender_id,
+          content: message.content,
+          timestamp: message.timestamp.toISOString(),
+        },
+        metadata: {
+          user_id: message.sender_id,
+          conversation_id: message.conversation_id,
+          dedupe_key: `${message.tenant_id}:${message.message_id}`,
+          socket_id: message.metadata?.socket_id,
+          client_version: message.metadata?.client_version,
+          device_type: message.metadata?.device_type,
+        },
+      });
+
       const record: ProducerRecord = {
-        topic: this.config.topic,
+        topic: getRealtimeTopicForEvent(envelope.event_type) || this.config.topic,
         messages: [
           {
-            key: message.message_id,
-            value: JSON.stringify(message),
+            key: envelope.partition_key,
+            value: JSON.stringify(envelope),
             headers: {
-              tenant_id: message.tenant_id,
+              tenant_id: envelope.tenant_id,
               conversation_id: message.conversation_id,
               sender_id: message.sender_id,
-              timestamp: message.timestamp.toISOString(),
-              correlation_id: message.metadata?.correlation_id || '',
+              timestamp: envelope.occurred_at,
+              correlation_id: envelope.correlation_id || '',
+              event_type: envelope.event_type,
+              schema_version: envelope.schema_version,
               source_service: 'socket-service',
             },
           },
@@ -176,16 +208,43 @@ export class SocketMessageProducer extends EventEmitter {
     const startTime = Date.now();
 
     try {
-      const record: ProducerRecord = {
-        topic: this.config.topic,
-        messages: messages.map((message) => ({
-          key: message.message_id,
-          value: JSON.stringify(message),
-          headers: {
-            tenant_id: message.tenant_id,
+      const envelopes = messages.map((message) =>
+        buildRealtimeEnvelope({
+          eventId: message.message_id,
+          eventType: 'message.created',
+          tenantId: message.tenant_id,
+          projectId: message.project_id,
+          correlationId: message.metadata?.correlation_id,
+          producerId: this.config.clientId,
+          partitionKey: `${message.tenant_id}:${message.conversation_id}`,
+          payload: {
+            message_id: message.message_id,
             conversation_id: message.conversation_id,
             sender_id: message.sender_id,
+            content: message.content,
             timestamp: message.timestamp.toISOString(),
+          },
+          metadata: {
+            user_id: message.sender_id,
+            conversation_id: message.conversation_id,
+            dedupe_key: `${message.tenant_id}:${message.message_id}`,
+          },
+        })
+      );
+
+      const record: ProducerRecord = {
+        topic: getRealtimeTopicForEvent('message.created') || this.config.topic,
+        messages: envelopes.map((envelope) => ({
+          key: envelope.partition_key,
+          value: JSON.stringify(envelope),
+          headers: {
+            tenant_id: envelope.tenant_id,
+            conversation_id: `${envelope.metadata?.conversation_id || ''}`,
+            sender_id: `${envelope.metadata?.user_id || ''}`,
+            timestamp: envelope.occurred_at,
+            correlation_id: envelope.correlation_id,
+            event_type: envelope.event_type,
+            schema_version: envelope.schema_version,
           },
         })),
       };

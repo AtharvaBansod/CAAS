@@ -25,6 +25,25 @@ export async function authMiddleware(
   reply: FastifyReply
 ): Promise<void> {
   try {
+    const serviceSecret = request.headers['x-service-secret'];
+    if (serviceSecret && serviceSecret === (process.env.SERVICE_SECRET || 'dev-service-secret')) {
+      const tenantId = request.headers['x-tenant-id'];
+      const userId = request.headers['x-user-id'];
+
+      if (typeof tenantId === 'string' && typeof userId === 'string') {
+        request.user = {
+          sub: userId,
+          tenant_id: tenantId,
+          app_id: 'socket-service',
+          user_id: userId,
+          role: 'service',
+          iat: Date.now(),
+          exp: Date.now() + 3600000,
+        };
+        return;
+      }
+    }
+
     const authHeader = request.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {

@@ -5,9 +5,9 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc",
-    "dev": "tsx watch src/index.ts",
-    "start": "node dist/index.js",
+    "build": "tsc -p tsconfig.runtime.json",
+    "dev": "tsx watch src/runtime.ts",
+    "start": "node dist/runtime.js",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
@@ -24,6 +24,7 @@
   "author": "CAAS Team",
   "license": "MIT",
   "dependencies": {
+    "@caas/realtime-contracts": "file:../../packages/realtime-contracts",
     "kafkajs": "^2.2.4",
     "@kafkajs/confluent-schema-registry": "^3.3.0",
     "zod": "^3.22.4",
