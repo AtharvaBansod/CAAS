@@ -522,6 +522,13 @@ try {
     Write-Host "  Mongo Express:      http://localhost:8082" -ForegroundColor White
     Write-Host "  Redis Commander:    http://localhost:8083" -ForegroundColor White
     Write-Host ""
+    Write-Host "Observability Stack:" -ForegroundColor Yellow
+    Write-Host "  Prometheus:         http://localhost:9090" -ForegroundColor White
+    Write-Host "  Grafana:            http://localhost:3200 (admin/admin123)" -ForegroundColor White
+    Write-Host "  Jaeger UI:          http://localhost:16686" -ForegroundColor White
+    Write-Host "  AlertManager:       http://localhost:9093" -ForegroundColor White
+    Write-Host "  Loki:               http://localhost:3201" -ForegroundColor White
+    Write-Host ""
     Write-Host "Use Docker-based e2e tests under tests/fresh_e2e for the latest validation pack." -ForegroundColor Yellow
     Write-Host ""
     

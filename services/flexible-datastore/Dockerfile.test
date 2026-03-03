@@ -1,0 +1,12 @@
+FROM node:20-slim
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci --no-audit --no-fund --prefer-offline || npm install --no-audit --no-fund --prefer-offline
+
+COPY tsconfig.json vitest.config.ts ./
+COPY src ./src
+COPY tests ./tests
+
+CMD ["npx", "vitest", "run", "--reporter=verbose"]

@@ -1,0 +1,108 @@
+{
+  "dashboard": {
+    "title": "Gateway Service Dashboard",
+    "tags": ["gateway", "caas", "observability"],
+    "timezone": "browser",
+    "schemaVersion": 16,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Request Rate",
+        "type": "graph",
+        "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{service=\"gateway\"}[5m])) by (method, status_code)",
+            "legendFormat": "{{method}} - {{status_code}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          { "format": "reqps", "label": "Requests/sec" },
+          { "format": "short" }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Request Latency (P95)",
+        "type": "graph",
+        "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{service=\"gateway\"}[5m])) by (le, route))",
+            "legendFormat": "{{route}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          { "format": "s", "label": "Latency" },
+          { "format": "short" }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Error Rate",
+        "type": "graph",
+        "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{service=\"gateway\",status_code=~\"5..\"}[5m])) / sum(rate(http_requests_total{service=\"gateway\"}[5m]))",
+            "legendFormat": "Error Rate",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          { "format": "percentunit", "label": "Error Rate" },
+          { "format": "short" }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Active Connections",
+        "type": "graph",
+        "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "gateway_active_connections",
+            "legendFormat": "Active Connections",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          { "format": "short", "label": "Connections" },
+          { "format": "short" }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Top Routes by Request Count",
+        "type": "table",
+        "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "topk(10, sum(rate(http_requests_total{service=\"gateway\"}[5m])) by (route))",
+            "format": "table",
+            "instant": true,
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Top Routes by Latency",
+        "type": "table",
+        "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "topk(10, histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{service=\"gateway\"}[5m])) by (le, route)))",
+            "format": "table",
+            "instant": true,
+            "refId": "A"
+          }
+        ]
+      }
+    ]
+  }
+}

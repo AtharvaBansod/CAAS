@@ -1,9 +1,12 @@
 /**
  * Auth Service - Standalone Server
- * Phase 4.5.0 - Standalone Auth Service Implementation
+ * Phase 5 - Observability
  * 
  * REST API server for centralized authentication
  */
+
+// Initialize instrumentation first (before any other imports)
+import './instrumentation';
 
 import Fastify, { FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
@@ -19,6 +22,7 @@ import { requestLogger } from './middleware/request-logger';
 import { MongoDBConnection } from './storage/mongodb-connection';
 import { RedisConnection } from './storage/redis-connection';
 import { initializeComplianceClient } from './middleware/compliance.middleware';
+import { shutdownTelemetry, telemetryMetrics } from './instrumentation';
 import pino from 'pino';
 
 const logger = pino({
@@ -164,6 +168,12 @@ export class AuthServer {
     // Health check routes
     await this.server.register(healthRoutes, { prefix: '/health' });
 
+    // Metrics endpoint
+    this.server.get('/metrics', async (request, reply) => {
+      const metrics = await telemetryMetrics.getMetrics();
+      reply.header('Content-Type', 'text/plain; version=0.0.4').send(metrics);
+    });
+
     // API routes
     await this.server.register(authRoutes, { prefix: '/api/v1/auth' });
     await this.server.register(userRoutes, { prefix: '/api/v1/users' });
@@ -203,6 +213,7 @@ export class AuthServer {
       await this.server.close();
       await MongoDBConnection.disconnect();
       await RedisConnection.disconnect();
+      await shutdownTelemetry();
 
       logger.info('Auth service stopped gracefully');
     } catch (error) {

@@ -1,0 +1,32 @@
+{
+  "name": "@caas/telemetry",
+  "version": "1.0.0",
+  "description": "Shared telemetry instrumentation for CAAS platform",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@opentelemetry/api": "^1.7.0",
+    "@opentelemetry/sdk-node": "^0.45.1",
+    "@opentelemetry/auto-instrumentations-node": "^0.40.3",
+    "@opentelemetry/exporter-trace-otlp-grpc": "^0.45.1",
+    "@opentelemetry/exporter-metrics-otlp-grpc": "^0.45.1",
+    "@opentelemetry/exporter-logs-otlp-grpc": "^0.45.1",
+    "@opentelemetry/instrumentation-http": "^0.45.1",
+    "@opentelemetry/instrumentation-fastify": "^0.33.0",
+    "@opentelemetry/instrumentation-mongodb": "^0.38.0",
+    "@opentelemetry/instrumentation-redis-4": "^0.35.4",
+    "@opentelemetry/instrumentation-kafkajs": "^0.2.0",
+    "@opentelemetry/resources": "^1.18.1",
+    "@opentelemetry/semantic-conventions": "^1.18.1",
+    "prom-client": "^15.1.0",
+    "pino": "^8.17.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.6",
+    "typescript": "^5.3.3"
+  }
+}

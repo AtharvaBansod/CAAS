@@ -1,0 +1,200 @@
+# Service Alert Rules
+# Phase 5 - Observability
+
+groups:
+  - name: service_availability
+    interval: 30s
+    rules:
+      # Service Down
+      - alert: ServiceDown
+        expr: up{job=~"gateway|auth-service|socket-service|kafka-service"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: availability
+        annotations:
+          summary: "Service {{ $labels.service }} is down"
+          description: "Service {{ $labels.service }} on {{ $labels.instance }} has been down for more than 1 minute."
+          runbook_url: "https://runbooks.caas/service-down"
+
+      # High Error Rate
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{status=~"5.."}[5m])) by (service)
+            /
+            sum(rate(http_requests_total[5m])) by (service)
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          category: errors
+        annotations:
+          summary: "High error rate on {{ $labels.service }}"
+          description: "Service {{ $labels.service }} has error rate above 5% (current: {{ $value | humanizePercentage }})"
+          runbook_url: "https://runbooks.caas/high-error-rate"
+
+      # High Latency
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (service, le)
+          ) > 1
+        for: 10m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "High latency on {{ $labels.service }}"
+          description: "Service {{ $labels.service }} P95 latency is above 1s (current: {{ $value }}s)"
+          runbook_url: "https://runbooks.caas/high-latency"
+
+  - name: auth_service_slos
+    interval: 30s
+    rules:
+      # Auth Login Failure Rate
+      - alert: AuthLoginFailureRateHigh
+        expr: |
+          (
+            sum(rate(auth_login_attempts_total{status="failure"}[5m]))
+            /
+            sum(rate(auth_login_attempts_total[5m]))
+          ) > 0.10
+        for: 5m
+        labels:
+          severity: warning
+          category: auth
+        annotations:
+          summary: "High auth login failure rate"
+          description: "Auth login failure rate is above 10% (current: {{ $value | humanizePercentage }})"
+          runbook_url: "https://runbooks.caas/auth-failures"
+
+      # Auth Refresh Token Failures
+      - alert: AuthRefreshFailureSpike
+        expr: |
+          rate(auth_refresh_attempts_total{status="failure"}[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          category: auth
+        annotations:
+          summary: "Auth refresh token failure spike"
+          description: "Auth refresh failures spiking at {{ $value }} per second"
+          runbook_url: "https://runbooks.caas/auth-refresh-failures"
+
+  - name: socket_service_slos
+    interval: 30s
+    rules:
+      # Socket Disconnect Storm
+      - alert: SocketDisconnectStorm
+        expr: |
+          rate(socket_disconnections_total[5m]) > 50
+        for: 2m
+        labels:
+          severity: critical
+          category: realtime
+        annotations:
+          summary: "Socket disconnect storm detected"
+          description: "Socket disconnections at {{ $value }} per second"
+          runbook_url: "https://runbooks.caas/socket-disconnect-storm"
+
+      # Socket Message Delivery Failures
+      - alert: SocketMessageDeliveryFailures
+        expr: |
+          (
+            sum(rate(socket_messages_total{status="failed"}[5m]))
+            /
+            sum(rate(socket_messages_total[5m]))
+          ) > 0.01
+        for: 5m
+        labels:
+          severity: warning
+          category: realtime
+        annotations:
+          summary: "Socket message delivery failures"
+          description: "Socket message failure rate above 1% (current: {{ $value | humanizePercentage }})"
+          runbook_url: "https://runbooks.caas/socket-message-failures"
+
+  - name: kafka_service_slos
+    interval: 30s
+    rules:
+      # Kafka Consumer Lag High
+      - alert: KafkaConsumerLagHigh
+        expr: |
+          kafka_consumer_lag_messages > 10000
+        for: 10m
+        labels:
+          severity: warning
+          category: messaging
+        annotations:
+          summary: "Kafka consumer lag is high"
+          description: "Consumer {{ $labels.consumer_group }} lag is {{ $value }} messages on topic {{ $labels.topic }}"
+          runbook_url: "https://runbooks.caas/kafka-lag"
+
+      # Kafka Consumer Lag Critical
+      - alert: KafkaConsumerLagCritical
+        expr: |
+          kafka_consumer_lag_messages > 50000
+        for: 5m
+        labels:
+          severity: critical
+          category: messaging
+        annotations:
+          summary: "Kafka consumer lag is critical"
+          description: "Consumer {{ $labels.consumer_group }} lag is {{ $value }} messages on topic {{ $labels.topic }}"
+          runbook_url: "https://runbooks.caas/kafka-lag"
+
+      # Kafka Persistence Failures
+      - alert: KafkaPersistenceFailures
+        expr: |
+          rate(kafka_persistence_errors_total[5m]) > 1
+        for: 5m
+        labels:
+          severity: critical
+          category: messaging
+        annotations:
+          summary: "Kafka persistence failures detected"
+          description: "Persistence errors at {{ $value }} per second"
+          runbook_url: "https://runbooks.caas/kafka-persistence-failures"
+
+  - name: infrastructure_health
+    interval: 30s
+    rules:
+      # MongoDB Replica Set Issues
+      - alert: MongoDBReplicaSetDegraded
+        expr: |
+          mongodb_replset_member_health < 1
+        for: 2m
+        labels:
+          severity: critical
+          category: infrastructure
+        annotations:
+          summary: "MongoDB replica set member unhealthy"
+          description: "MongoDB member {{ $labels.member }} is unhealthy"
+          runbook_url: "https://runbooks.caas/mongodb-replica-issues"
+
+      # Redis Memory Usage High
+      - alert: RedisMemoryUsageHigh
+        expr: |
+          (redis_memory_used_bytes / redis_memory_max_bytes) > 0.90
+        for: 5m
+        labels:
+          severity: warning
+          category: infrastructure
+        annotations:
+          summary: "Redis memory usage high"
+          description: "Redis {{ $labels.instance }} memory usage at {{ $value | humanizePercentage }}"
+          runbook_url: "https://runbooks.caas/redis-memory"
+
+      # Elasticsearch Cluster Health
+      - alert: ElasticsearchClusterNotHealthy
+        expr: |
+          elasticsearch_cluster_health_status{color="red"} == 1
+        for: 5m
+        labels:
+          severity: critical
+          category: infrastructure
+        annotations:
+          summary: "Elasticsearch cluster health is red"
+          description: "Elasticsearch cluster health is in red state"
+          runbook_url: "https://runbooks.caas/elasticsearch-health"

@@ -1,0 +1,203 @@
+# SLO-Based Alert Rules
+# Phase 5 - Service Level Objectives
+
+groups:
+  - name: slo_availability
+    interval: 1m
+    rules:
+      # Gateway Availability SLO (99.9%)
+      - alert: GatewayAvailabilitySLOBreach
+        expr: |
+          (
+            sum(rate(http_requests_total{service="gateway",status!~"5.."}[30m]))
+            /
+            sum(rate(http_requests_total{service="gateway"}[30m]))
+          ) < 0.999
+        for: 5m
+        labels:
+          severity: critical
+          category: slo
+          slo_type: availability
+        annotations:
+          summary: "Gateway availability SLO breach"
+          description: "Gateway availability is {{ $value | humanizePercentage }} (SLO: 99.9%)"
+          runbook_url: "https://runbooks.caas/slo-availability"
+
+      # Auth Service Availability SLO (99.95%)
+      - alert: AuthServiceAvailabilitySLOBreach
+        expr: |
+          (
+            sum(rate(http_requests_total{service="auth-service",status!~"5.."}[30m]))
+            /
+            sum(rate(http_requests_total{service="auth-service"}[30m]))
+          ) < 0.9995
+        for: 5m
+        labels:
+          severity: critical
+          category: slo
+          slo_type: availability
+        annotations:
+          summary: "Auth service availability SLO breach"
+          description: "Auth service availability is {{ $value | humanizePercentage }} (SLO: 99.95%)"
+          runbook_url: "https://runbooks.caas/slo-availability"
+
+  - name: slo_latency
+    interval: 1m
+    rules:
+      # Gateway Latency SLO (P95 < 500ms)
+      - alert: GatewayLatencySLOBreach
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket{service="gateway"}[5m])) by (le)
+          ) > 0.5
+        for: 10m
+        labels:
+          severity: warning
+          category: slo
+          slo_type: latency
+        annotations:
+          summary: "Gateway latency SLO breach"
+          description: "Gateway P95 latency is {{ $value }}s (SLO: <500ms)"
+          runbook_url: "https://runbooks.caas/slo-latency"
+
+      # Socket Message Fanout Latency SLO (P95 < 100ms)
+      - alert: SocketFanoutLatencySLOBreach
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(socket_message_fanout_duration_seconds_bucket[5m])) by (le)
+          ) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+          category: slo
+          slo_type: latency
+        annotations:
+          summary: "Socket fanout latency SLO breach"
+          description: "Socket fanout P95 latency is {{ $value }}s (SLO: <100ms)"
+          runbook_url: "https://runbooks.caas/slo-latency"
+
+      # Kafka Persistence Latency SLO (P95 < 2s)
+      - alert: KafkaPersistenceLatencySLOBreach
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(kafka_persistence_duration_seconds_bucket[5m])) by (le)
+          ) > 2
+        for: 10m
+        labels:
+          severity: warning
+          category: slo
+          slo_type: latency
+        annotations:
+          summary: "Kafka persistence latency SLO breach"
+          description: "Kafka persistence P95 latency is {{ $value }}s (SLO: <2s)"
+          runbook_url: "https://runbooks.caas/slo-latency"
+
+  - name: slo_error_budget
+    interval: 5m
+    rules:
+      # Error Budget Burn Rate - Fast (1h window)
+      - alert: ErrorBudgetBurnRateFast
+        expr: |
+          (
+            sum(rate(http_requests_total{status=~"5.."}[1h]))
+            /
+            sum(rate(http_requests_total[1h]))
+          ) > (0.001 * 14.4)  # 14.4x burn rate for 1h window
+        for: 5m
+        labels:
+          severity: critical
+          category: slo
+          slo_type: error_budget
+        annotations:
+          summary: "Fast error budget burn rate detected"
+          description: "Error budget burning at {{ $value | humanizePercentage }} (threshold: 1.44%)"
+          runbook_url: "https://runbooks.caas/error-budget-burn"
+
+      # Error Budget Burn Rate - Slow (6h window)
+      - alert: ErrorBudgetBurnRateSlow
+        expr: |
+          (
+            sum(rate(http_requests_total{status=~"5.."}[6h]))
+            /
+            sum(rate(http_requests_total[6h]))
+          ) > (0.001 * 6)  # 6x burn rate for 6h window
+        for: 30m
+        labels:
+          severity: warning
+          category: slo
+          slo_type: error_budget
+        annotations:
+          summary: "Slow error budget burn rate detected"
+          description: "Error budget burning at {{ $value | humanizePercentage }} (threshold: 0.6%)"
+          runbook_url: "https://runbooks.caas/error-budget-burn"
+
+  - name: synthetic_probes
+    interval: 1m
+    rules:
+      # Admin Login Journey Failure
+      - alert: SyntheticAdminLoginFailure
+        expr: |
+          synthetic_probe_success{journey="admin_login"} == 0
+        for: 3m
+        labels:
+          severity: critical
+          category: synthetic
+        annotations:
+          summary: "Synthetic admin login probe failing"
+          description: "Admin login journey has failed for 3 consecutive checks"
+          runbook_url: "https://runbooks.caas/synthetic-failures"
+
+      # Dashboard Load Journey Failure
+      - alert: SyntheticDashboardLoadFailure
+        expr: |
+          synthetic_probe_success{journey="dashboard_load"} == 0
+        for: 3m
+        labels:
+          severity: warning
+          category: synthetic
+        annotations:
+          summary: "Synthetic dashboard load probe failing"
+          description: "Dashboard load journey has failed for 3 consecutive checks"
+          runbook_url: "https://runbooks.caas/synthetic-failures"
+
+      # API Key Rotation Journey Failure
+      - alert: SyntheticAPIKeyRotationFailure
+        expr: |
+          synthetic_probe_success{journey="api_key_rotation"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          category: synthetic
+        annotations:
+          summary: "Synthetic API key rotation probe failing"
+          description: "API key rotation journey has failed for 5 consecutive checks"
+          runbook_url: "https://runbooks.caas/synthetic-failures"
+
+  - name: data_freshness
+    interval: 1m
+    rules:
+      # Monitoring Data Stale
+      - alert: MonitoringDataStale
+        expr: |
+          (time() - monitoring_data_last_update_timestamp_seconds) > 300
+        for: 5m
+        labels:
+          severity: warning
+          category: data_quality
+        annotations:
+          summary: "Monitoring data is stale"
+          description: "Monitoring data for {{ $labels.source }} hasn't updated in {{ $value }}s"
+          runbook_url: "https://runbooks.caas/stale-data"
+
+      # Kafka Metrics Stale
+      - alert: KafkaMetricsStale
+        expr: |
+          (time() - kafka_metrics_last_scrape_timestamp_seconds) > 120
+        for: 3m
+        labels:
+          severity: warning
+          category: data_quality
+        annotations:
+          summary: "Kafka metrics are stale"
+          description: "Kafka metrics haven't been scraped in {{ $value }}s"
+          runbook_url: "https://runbooks.caas/stale-data"

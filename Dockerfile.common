@@ -19,16 +19,22 @@ FROM base AS package-builder
 ENV NODE_ENV=development
 COPY packages/compliance-client/package*.json ./packages/compliance-client/
 COPY packages/realtime-contracts/package*.json ./packages/realtime-contracts/
+COPY packages/telemetry/package*.json ./packages/telemetry/
 RUN --mount=type=cache,target=/root/.npm \
     cd packages/compliance-client && (npm ci --no-audit --no-fund --prefer-offline || npm install --no-audit --no-fund --prefer-offline)
 RUN --mount=type=cache,target=/root/.npm \
     cd packages/realtime-contracts && (npm ci --no-audit --no-fund --prefer-offline || npm install --no-audit --no-fund --prefer-offline)
+RUN --mount=type=cache,target=/root/.npm \
+    cd packages/telemetry && (npm ci --no-audit --no-fund --prefer-offline || npm install --no-audit --no-fund --prefer-offline)
 COPY packages/compliance-client/tsconfig.json ./packages/compliance-client/
 COPY packages/realtime-contracts/tsconfig.json ./packages/realtime-contracts/
+COPY packages/telemetry/tsconfig.json ./packages/telemetry/
 COPY packages/compliance-client/src ./packages/compliance-client/src
 COPY packages/realtime-contracts/src ./packages/realtime-contracts/src
+COPY packages/telemetry/src ./packages/telemetry/src
 RUN cd packages/compliance-client && npm run build
 RUN cd packages/realtime-contracts && npm run build
+RUN cd packages/telemetry && npm run build
 
 # ============================================
 # Stage 3: AUTH SERVICE
@@ -47,6 +53,7 @@ FROM base AS auth-service
 WORKDIR /app/services/auth-service
 COPY --from=package-builder /app/packages/compliance-client /app/packages/compliance-client
 COPY --from=package-builder /app/packages/realtime-contracts /app/packages/realtime-contracts
+COPY --from=package-builder /app/packages/telemetry /app/packages/telemetry
 COPY --from=auth-builder /app/services/auth-service/dist ./dist
 COPY --from=auth-builder /app/services/auth-service/node_modules ./node_modules
 COPY --from=auth-builder /app/services/auth-service/package.json ./package.json
@@ -71,6 +78,7 @@ FROM base AS gateway-service
 WORKDIR /app/services/gateway
 COPY --from=package-builder /app/packages/compliance-client /app/packages/compliance-client
 COPY --from=package-builder /app/packages/realtime-contracts /app/packages/realtime-contracts
+COPY --from=package-builder /app/packages/telemetry /app/packages/telemetry
 COPY --from=gateway-builder /app/services/gateway/dist ./dist
 COPY --from=gateway-builder /app/services/gateway/node_modules ./node_modules
 COPY --from=gateway-builder /app/services/gateway/package.json ./package.json
@@ -219,3 +227,25 @@ COPY --from=kafka-builder /app/services/kafka-service/package.json ./package.jso
 USER node
 EXPOSE 3010
 CMD ["node", "dist/runtime.js"]
+
+# ============================================
+# Stage 11: FLEXIBLE DATASTORE SERVICE
+# ============================================
+FROM package-builder AS flexible-datastore-builder
+WORKDIR /app/services/flexible-datastore
+COPY services/flexible-datastore/package*.json ./
+RUN --mount=type=cache,target=/root/.npm \
+    (npm ci --no-audit --no-fund --prefer-offline || npm install --no-audit --no-fund --prefer-offline)
+COPY services/flexible-datastore/tsconfig.json ./
+COPY services/flexible-datastore/src ./src
+RUN npm run build
+RUN npm prune --omit=dev
+
+FROM base AS flexible-datastore-service
+WORKDIR /app/services/flexible-datastore
+COPY --from=flexible-datastore-builder /app/services/flexible-datastore/dist ./dist
+COPY --from=flexible-datastore-builder /app/services/flexible-datastore/node_modules ./node_modules
+COPY --from=flexible-datastore-builder /app/services/flexible-datastore/package.json ./package.json
+USER node
+EXPOSE 4100
+CMD ["node", "dist/index.js"]

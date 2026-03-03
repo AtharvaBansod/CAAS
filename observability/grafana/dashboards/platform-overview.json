@@ -1,0 +1,202 @@
+{
+  "dashboard": {
+    "title": "CAAS Platform Overview",
+    "tags": ["caas", "platform", "overview"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Service Health Status",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "up{job=~\"gateway|auth-service|socket-service|kafka-service\"}",
+            "legendFormat": "{{service}}"
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"]
+          },
+          "text": {},
+          "textMode": "value_and_name",
+          "colorMode": "background",
+          "graphMode": "none"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {"type": "value", "value": "0", "text": "DOWN", "color": "red"},
+              {"type": "value", "value": "1", "text": "UP", "color": "green"}
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 1, "color": "green"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Request Rate (req/s)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total[5m])) by (service)",
+            "legendFormat": "{{service}}"
+          }
+        ],
+        "yaxes": [
+          {"format": "reqps", "label": "Requests/sec"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Error Rate (%)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{status=~\"5..\"}[5m])) by (service) / sum(rate(http_requests_total[5m])) by (service) * 100",
+            "legendFormat": "{{service}}"
+          }
+        ],
+        "yaxes": [
+          {"format": "percent", "label": "Error Rate"},
+          {"format": "short"}
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {"params": [5], "type": "gt"},
+              "operator": {"type": "and"},
+              "query": {"params": ["A", "5m", "now"]},
+              "reducer": {"params": [], "type": "avg"},
+              "type": "query"
+            }
+          ],
+          "executionErrorState": "alerting",
+          "frequency": "1m",
+          "handler": 1,
+          "name": "High Error Rate",
+          "noDataState": "no_data",
+          "notifications": []
+        }
+      },
+      {
+        "id": 4,
+        "title": "P95 Latency (ms)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (service, le)) * 1000",
+            "legendFormat": "{{service}}"
+          }
+        ],
+        "yaxes": [
+          {"format": "ms", "label": "Latency"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Active Connections",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+        "targets": [
+          {
+            "expr": "socket_connections_active",
+            "legendFormat": "{{instance}}"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "label": "Connections"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Kafka Consumer Lag",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
+        "targets": [
+          {
+            "expr": "kafka_consumer_lag_messages",
+            "legendFormat": "{{consumer_group}} - {{topic}}"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "label": "Messages"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Memory Usage",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
+        "targets": [
+          {
+            "expr": "process_resident_memory_bytes / 1024 / 1024",
+            "legendFormat": "{{service}}"
+          }
+        ],
+        "yaxes": [
+          {"format": "mbytes", "label": "Memory (MB)"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 8,
+        "title": "CPU Usage",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 28},
+        "targets": [
+          {
+            "expr": "rate(process_cpu_seconds_total[5m]) * 100",
+            "legendFormat": "{{service}}"
+          }
+        ],
+        "yaxes": [
+          {"format": "percent", "label": "CPU %"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Auth Operations",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 28},
+        "targets": [
+          {
+            "expr": "sum(rate(auth_login_attempts_total[5m])) by (status)",
+            "legendFormat": "Login {{status}}"
+          },
+          {
+            "expr": "sum(rate(auth_refresh_attempts_total[5m])) by (status)",
+            "legendFormat": "Refresh {{status}}"
+          }
+        ],
+        "yaxes": [
+          {"format": "ops", "label": "Operations/sec"},
+          {"format": "short"}
+        ]
+      }
+    ]
+  }
+}

@@ -1,23 +1,47 @@
 /**
- * Metrics Routes
+ * Metrics Endpoint
+ * Phase 5 - Observability
  * 
- * Prometheus metrics endpoint
+ * Exposes Prometheus metrics for scraping
  */
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { metricsService } from '../../services/metrics';
+import { telemetryMetrics } from '../../instrumentation';
 
 export async function metricsRoutes(fastify: FastifyInstance) {
   /**
+   * GET /metrics
    * Prometheus metrics endpoint
-   * Should be exposed on a separate port (3001) for security
    */
   fastify.get('/metrics', async (request: FastifyRequest, reply: FastifyReply) => {
-    const metrics = await metricsService.getMetrics();
-    
-    return reply
-      .code(200)
-      .header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8')
-      .send(metrics);
+    try {
+      // Get metrics from both the legacy metrics service and telemetry package
+      const legacyMetrics = await metricsService.getMetrics();
+      const telemetryMetricsData = await telemetryMetrics.getMetrics();
+      
+      // Combine metrics (telemetry package metrics are prefixed with service name)
+      const combinedMetrics = `${legacyMetrics}\n${telemetryMetricsData}`;
+      
+      reply
+        .header('Content-Type', 'text/plain; version=0.0.4')
+        .send(combinedMetrics);
+    } catch (error) {
+      fastify.log.error({ error }, 'Failed to generate metrics');
+      reply.code(500).send({ error: 'Failed to generate metrics' });
+    }
+  });
+
+  /**
+   * GET /health
+   * Health check endpoint
+   */
+  fastify.get('/health', async (request: FastifyRequest, reply: FastifyReply) => {
+    reply.send({
+      status: 'healthy',
+      service: 'gateway',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+    });
   });
 }

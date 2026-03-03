@@ -1,0 +1,141 @@
+# Prometheus Configuration
+# Phase 5 - Observability Infrastructure
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'caas-platform'
+    environment: 'development'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+# Load rules once and periodically evaluate them
+rule_files:
+  - "/etc/prometheus/alerts/*.yml"
+
+# Scrape configurations
+scrape_configs:
+  # OpenTelemetry Collector
+  - job_name: 'otel-collector'
+    static_configs:
+      - targets: ['otel-collector:8888', 'otel-collector:8889']
+        labels:
+          service: 'otel-collector'
+
+  # Gateway Service
+  - job_name: 'gateway'
+    static_configs:
+      - targets: ['gateway:3001']
+        labels:
+          service: 'gateway'
+          tier: 'api'
+
+  # Auth Service
+  - job_name: 'auth-service'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['auth-service:3001']
+        labels:
+          service: 'auth-service'
+          tier: 'backend'
+
+  # Socket Services
+  - job_name: 'socket-service'
+    static_configs:
+      - targets: ['socket-service-1:3001', 'socket-service-2:3001']
+        labels:
+          service: 'socket-service'
+          tier: 'realtime'
+
+  # Kafka Service
+  - job_name: 'kafka-service'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['kafka-service:3010']
+        labels:
+          service: 'kafka-service'
+          tier: 'messaging'
+
+  # Search Service
+  - job_name: 'search-service'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['search-service:3006']
+        labels:
+          service: 'search-service'
+          tier: 'backend'
+
+  # Media Service
+  - job_name: 'media-service'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['media-service:3005']
+        labels:
+          service: 'media-service'
+          tier: 'backend'
+
+  # Compliance Service
+  - job_name: 'compliance-service'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['compliance-service:3008']
+        labels:
+          service: 'compliance-service'
+          tier: 'backend'
+
+  # Crypto Service
+  - job_name: 'crypto-service'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['crypto-service:3009']
+        labels:
+          service: 'crypto-service'
+          tier: 'backend'
+
+  # Flexible Datastore Service
+  - job_name: 'flexible-datastore'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['flexible-datastore:4100']
+        labels:
+          service: 'flexible-datastore'
+          tier: 'data'
+
+  # Infrastructure - MongoDB
+  - job_name: 'mongodb'
+    static_configs:
+      - targets: ['mongodb-primary:27017']
+        labels:
+          service: 'mongodb'
+          tier: 'infrastructure'
+          role: 'primary'
+
+  # Infrastructure - Redis
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-gateway:6379', 'redis-socket:6379', 'redis-shared:6379']
+        labels:
+          service: 'redis'
+          tier: 'infrastructure'
+
+  # Infrastructure - Kafka
+  - job_name: 'kafka'
+    static_configs:
+      - targets: ['kafka-1:9092', 'kafka-2:9092', 'kafka-3:9092']
+        labels:
+          service: 'kafka'
+          tier: 'infrastructure'
+
+  # Infrastructure - Elasticsearch
+  - job_name: 'elasticsearch'
+    static_configs:
+      - targets: ['elasticsearch:9200']
+        labels:
+          service: 'elasticsearch'
+          tier: 'infrastructure'

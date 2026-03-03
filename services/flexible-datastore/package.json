@@ -1,0 +1,35 @@
+{
+  "name": "@caas/flexible-datastore",
+  "version": "1.0.0",
+  "description": "Flexible multi-provider datastore abstraction layer for CAAS platform",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "test": "vitest run --reporter=verbose",
+    "test:watch": "vitest --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "fastify": "^4.25.2",
+    "@fastify/cors": "^9.0.1",
+    "zod": "^3.22.4",
+    "dotenv": "^16.3.1",
+    "uuid": "^9.0.1",
+    "mongoose": "^8.0.3",
+    "mongodb": "^6.3.0",
+    "pino": "^8.17.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.6",
+    "@types/uuid": "^9.0.7",
+    "typescript": "^5.3.3",
+    "tsx": "^4.7.0",
+    "vitest": "^2.1.9"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

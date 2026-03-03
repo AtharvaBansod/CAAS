@@ -1,6 +1,10 @@
+// Initialize instrumentation first (before any other imports)
+import './instrumentation';
+
 import { buildApp } from './app';
 import { config } from './config';
 import { webhookConsumer } from './consumers/webhook-consumer';
+import { shutdownTelemetry } from './instrumentation';
 
 const main = async () => {
   try {
@@ -12,11 +16,13 @@ const main = async () => {
     await app.listen({ port: config.PORT, host: '0.0.0.0' });
     console.log(`Server listening at http://0.0.0.0:${config.PORT}`);
     console.log(`Documentation at http://0.0.0.0:${config.PORT}/documentation`);
+    console.log(`Metrics at http://0.0.0.0:${config.PORT}/metrics`);
 
     // Graceful Shutdown
     const closeGracefully = async (signal: string) => {
       console.log(`Received ${signal}, shutting down...`);
       await webhookConsumer.stop();
+      await shutdownTelemetry();
       await app.close();
       process.exit(0);
     };
